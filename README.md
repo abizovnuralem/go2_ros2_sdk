@@ -1,4 +1,4 @@
-# ro2_ros2_sdk
+# go2_ros2_sdk
 Unitee go2 ROS 2 drivers are implemented using the go2-WebRTC interface originally designed by @tfoldi (https://github.com/tfoldi/go2-webrtc)
 
 This project enables ROS2 SDK functionality for your Unithree GO2 AIR/PRO
