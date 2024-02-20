@@ -13,6 +13,11 @@ Current state:
 8. Camera stream
 9. Lidar stream
 
+## Topic
+Real time Go2 Air/PRO ROS2 topics
+![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/topics_2.png?raw=true)
+![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/topics_1.png?raw=true)
+
 
 ## Getting started
 
@@ -34,5 +39,4 @@ source install/setup.bash
 ros2 launch go2_robot_sdk robot.launch.py
 ```
 
-## Topic
-![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/topics_1.png?raw=true)
+
