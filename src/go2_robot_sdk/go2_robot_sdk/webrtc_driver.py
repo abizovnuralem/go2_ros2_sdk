@@ -39,10 +39,13 @@ from aiortc import (
 import asyncio
 from aiortc.contrib.media import MediaBlackhole
 
-from geometry_msgs.msg import Twist
-from sensor_msgs.msg import Joy
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
+
+import tf2_ros
+from geometry_msgs.msg import TransformStamped
+from sensor_msgs.msg import Joy, JointState
+from nav_msgs.msg import Odometry
 
 
 # PUT YOUR IP
@@ -184,11 +187,9 @@ class Go2ConnectionAsync(Node):
         super().__init__('go2_driver')
         
         self.joint_pub = self.create_publisher(JointState, 'joint_states', 10)
-        self.joy_sub = self.create_subscription(
-            Joy,
-            'joy',
-            self.joy_cb,
-            10)
+        self.odom_pub = self.create_publisher(Odometry, 'odom', 10)
+        self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
+
         self.robot_validation = "PENDING"
         self.pc = RTCPeerConnection()
         self.robot_ip = robot_ip
@@ -214,55 +215,96 @@ class Go2ConnectionAsync(Node):
     def on_data_channel_open(self):
         self.get_logger().info("Data channel is open")
 
-    def on_data_channel_message(self, message):
+    def sub_for_topics(self):
+        self.data_channel.send('{"type": "subscribe", "topic": "rt/lf/lowstate"}')
+        self.data_channel.send('{"type": "subscribe", "topic": "rt/utlidar/robot_pose"}')
+
+    def create_handshake(self, msg):
+
         if self.data_channel.readyState != "open":
             self.data_channel._setReadyState("open")
 
-        message = json.loads(message)
-
-        if message.get("type") == "validation":
-            self.validate_robot_conn(message)
-
+        if msg.get("type") == "validation":
+            self.validate_robot_conn(msg)
         
-        if message.get("type") == "validation" and message.get("data") == "Validation Ok.":
-            self.data_channel.send('{"type": "subscribe", "topic": "rt/lf/lowstate" }')
+        if msg.get("type") == "validation" and msg.get("data") == "Validation Ok.":
+            self.sub_for_topics()
 
-        if message.get("type") == "msg" and message.get("topic") == "rt/lf/lowstate":
-            # update joint_state
-            joint_state = JointState()
+    def publish_odom(self, msg):
+
+        odom_msg = Odometry()
+        odom_msg.header.stamp = self.get_clock().now().to_msg()
+        odom_msg.header.frame_id = 'odom'
+        odom_msg.child_frame_id = 'base'
+        odom_msg.pose.pose.position.x = msg['data']['pose']['position']['x']
+        odom_msg.pose.pose.position.y = msg['data']['pose']['position']['y']
+        odom_msg.pose.pose.position.z = msg['data']['pose']['position']['z']
+        odom_msg.pose.pose.orientation.x = msg['data']['pose']['orientation']['x']
+        odom_msg.pose.pose.orientation.y = msg['data']['pose']['orientation']['y']
+        odom_msg.pose.pose.orientation.z = msg['data']['pose']['orientation']['z']
+        odom_msg.pose.pose.orientation.w = msg['data']['pose']['orientation']['w']
+        self.odom_pub.publish(odom_msg)
+
+        # Publish transform
+        transform_stamped = TransformStamped()
+        transform_stamped.header.stamp = self.get_clock().now().to_msg()
+        transform_stamped.header.frame_id = 'odom'
+        transform_stamped.child_frame_id = 'base_link'
+        transform_stamped.transform.translation.x = msg['data']['pose']['position']['x']
+        transform_stamped.transform.translation.y = msg['data']['pose']['position']['y']
+        transform_stamped.transform.translation.z = msg['data']['pose']['position']['z']
+        transform_stamped.transform.rotation.x = msg['data']['pose']['orientation']['x']
+        transform_stamped.transform.rotation.y = msg['data']['pose']['orientation']['y']
+        transform_stamped.transform.rotation.z = msg['data']['pose']['orientation']['z']
+        transform_stamped.transform.rotation.w = msg['data']['pose']['orientation']['w']
+        self.tf_broadcaster.sendTransform(transform_stamped)
+
+    def publish_joint_state(self, msg):
+        joint_state = JointState()
+        joint_state.header.stamp = self.get_clock().now().to_msg()
+        FL_hip_joint = msg["data"]["motor_state"][0]["q"]
+        FL_thigh_joint = msg["data"]["motor_state"][1]["q"]
+        FL_calf_joint = msg["data"]["motor_state"][2]["q"]
+
+        FR_hip_joint = msg["data"]["motor_state"][3]["q"]
+        FR_thigh_joint = msg["data"]["motor_state"][4]["q"]
+        FR_calf_joint = msg["data"]["motor_state"][5]["q"]
+
+        RL_hip_joint = msg["data"]["motor_state"][6]["q"]
+        RL_thigh_joint = msg["data"]["motor_state"][7]["q"]
+        RL_calf_joint = msg["data"]["motor_state"][8]["q"]
+
+        RR_hip_joint = msg["data"]["motor_state"][9]["q"]
+        RR_thigh_joint = msg["data"]["motor_state"][10]["q"]
+        RR_calf_joint = msg["data"]["motor_state"][11]["q"]
+
+        joint_state.name = [
+            'FL_hip_joint', 'FL_thigh_joint', 'FL_calf_joint',
+            'FR_hip_joint', 'FR_thigh_joint', 'FR_calf_joint',
+            'RL_hip_joint', 'RL_thigh_joint', 'RL_calf_joint',
+            'RR_hip_joint', 'RR_thigh_joint', 'RR_calf_joint',
+            ]
+        joint_state.position = [
+            FL_hip_joint, FL_thigh_joint, FL_calf_joint,
+            FR_hip_joint, FR_thigh_joint, FR_calf_joint,
+            RL_hip_joint, RL_thigh_joint, RL_calf_joint,
+            RR_hip_joint, RR_thigh_joint, RR_calf_joint,
+            ]
+
+        self.joint_pub.publish(joint_state) 
+
+
+    def on_data_channel_message(self, msg):
+        
+        msg = json.loads(msg)
+        self.create_handshake(msg)
+        
+        if msg.get("topic") == "rt/lf/lowstate":
+            self.publish_joint_state(msg)
+
+        if msg.get("topic") == "rt/utlidar/robot_pose":
+            self.publish_odom(msg)
             
-            FL_hip_joint = message["data"]["motor_state"][0]["q"]
-            FL_thigh_joint = message["data"]["motor_state"][1]["q"]
-            FL_calf_joint = message["data"]["motor_state"][2]["q"]
-            
-            FR_hip_joint = message["data"]["motor_state"][3]["q"]
-            FR_thigh_joint = message["data"]["motor_state"][4]["q"]
-            FR_calf_joint = message["data"]["motor_state"][5]["q"]
-
-            RL_hip_joint = message["data"]["motor_state"][6]["q"]
-            RL_thigh_joint = message["data"]["motor_state"][7]["q"]
-            RL_calf_joint = message["data"]["motor_state"][8]["q"]
-
-            RR_hip_joint = message["data"]["motor_state"][9]["q"]
-            RR_thigh_joint = message["data"]["motor_state"][10]["q"]
-            RR_calf_joint = message["data"]["motor_state"][11]["q"] 
-
-            now = self.get_clock().now()
-            joint_state.header.stamp = now.to_msg()
-            joint_state.name = [
-                'FL_hip_joint', 'FL_thigh_joint', 'FL_calf_joint',
-                'FR_hip_joint', 'FR_thigh_joint', 'FR_calf_joint',
-                'RL_hip_joint', 'RL_thigh_joint', 'RL_calf_joint',
-                'RR_hip_joint', 'RR_thigh_joint', 'RR_calf_joint',
-                ]
-            joint_state.position = [
-                FL_hip_joint, FL_thigh_joint, FL_calf_joint,
-                FR_hip_joint, FR_thigh_joint, FR_calf_joint,
-                RL_hip_joint, RL_thigh_joint, RL_calf_joint,
-                RR_hip_joint, RR_thigh_joint, RR_calf_joint,
-                ]
-            
-            self.joint_pub.publish(joint_state)
 
 
     async def generate_offer(self):
@@ -329,22 +371,6 @@ class Go2ConnectionAsync(Node):
         self.get_logger().info("Connected to Go2 !!!")
 
         while True:
-            self.get_logger().info("111")
-            # if self.joy_state.buttons:
-            #     self.get_logger().info(self.joy_state.buttons[0])
-
-            # if self.joy_state.buttons and self.joy_state.buttons[6]:
-            #     self.get_logger().info("Stand down")
-            #     stand_down_cmd = gen_command(ROBOT_CMD['StandDown'])
-            #     self.data_channel.send(stand_down_cmd['topic'], stand_down_cmd['data'], stand_down_cmd['type'])
-
-            # if self.joy_state.buttons and self.joy_state.buttons[0]:
-            #     self.get_logger().info("Stand up")
-            #     stand_up_cmd = gen_command(ROBOT_CMD['StandUp'])
-            #     self.data_channel.send(stand_up_cmd['topic'], stand_up_cmd['data'], stand_up_cmd['type'])
-            #     balance_stand_cmd = gen_command(ROBOT_CMD['BalanceStand'])
-            #     self.data_channel.send(balance_stand_cmd['topic'], balance_stand_cmd['data'], balance_stand_cmd['type'])
-
             await asyncio.sleep(0.1)
 
     @staticmethod
@@ -365,7 +391,6 @@ class Go2ConnectionAsync(Node):
         return hash_obj.hexdigest()
 
 
-
 def main():
     rclpy.init()
 
@@ -377,7 +402,6 @@ def main():
     loop.run_until_complete(robot_node.run())
 
     
-
 if __name__ == '__main__':
     main()
     
