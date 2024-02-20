@@ -1,4 +1,0 @@
-aiortc
-aiohttp
-paho-mqtt
-python-dotenv
