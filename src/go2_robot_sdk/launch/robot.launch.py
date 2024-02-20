@@ -78,4 +78,11 @@ def generate_launch_description():
             package='go2_robot_sdk',
             executable='main_node'
             ),
+        Node(
+            package='rviz2',
+            namespace='',
+            executable='rviz2',
+            name='rviz2',
+            arguments=['-d' + os.path.join(get_package_share_directory('go2_robot_sdk'), 'config', 'conf.rviz')]
+        )
     ])

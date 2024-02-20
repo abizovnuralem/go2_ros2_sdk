@@ -42,10 +42,11 @@ from aiortc.contrib.media import MediaBlackhole
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
 
-import tf2_ros
+from tf2_ros import TransformBroadcaster, TransformStamped
 from geometry_msgs.msg import TransformStamped
-from sensor_msgs.msg import Joy, JointState
+from sensor_msgs.msg import JointState
 from nav_msgs.msg import Odometry
+from rclpy.qos import QoSProfile
 
 
 # PUT YOUR IP
@@ -185,10 +186,12 @@ class Go2ConnectionAsync(Node):
     def __init__(self, robot_ip, token):
 
         super().__init__('go2_driver')
+
+        qos_profile = QoSProfile(depth=10)
         
-        self.joint_pub = self.create_publisher(JointState, 'joint_states', 10)
-        self.odom_pub = self.create_publisher(Odometry, 'odom', 10)
-        self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
+        self.joint_pub = self.create_publisher(JointState, 'joint_states', qos_profile)
+        self.odom_pub = self.create_publisher(Odometry, 'odom', qos_profile)
+        self.broadcaster = TransformBroadcaster(self, qos=qos_profile)
 
         self.robot_validation = "PENDING"
         self.pc = RTCPeerConnection()
@@ -246,18 +249,18 @@ class Go2ConnectionAsync(Node):
         self.odom_pub.publish(odom_msg)
 
         # Publish transform
-        transform_stamped = TransformStamped()
-        transform_stamped.header.stamp = self.get_clock().now().to_msg()
-        transform_stamped.header.frame_id = 'odom'
-        transform_stamped.child_frame_id = 'base_link'
-        transform_stamped.transform.translation.x = msg['data']['pose']['position']['x']
-        transform_stamped.transform.translation.y = msg['data']['pose']['position']['y']
-        transform_stamped.transform.translation.z = msg['data']['pose']['position']['z']
-        transform_stamped.transform.rotation.x = msg['data']['pose']['orientation']['x']
-        transform_stamped.transform.rotation.y = msg['data']['pose']['orientation']['y']
-        transform_stamped.transform.rotation.z = msg['data']['pose']['orientation']['z']
-        transform_stamped.transform.rotation.w = msg['data']['pose']['orientation']['w']
-        self.tf_broadcaster.sendTransform(transform_stamped)
+        odom_trans = TransformStamped()
+        odom_trans.header.stamp = self.get_clock().now().to_msg()
+        odom_trans.header.frame_id = 'odom'
+        odom_trans.child_frame_id = 'base'
+        odom_trans.transform.translation.x = msg['data']['pose']['position']['x']
+        odom_trans.transform.translation.y = msg['data']['pose']['position']['y']
+        odom_trans.transform.translation.z = msg['data']['pose']['position']['z']
+        odom_trans.transform.rotation.x = msg['data']['pose']['orientation']['x']
+        odom_trans.transform.rotation.y = msg['data']['pose']['orientation']['y']
+        odom_trans.transform.rotation.z = msg['data']['pose']['orientation']['z']
+        odom_trans.transform.rotation.w = msg['data']['pose']['orientation']['w']
+        self.broadcaster.sendTransform(odom_trans)
 
     def publish_joint_state(self, msg):
         joint_state = JointState()

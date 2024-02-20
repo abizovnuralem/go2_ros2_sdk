@@ -5,13 +5,12 @@ This project enables ROS2 SDK functionality for your Unithree GO2 AIR/PRO
 
 Current state:
 1. URDF (Done)
-2. GO2_joint_states sync (Done)
+2. Joint states sync (Done)
+3. IMU sync (Done)
+4. Camera stream
+5. Lidar stream
+6. Joystick control
 
-Soon:
-1. IMU sync
-2. Camera stream
-3. Lidar stream
-4. Joystick control
 
 ## Getting started
 
