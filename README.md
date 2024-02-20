@@ -19,6 +19,7 @@ install ROS 2 (tested on iron)
 clone this rep and build it
 ```
 git clone https://github.com/abizovnuralem/go2_ros2_sdk.git
+pip install -r requirements.txt
 colcon build
 ```
 
