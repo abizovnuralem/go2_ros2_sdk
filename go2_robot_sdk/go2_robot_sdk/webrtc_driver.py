@@ -54,6 +54,8 @@ from rclpy.qos import QoSProfile
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import Joy
 
+from go2_interfaces.msg import Go2State, IMU
+
 
 logging.basicConfig(level=logging.WARN)
 logger = logging.getLogger(__name__)
@@ -347,6 +349,8 @@ class RobotBaseNode(Node):
         self.conn = None
         qos_profile = QoSProfile(depth=10)
         self.joint_pub = self.create_publisher(JointState, 'joint_states', qos_profile)
+        self.go2_state_pub = self.create_publisher(Go2State, 'go2_states', qos_profile)
+        self.imu_pub = self.create_publisher(IMU, 'imu', qos_profile)
         self.odom_pub = self.create_publisher(Odometry, 'odom', qos_profile)
         self.broadcaster = TransformBroadcaster(self, qos=qos_profile)
 
@@ -395,6 +399,7 @@ class RobotBaseNode(Node):
     def on_validated(self):
         self.conn.data_channel.send('{"type": "subscribe", "topic": "rt/lf/lowstate"}')
         self.conn.data_channel.send('{"type": "subscribe", "topic": "rt/utlidar/robot_pose"}')
+        self.conn.data_channel.send('{"type": "subscribe", "topic": "rt/lf/sportmodestate"}')
 
     def on_data_channel_message(self, _, msgobj):
         if msgobj.get('topic') == RTC_TOPIC['LOW_STATE']:
@@ -402,6 +407,9 @@ class RobotBaseNode(Node):
 
         if msgobj.get('topic') == RTC_TOPIC['ROBOTODOM']:
             self.publish_odom(msgobj)
+
+        if msgobj.get('topic') == RTC_TOPIC['LF_SPORT_MOD_STATE']:
+            self.publish_robot_state(msgobj)
         
     def publish_odom(self, msg):
 
@@ -466,6 +474,30 @@ class RobotBaseNode(Node):
 
         self.joint_pub.publish(joint_state) 
 
+    def publish_robot_state(self, msg):
+        go2_state = Go2State()
+        go2_state.mode = msg["data"]["mode"]
+        go2_state.progress = msg["data"]["progress"]
+        go2_state.gait_type = msg["data"]["gait_type"]
+        go2_state.position = msg["data"]["position"]
+        go2_state.body_height = msg["data"]["body_height"]
+        go2_state.velocity = msg["data"]["velocity"]
+        go2_state.range_obstacle = msg["data"]["range_obstacle"]
+        go2_state.foot_force = msg["data"]["foot_force"]
+        go2_state.foot_position_body = msg["data"]["foot_position_body"]
+        go2_state.foot_speed_body = msg["data"]["foot_speed_body"]
+        self.go2_state_pub.publish(go2_state) 
+
+        imu = IMU()
+        imu.quaternion = msg["data"]["imu_state"]["quaternion"]
+        imu.accelerometer = msg["data"]["imu_state"]["accelerometer"]
+        imu.gyroscope = msg["data"]["imu_state"]["gyroscope"]
+        imu.rpy = msg["data"]["imu_state"]["rpy"]
+        imu.temperature = msg["data"]["imu_state"]["temperature"]
+        self.imu_pub.publish(imu) 
+
+
+    
 
     async def run(self, conn):
         self.conn = conn
