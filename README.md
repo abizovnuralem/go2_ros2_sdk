@@ -5,11 +5,11 @@ This project enables ROS2 SDK functionality for your Unithree GO2 AIR/PRO
 
 Current state:
 1. URDF (Done)
-2. Joint states sync (Done)
+2. Joint states sync (Done) (We have 1sec lag, it will be fixed in near future)
 3. IMU sync (Done)
-4. Camera stream
-5. Lidar stream
-6. Joystick control
+4. Joystick control (Done)
+5. Camera stream
+6. Lidar stream
 
 
 ## Getting started
@@ -22,7 +22,7 @@ git clone https://github.com/abizovnuralem/go2_ros2_sdk.git
 colcon build
 ```
 
-don't forget to put your GO2 in Wifi-mode only and get robot IP and TOKEN (HOW TO in https://github.com/tfoldi/go2-webrtc repo)
+don't forget to put your GO2 in Wifi-mode only and get robot IP
 PUT these data into webrtc_driver.py
 
 ## Usage

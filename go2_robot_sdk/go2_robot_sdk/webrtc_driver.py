@@ -29,7 +29,10 @@ import base64
 import datetime
 import hashlib
 import json
+import logging
 import random
+import struct
+import threading
 import rclpy
 import aiohttp
 from aiortc import (
@@ -48,11 +51,17 @@ from sensor_msgs.msg import JointState
 from nav_msgs.msg import Odometry
 from rclpy.qos import QoSProfile
 
+from geometry_msgs.msg import Twist
+from sensor_msgs.msg import Joy
 
-# PUT YOUR IP
+
+logging.basicConfig(level=logging.WARN)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+
+# PUT YOUR ROBOT WIFI IP
 ROBOT_IP = "192.168.31.20" 
-# PUT YOUR TOKEN
-ROBOT_TOKEN = ""
 JOY_SENSITIVITY = 0.3
 
 
@@ -182,57 +191,218 @@ def gen_mov_command(x: float, y: float, z: float):
     return command
 
 
-class Go2ConnectionAsync(Node):
-    def __init__(self, robot_ip, token):
+class Go2ConnectionAsync():
+    def __init__(
+            self, 
+            robot_ip=None, 
+            on_validated=None, 
+            on_message=None, 
+            on_open=None
+            ):
 
-        super().__init__('go2_driver')
-
-        qos_profile = QoSProfile(depth=10)
-        
-        self.joint_pub = self.create_publisher(JointState, 'joint_states', qos_profile)
-        self.odom_pub = self.create_publisher(Odometry, 'odom', qos_profile)
-        self.broadcaster = TransformBroadcaster(self, qos=qos_profile)
-
-        self.robot_validation = "PENDING"
         self.pc = RTCPeerConnection()
         self.robot_ip = robot_ip
-        self.token = token
+        self.robot_validation = "PENDING"
+        self.on_validated = on_validated
+        self.on_message = on_message
+        self.on_open = on_open
+        
         self.audio_track = MediaBlackhole()
         self.video_track = MediaBlackhole()
+        
         self.data_channel = self.pc.createDataChannel("data", id=0)
         self.data_channel.on("open", self.on_data_channel_open)
         self.data_channel.on("message", self.on_data_channel_message)
+        
         self.pc.on("track", self.on_track)
         self.pc.on("connectionstatechange", self.on_connection_state_change)
 
     def on_connection_state_change(self):
-        self.get_logger().info(f"Connection state is {self.pc.connectionState}")
+        logger.info(f"Connection state is {self.pc.connectionState}")
 
     def on_track(self, track):
-        self.get_logger().info(f"Receiving {track.kind}")
+        logger.info(f"Receiving {track.kind}")
         if track.kind == "audio":
             pass
         elif track.kind == "video":
             pass
     
+    async def generate_offer(self):
+        await self.audio_track.start()
+        await self.video_track.start()
+        offer = await self.pc.createOffer()
+        await self.pc.setLocalDescription(offer)
+        return offer.sdp
+    
+    async def set_answer(self, sdp):
+        answer = RTCSessionDescription(sdp, type="answer")
+        await self.pc.setRemoteDescription(answer)
+    
     def on_data_channel_open(self):
-        self.get_logger().info("Data channel is open")
+        logger.info("Data channel is open")
+        if self.on_open:
+            self.on_open()
+    
+    def on_data_channel_message(self, msg):
 
-    def sub_for_topics(self):
-        self.data_channel.send('{"type": "subscribe", "topic": "rt/lf/lowstate"}')
-        self.data_channel.send('{"type": "subscribe", "topic": "rt/utlidar/robot_pose"}')
-
-    def create_handshake(self, msg):
+        logger.debug("Received message: %s", msg)
 
         if self.data_channel.readyState != "open":
             self.data_channel._setReadyState("open")
 
-        if msg.get("type") == "validation":
-            self.validate_robot_conn(msg)
-        
-        if msg.get("type") == "validation" and msg.get("data") == "Validation Ok.":
-            self.sub_for_topics()
+        try:
+            if isinstance(msg, str):
+                msgobj = json.loads(msg)
+                if msgobj.get("type") == "validation":
+                    self.validate_robot_conn(msgobj)
+            elif isinstance(msg, bytes):
+                msgobj = Go2ConnectionAsync.deal_array_buffer(msg)
 
+            if self.on_message:
+                self.on_message(msg, msgobj)
+
+        except json.JSONDecodeError:
+            pass
+
+    async def connect(self):
+        offer = await self.generate_offer()
+        async with aiohttp.ClientSession() as session:
+            url = f"http://{self.robot_ip}:8081/offer"
+            headers = {"content-type": "application/json"}
+            data = {
+                "sdp": offer,
+                "id": "STA_localNetwork",
+                "type": "offer",
+                "token": "",
+            }
+            async with session.post(url, json=data, headers=headers) as resp:
+                if resp.status == 200:
+                    answer_data = await resp.json()
+                    answer_sdp = answer_data.get("sdp")
+                    await self.set_answer(answer_sdp)
+                else:
+                    logger.info("Failed to get answer from server")
+
+    def validate_robot_conn(self, message):
+        if message.get("data") == "Validation Ok.":
+            self.validation_result = "SUCCESS"
+            if self.on_validated:
+                self.on_validated()
+        else:
+            self.publish(
+                "",
+                self.encrypt_key(message.get("data")),
+                "validation",
+            )
+
+    def publish(self, topic, data, msg_type):
+        if self.data_channel.readyState != "open":
+            logger.info(
+                f"Data channel is not open. State is {self.data_channel.readyState}",
+            )
+            return
+        
+        payload = {
+            "type": msg_type,
+            "topic": topic,
+            "data": data,
+        }
+
+        payload_dumped = json.dumps(payload)
+        logger.info(f"-> Sending message {payload_dumped}")
+        self.data_channel.send(payload_dumped)
+
+    @staticmethod
+    def hex_to_base64(hex_str):
+        bytes_array = bytes.fromhex(hex_str)
+        return base64.b64encode(bytes_array).decode("utf-8")
+
+    @staticmethod
+    def encrypt_key(key):
+        prefixed_key = f"UnitreeGo2_{key}"
+        encrypted = Go2ConnectionAsync.encrypt_by_md5(prefixed_key)
+        return Go2ConnectionAsync.hex_to_base64(encrypted)
+
+    @staticmethod
+    def encrypt_by_md5(input_str):
+        hash_obj = hashlib.md5()
+        hash_obj.update(input_str.encode("utf-8"))
+        return hash_obj.hexdigest()
+    
+    @staticmethod
+    def deal_array_buffer(n):
+        length = struct.unpack("H", n[:2])[0]
+        json_segment = n[4 : 4 + length]
+        remaining_data = n[4 + length :]
+        json_str = json_segment.decode("utf-8")
+        obj = json.loads(json_str)
+        obj["data"]["data"] = remaining_data
+        return obj
+
+class RobotBaseNode(Node):
+
+    def __init__(self):
+        super().__init__('go2_driver')
+        
+        self.conn = None
+        qos_profile = QoSProfile(depth=10)
+        self.joint_pub = self.create_publisher(JointState, 'joint_states', qos_profile)
+        self.odom_pub = self.create_publisher(Odometry, 'odom', qos_profile)
+        self.broadcaster = TransformBroadcaster(self, qos=qos_profile)
+
+        self.robot_cmd_vel = None
+        self.joy_state = Joy()
+        
+        self.cmd_vel_sub = self.create_subscription(
+            Twist,
+            'cmd_vel',
+            self.cmd_vel_cb,
+            qos_profile)
+        
+        self.joy_sub = self.create_subscription(
+            Joy,
+            'joy',
+            self.joy_cb,
+            qos_profile)
+    
+    def cmd_vel_cb(self, msg):
+        x = msg.linear.x
+        y = msg.linear.y
+        z = msg.angular.z
+        self.robot_cmd_vel = gen_mov_command(x, y, z)
+
+    def joy_cb(self, msg):
+        self.joy_state = msg
+
+    def joy_cmd(self):
+
+        if self.robot_cmd_vel:
+            self.get_logger().info(str(self.robot_cmd_vel))
+            self.get_logger().info("Attack!")
+            self.conn.data_channel.send(self.robot_cmd_vel)
+
+
+        if self.joy_state.buttons and self.joy_state.buttons[1]:
+            self.get_logger().info("Stand down")
+            stand_down_cmd = gen_command(1005)
+            self.conn.data_channel.send(stand_down_cmd)
+
+        if self.joy_state.buttons and self.joy_state.buttons[0]:
+            self.get_logger().info("Stand up")
+            stand_up_cmd = gen_command(1004)
+            self.conn.data_channel.send(stand_up_cmd)
+
+    def on_validated(self):
+        self.conn.data_channel.send('{"type": "subscribe", "topic": "rt/lf/lowstate"}')
+        self.conn.data_channel.send('{"type": "subscribe", "topic": "rt/utlidar/robot_pose"}')
+
+    def on_data_channel_message(self, _, msgobj):
+        if msgobj.get('topic') == RTC_TOPIC['LOW_STATE']:
+            self.publish_joint_state(msgobj)
+
+        if msgobj.get('topic') == RTC_TOPIC['ROBOTODOM']:
+            self.publish_odom(msgobj)
+        
     def publish_odom(self, msg):
 
         odom_msg = Odometry()
@@ -297,114 +467,59 @@ class Go2ConnectionAsync(Node):
         self.joint_pub.publish(joint_state) 
 
 
-    def on_data_channel_message(self, msg):
-        
-        msg = json.loads(msg)
-        self.create_handshake(msg)
-        
-        if msg.get("topic") == "rt/lf/lowstate":
-            self.publish_joint_state(msg)
-
-        if msg.get("topic") == "rt/utlidar/robot_pose":
-            self.publish_odom(msg)
-            
-
-
-    async def generate_offer(self):
-        await self.audio_track.start()
-        await self.video_track.start()
-        offer = await self.pc.createOffer()
-        await self.pc.setLocalDescription(offer)
-        return offer.sdp
-
-
-    async def set_answer(self, sdp):
-        answer = RTCSessionDescription(sdp, type="answer")
-        await self.pc.setRemoteDescription(answer)
-
-    async def connect(self):
-        offer = await self.generate_offer()
-        async with aiohttp.ClientSession() as session:
-            url = f"http://{self.robot_ip}:8081/offer"
-            headers = {"content-type": "application/json"}
-            data = {
-                "sdp": offer,
-                "id": "STA_localNetwork",
-                "type": "offer",
-                "token": self.token,
-            }
-            async with session.post(url, json=data, headers=headers) as resp:
-                if resp.status == 200:
-                    answer_data = await resp.json()
-                    answer_sdp = answer_data.get("sdp")
-                    await self.set_answer(answer_sdp)
-                else:
-                    self.get_logger().info("Failed to get answer from server")
-
-
-    def validate_robot_conn(self, message):
-        if message.get("data") == "Validation Ok.":
-            self.robot_validation = "SUCCESS"
-        else:
-            self.publish(
-                "",
-                self.encrypt_key(message.get("data")),
-                "validation",
-            )
-
-    def publish(self, topic, data, msg_type):
-        if self.data_channel.readyState != "open":
-            self.get_logger().info(
-                f"Data channel is not open. State is {self.data_channel.readyState}",
-            )
-            return
-        
-        payload = {
-            "type": msg_type,
-            "topic": topic,
-            "data": data,
-        }
-
-        payload_dumped = json.dumps(payload)
-        self.get_logger().info(f"-> Sending message {payload_dumped}")
-        self.data_channel.send(payload_dumped)
-
-    async def run(self):
-        await self.connect()
+    async def run(self, conn):
+        self.conn = conn
+        await self.conn.connect()
         self.get_logger().info("Connected to Go2 !!!")
 
         while True:
+            self.joy_cmd()
             await asyncio.sleep(0.1)
 
-    @staticmethod
-    def hex_to_base64(hex_str):
-        bytes_array = bytes.fromhex(hex_str)
-        return base64.b64encode(bytes_array).decode("utf-8")
 
-    @staticmethod
-    def encrypt_key(key):
-        prefixed_key = f"UnitreeGo2_{key}"
-        encrypted = Go2ConnectionAsync.encrypt_by_md5(prefixed_key)
-        return Go2ConnectionAsync.hex_to_base64(encrypted)
+async def spin(node: Node):
+    cancel = node.create_guard_condition(lambda: None)
+    def _spin(node: Node,
+              future: asyncio.Future,
+              event_loop: asyncio.AbstractEventLoop):
+        while not future.cancelled():
+            rclpy.spin_once(node)
+        if not future.cancelled():
+            event_loop.call_soon_threadsafe(future.set_result, None)
+    event_loop = asyncio.get_event_loop()
+    spin_task = event_loop.create_future()
+    spin_thread = threading.Thread(target=_spin, args=(node, spin_task, event_loop))
+    spin_thread.start()
+    try:
+        await spin_task
+    except asyncio.CancelledError:
+        cancel.trigger()
+    spin_thread.join()
+    node.destroy_guard_condition(cancel)
 
-    @staticmethod
-    def encrypt_by_md5(input_str):
-        hash_obj = hashlib.md5()
-        hash_obj.update(input_str.encode("utf-8"))
-        return hash_obj.hexdigest()
+
+async def just_do_it():
+
+    base_node = RobotBaseNode()
+
+    conn = Go2ConnectionAsync(
+        ROBOT_IP,
+        on_validated=base_node.on_validated,
+        on_message=base_node.on_data_channel_message,
+
+    )
+
+    spin_task = asyncio.get_event_loop().create_task(spin(base_node))
+    sleep_task = asyncio.get_event_loop().create_task(base_node.run(conn))
+    await asyncio.wait([spin_task, sleep_task], return_when=asyncio.FIRST_COMPLETED)
 
 
 def main():
     rclpy.init()
+    asyncio.get_event_loop().run_until_complete(just_do_it())
+    asyncio.get_event_loop().close()
+    rclpy.shutdown()
 
-    robot_node = Go2ConnectionAsync(
-        ROBOT_IP,
-        ROBOT_TOKEN,
-    )
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(robot_node.run())
-
-    
+        
 if __name__ == '__main__':
     main()
-    
