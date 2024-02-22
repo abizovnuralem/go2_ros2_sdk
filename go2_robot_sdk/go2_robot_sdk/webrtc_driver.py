@@ -201,7 +201,7 @@ class Quaternion:
         self.z = z
         self.w = w
 
-    def setFromAxisAngle(self, n, o):
+    def set_from_axis_angle(self, n, o):
         s = o / 2
         c = math.sin(s)
         self.x = n.x * c
@@ -235,7 +235,7 @@ class Vector3:
         new_vector = Vector3(self.x, self.y, self.z)
         return new_vector
       
-    def applyQuaternion(self, quaternion):
+    def apply_quaternion(self, quaternion):
         o = self.x
         s = self.y
         c = self.z
@@ -260,18 +260,18 @@ class Vector3:
         self.z = -self.z
         return self.x, self.y, self.z
     
-    def distanceTo(self, n):
-        return math.sqrt(self.distanceToSquared(n))
+    def distance_to(self, n):
+        return math.sqrt(self.distance_to_squared(n))
       
-    def distanceToSquared(self, n):
+    def distance_to_squared(self, n):
         o = self.x - n.x
         s = self.y - n.y
         c = self.z - n.z
         return o * o + s * s + c * c
       
-    def applyAxisAngle(self, n, o):
+    def apply_axis_angle(self, n, o):
         quaternion = Quaternion(0, 0, 0, 1)
-        return self.applyQuaternion(quaternion.setFromAxisAngle(n, o))
+        return self.apply_quaternion(quaternion.set_from_axis_angle(n, o))
 
 
 def get_joints_go2(footPositionValue, foot_num):
@@ -289,7 +289,7 @@ def get_joints_go2(footPositionValue, foot_num):
     if foot_num % 2 == 1:
         base_tf_offset_hip_joint.y = -base_tf_offset_hip_joint.y
     
-    foot_position_distance = foot_position.distanceTo(base_tf_offset_hip_joint)
+    foot_position_distance = foot_position.distance_to(base_tf_offset_hip_joint)
 
     # cos theory
     E = np.sqrt(foot_position_distance ** 2 - hip_length ** 2)
@@ -319,7 +319,7 @@ def get_joints_go2(footPositionValue, foot_num):
 
     if math.isnan(J + A + S):
         logger.info("something is wrong with kinematics")
-        return 0, 0, 0, foot_position
+        return 0, 0, 0
 
     return J, A, S
 
