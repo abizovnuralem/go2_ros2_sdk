@@ -4,12 +4,12 @@ Unitree go2 ROS 2 drivers are implemented using the go2-WebRTC interface origina
 This project enables ROS2 SDK functionality for your Unithree GO2 AIR/PRO
 
 Current state:
-1. URDF (Done)
-2. Joint states sync (Done) (We have 1sec lag, it will be fixed in near future)
-3. IMU sync (Done)
-4. Joystick control (Done)
-6. Go2 topics info (Done)
-7. Foot force sensors info (Done)
+1. URDF (:white_check_mark:)
+2. Joint states sync in real time (:white_check_mark: !!!)
+3. IMU sync (:white_check_mark:)
+4. Joystick control (:white_check_mark:)
+6. Go2 topics info (:white_check_mark:)
+7. Foot force sensors info (:white_check_mark:)
 8. Camera stream
 9. Lidar stream
 
