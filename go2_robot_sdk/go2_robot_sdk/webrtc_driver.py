@@ -48,13 +48,13 @@ from sensor_msgs.msg import JointState
 from tf2_ros import TransformBroadcaster, TransformStamped
 from geometry_msgs.msg import TransformStamped
 from sensor_msgs.msg import JointState
-from nav_msgs.msg import Odometry
 from rclpy.qos import QoSProfile
 
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import Joy
-
+import numpy as np
 from go2_interfaces.msg import Go2State, IMU
+import math
 
 
 logging.basicConfig(level=logging.WARN)
@@ -191,6 +191,137 @@ def gen_mov_command(x: float, y: float, z: float):
         }
     command = json.dumps(command)
     return command
+
+
+class Quaternion:
+      
+    def __init__(self, x, y, z, w):
+        self.x = x
+        self.y = y
+        self.z = z
+        self.w = w
+
+    def setFromAxisAngle(self, n, o):
+        s = o / 2
+        c = math.sin(s)
+        self.x = n.x * c
+        self.y = n.y * c
+        self.z = n.z * c
+        self.w = math.cos(s)
+
+        return self.x, self.y, self.z, self.w
+    
+    def invert(self):
+        self.x *= -1
+        self.y *= -1
+        self.z *= -1
+
+        return self.x, self.y, self.z, self.w
+      
+
+class Vector3:
+    def __init__(self, x, y, z):
+        self.x = x
+        self.y = y
+        self.z = z
+
+    def add(self, n):
+        self.x += n.x
+        self.y += n.y
+        self.z += n.z
+        return self.x, self.y, self.z
+    
+    def clone(self):
+        new_vector = Vector3(self.x, self.y, self.z)
+        return new_vector
+      
+    def applyQuaternion(self, quaternion):
+        o = self.x
+        s = self.y
+        c = self.z
+        u = quaternion.x
+        l = quaternion.y
+        f = quaternion.z
+        _ = quaternion.w
+        g = _ * o + l * c - f * s
+        v = _ * s + f * o - u * c
+        T = _ * c + u * s - l * o
+        E = -u * o - l * s - f * c
+
+        self.x = g * _ + E * -u + v * -f - T * -l
+        self.y = v * _ + E * -l + T * -u - g * -f
+        self.z = T * _ + E * -f + g * -l - v * -u
+        
+        return self.x, self.y, self.z
+    
+    def negate(self): 
+        self.x = -self.x
+        self.y = -self.y
+        self.z = -self.z
+        return self.x, self.y, self.z
+    
+    def distanceTo(self, n):
+        return math.sqrt(self.distanceToSquared(n))
+      
+    def distanceToSquared(self, n):
+        o = self.x - n.x
+        s = self.y - n.y
+        c = self.z - n.z
+        return o * o + s * s + c * c
+      
+    def applyAxisAngle(self, n, o):
+        quaternion = Quaternion(0, 0, 0, 1)
+        return self.applyQuaternion(quaternion.setFromAxisAngle(n, o))
+
+
+def get_joints_go2(footPositionValue, foot_num):
+
+    # URDF GO2 real values
+    hip_length = 0.0955
+    thigh_length = 0.213
+    calf_length = 0.2135
+
+    foot_position = Vector3(footPositionValue[0], footPositionValue[1], footPositionValue[2])
+
+    base_tf_offset_hip_joint = Vector3(0.1934, 0.0465, 0)
+    if foot_num > 1:
+        base_tf_offset_hip_joint.x = -base_tf_offset_hip_joint.x
+    if foot_num % 2 == 1:
+        base_tf_offset_hip_joint.y = -base_tf_offset_hip_joint.y
+    
+    foot_position_distance = foot_position.distanceTo(base_tf_offset_hip_joint)
+
+    # cos theory
+    E = np.sqrt(foot_position_distance ** 2 - hip_length ** 2)
+    y = np.arccos((E ** 2 + thigh_length ** 2 - calf_length ** 2) / (2 * E * thigh_length))
+    S = np.arccos((calf_length ** 2 + thigh_length ** 2 - E ** 2) / (2 * calf_length * thigh_length)) - np.pi
+    C = foot_position.x - base_tf_offset_hip_joint.x
+    R = foot_position.y - base_tf_offset_hip_joint.y
+
+    if foot_position.z < 0:
+        A = np.arcsin(-C / E) + y
+    else:
+        A = -np.pi + np.arcsin(C / E) + y
+
+    O = np.sqrt(foot_position_distance ** 2 - C ** 2)
+    L = np.arcsin(R / O)
+
+    if foot_position.z > 0:
+        P = -1
+    else:
+        P = 1
+
+    if foot_num % 2 == 0:
+        J = P * (L - np.arcsin(hip_length / O))
+
+    else:
+        J = P * (L + np.arcsin(hip_length / O)) 
+
+    if math.isnan(J + A + S):
+        logger.info("something is wrong with kinematics")
+        return 0, 0, 0, foot_position
+
+    return J, A, S
 
 
 class Go2ConnectionAsync():
@@ -351,10 +482,12 @@ class RobotBaseNode(Node):
         self.joint_pub = self.create_publisher(JointState, 'joint_states', qos_profile)
         self.go2_state_pub = self.create_publisher(Go2State, 'go2_states', qos_profile)
         self.imu_pub = self.create_publisher(IMU, 'imu', qos_profile)
-        self.odom_pub = self.create_publisher(Odometry, 'odom', qos_profile)
         self.broadcaster = TransformBroadcaster(self, qos=qos_profile)
 
         self.robot_cmd_vel = None
+        self.robot_odom = None
+        self.robot_low_cmd = None
+        self.robot_sport_state = None
         self.joy_state = Joy()
         
         self.cmd_vel_sub = self.create_subscription(
@@ -368,6 +501,15 @@ class RobotBaseNode(Node):
             'joy',
             self.joy_cb,
             qos_profile)
+        
+        timer_period = 0.1  
+        self.timer = self.create_timer(timer_period, self.timer_callback)
+
+    def timer_callback(self):
+        self.publish_odom()
+        self.publish_robot_state()
+        self.publish_joint_state()
+
     
     def cmd_vel_cb(self, msg):
         x = msg.linear.x
@@ -381,7 +523,6 @@ class RobotBaseNode(Node):
     def joy_cmd(self):
 
         if self.robot_cmd_vel:
-            self.get_logger().info(str(self.robot_cmd_vel))
             self.get_logger().info("Attack!")
             self.conn.data_channel.send(self.robot_cmd_vel)
 
@@ -400,101 +541,166 @@ class RobotBaseNode(Node):
         self.conn.data_channel.send('{"type": "subscribe", "topic": "rt/lf/lowstate"}')
         self.conn.data_channel.send('{"type": "subscribe", "topic": "rt/utlidar/robot_pose"}')
         self.conn.data_channel.send('{"type": "subscribe", "topic": "rt/lf/sportmodestate"}')
+        self.conn.data_channel.send('{"type": "subscribe", "topic": "rt/utlidar/foot_position"}')
 
-    def on_data_channel_message(self, _, msgobj):
-        if msgobj.get('topic') == RTC_TOPIC['LOW_STATE']:
-            self.publish_joint_state(msgobj)
-
-        if msgobj.get('topic') == RTC_TOPIC['ROBOTODOM']:
-            self.publish_odom(msgobj)
-
-        if msgobj.get('topic') == RTC_TOPIC['LF_SPORT_MOD_STATE']:
-            self.publish_robot_state(msgobj)
         
-    def publish_odom(self, msg):
 
-        odom_msg = Odometry()
-        odom_msg.header.stamp = self.get_clock().now().to_msg()
-        odom_msg.header.frame_id = 'odom'
-        odom_msg.child_frame_id = 'base'
-        odom_msg.pose.pose.position.x = msg['data']['pose']['position']['x']
-        odom_msg.pose.pose.position.y = msg['data']['pose']['position']['y']
-        odom_msg.pose.pose.position.z = msg['data']['pose']['position']['z']
-        odom_msg.pose.pose.orientation.x = msg['data']['pose']['orientation']['x']
-        odom_msg.pose.pose.orientation.y = msg['data']['pose']['orientation']['y']
-        odom_msg.pose.pose.orientation.z = msg['data']['pose']['orientation']['z']
-        odom_msg.pose.pose.orientation.w = msg['data']['pose']['orientation']['w']
-        self.odom_pub.publish(odom_msg)
+    def on_data_channel_message(self, _, msg):
 
-        # Publish transform
-        odom_trans = TransformStamped()
-        odom_trans.header.stamp = self.get_clock().now().to_msg()
-        odom_trans.header.frame_id = 'odom'
-        odom_trans.child_frame_id = 'base'
-        odom_trans.transform.translation.x = msg['data']['pose']['position']['x']
-        odom_trans.transform.translation.y = msg['data']['pose']['position']['y']
-        odom_trans.transform.translation.z = msg['data']['pose']['position']['z']
-        odom_trans.transform.rotation.x = msg['data']['pose']['orientation']['x']
-        odom_trans.transform.rotation.y = msg['data']['pose']['orientation']['y']
-        odom_trans.transform.rotation.z = msg['data']['pose']['orientation']['z']
-        odom_trans.transform.rotation.w = msg['data']['pose']['orientation']['w']
-        self.broadcaster.sendTransform(odom_trans)
+        if msg.get('topic') == RTC_TOPIC['ROBOTODOM']:
+            self.robot_odom = msg
 
-    def publish_joint_state(self, msg):
-        joint_state = JointState()
-        joint_state.header.stamp = self.get_clock().now().to_msg()
-        FL_hip_joint = msg["data"]["motor_state"][0]["q"]
-        FL_thigh_joint = msg["data"]["motor_state"][1]["q"]
-        FL_calf_joint = msg["data"]["motor_state"][2]["q"]
+        if msg.get('topic') == RTC_TOPIC['LF_SPORT_MOD_STATE']:
+            self.robot_sport_state = msg
+            
+        if msg.get('topic') == RTC_TOPIC['LOW_STATE']:
+            self.robot_low_cmd = msg
 
-        FR_hip_joint = msg["data"]["motor_state"][3]["q"]
-        FR_thigh_joint = msg["data"]["motor_state"][4]["q"]
-        FR_calf_joint = msg["data"]["motor_state"][5]["q"]
 
-        RL_hip_joint = msg["data"]["motor_state"][6]["q"]
-        RL_thigh_joint = msg["data"]["motor_state"][7]["q"]
-        RL_calf_joint = msg["data"]["motor_state"][8]["q"]
+    def publish_odom(self):
 
-        RR_hip_joint = msg["data"]["motor_state"][9]["q"]
-        RR_thigh_joint = msg["data"]["motor_state"][10]["q"]
-        RR_calf_joint = msg["data"]["motor_state"][11]["q"]
+        if self.robot_odom:
+            odom_trans = TransformStamped()
+            odom_trans.header.stamp = self.get_clock().now().to_msg()
+            odom_trans.header.frame_id = 'odom'
+            odom_trans.child_frame_id = 'base'
+            odom_trans.transform.translation.x = self.robot_odom['data']['pose']['position']['x']
+            odom_trans.transform.translation.y = self.robot_odom['data']['pose']['position']['y']
+            odom_trans.transform.translation.z = self.robot_odom['data']['pose']['position']['z']
+            odom_trans.transform.rotation.x = self.robot_odom['data']['pose']['orientation']['x']
+            odom_trans.transform.rotation.y = self.robot_odom['data']['pose']['orientation']['y']
+            odom_trans.transform.rotation.z = self.robot_odom['data']['pose']['orientation']['z']
+            odom_trans.transform.rotation.w = self.robot_odom['data']['pose']['orientation']['w']
+            self.broadcaster.sendTransform(odom_trans)
 
-        joint_state.name = [
-            'FL_hip_joint', 'FL_thigh_joint', 'FL_calf_joint',
-            'FR_hip_joint', 'FR_thigh_joint', 'FR_calf_joint',
-            'RL_hip_joint', 'RL_thigh_joint', 'RL_calf_joint',
-            'RR_hip_joint', 'RR_thigh_joint', 'RR_calf_joint',
+
+    def publish_slow_joint_state(self):
+
+        if self.robot_low_cmd:
+
+            joint_state = JointState()
+            joint_state.header.stamp = self.get_clock().now().to_msg()
+
+            FL_hip_joint = self.robot_low_cmd["data"]["motor_state"][0]["q"]
+            FL_thigh_joint = self.robot_low_cmd["data"]["motor_state"][1]["q"]
+            FL_calf_joint = self.robot_low_cmd["data"]["motor_state"][2]["q"]
+
+            FR_hip_joint = self.robot_low_cmd["data"]["motor_state"][3]["q"]
+            FR_thigh_joint = self.robot_low_cmd["data"]["motor_state"][4]["q"]
+            FR_calf_joint = self.robot_low_cmd["data"]["motor_state"][5]["q"]
+
+            RL_hip_joint = self.robot_low_cmd["data"]["motor_state"][6]["q"]
+            RL_thigh_joint = self.robot_low_cmd["data"]["motor_state"][7]["q"]
+            RL_calf_joint = self.robot_low_cmd["data"]["motor_state"][8]["q"]
+
+            RR_hip_joint = self.robot_low_cmd["data"]["motor_state"][9]["q"]
+            RR_thigh_joint = self.robot_low_cmd["data"]["motor_state"][10]["q"]
+            RR_calf_joint = self.robot_low_cmd["data"]["motor_state"][11]["q"]
+            
+
+            joint_state.name = [
+                'FL_hip_joint', 'FL_thigh_joint', 'FL_calf_joint',
+                'FR_hip_joint', 'FR_thigh_joint', 'FR_calf_joint',
+                'RL_hip_joint', 'RL_thigh_joint', 'RL_calf_joint',
+                'RR_hip_joint', 'RR_thigh_joint', 'RR_calf_joint',
+                ]
+            joint_state.position = [
+                FL_hip_joint, FL_thigh_joint, FL_calf_joint,
+                FR_hip_joint, FR_thigh_joint, FR_calf_joint,
+                RL_hip_joint, RL_thigh_joint, RL_calf_joint,
+                RR_hip_joint, RR_thigh_joint, RR_calf_joint,
+                ]
+
+            self.joint_pub.publish(joint_state) 
+
+
+    def publish_joint_state(self):
+
+        if self.robot_sport_state:
+            joint_state = JointState()
+            joint_state.header.stamp = self.get_clock().now().to_msg()
+
+            fl_foot_pos_array = [
+                self.robot_sport_state["data"]["foot_position_body"][3], 
+                self.robot_sport_state["data"]["foot_position_body"][4], 
+                self.robot_sport_state["data"]["foot_position_body"][5]
             ]
-        joint_state.position = [
-            FL_hip_joint, FL_thigh_joint, FL_calf_joint,
-            FR_hip_joint, FR_thigh_joint, FR_calf_joint,
-            RL_hip_joint, RL_thigh_joint, RL_calf_joint,
-            RR_hip_joint, RR_thigh_joint, RR_calf_joint,
+
+            FL_hip_joint, FL_thigh_joint, FL_calf_joint = get_joints_go2(
+                fl_foot_pos_array,
+                0
+                )
+            
+            fr_foot_pos_array = [
+                self.robot_sport_state["data"]["foot_position_body"][0], 
+                self.robot_sport_state["data"]["foot_position_body"][1], 
+                self.robot_sport_state["data"]["foot_position_body"][2]
             ]
 
-        self.joint_pub.publish(joint_state) 
+            FR_hip_joint, FR_thigh_joint, FR_calf_joint = get_joints_go2(
+                fr_foot_pos_array,
+                1
+                )
+            
+            rl_foot_pos_array = [
+                self.robot_sport_state["data"]["foot_position_body"][9], 
+                self.robot_sport_state["data"]["foot_position_body"][10], 
+                self.robot_sport_state["data"]["foot_position_body"][11]
+            ]
 
-    def publish_robot_state(self, msg):
-        go2_state = Go2State()
-        go2_state.mode = msg["data"]["mode"]
-        go2_state.progress = msg["data"]["progress"]
-        go2_state.gait_type = msg["data"]["gait_type"]
-        go2_state.position = msg["data"]["position"]
-        go2_state.body_height = msg["data"]["body_height"]
-        go2_state.velocity = msg["data"]["velocity"]
-        go2_state.range_obstacle = msg["data"]["range_obstacle"]
-        go2_state.foot_force = msg["data"]["foot_force"]
-        go2_state.foot_position_body = msg["data"]["foot_position_body"]
-        go2_state.foot_speed_body = msg["data"]["foot_speed_body"]
-        self.go2_state_pub.publish(go2_state) 
+            RL_hip_joint, RL_thigh_joint, RL_calf_joint = get_joints_go2(
+                rl_foot_pos_array,
+                2
+                )
+            
+            rr_foot_pos_array = [
+                self.robot_sport_state["data"]["foot_position_body"][6], 
+                self.robot_sport_state["data"]["foot_position_body"][7], 
+                self.robot_sport_state["data"]["foot_position_body"][8]
+            ]
 
-        imu = IMU()
-        imu.quaternion = msg["data"]["imu_state"]["quaternion"]
-        imu.accelerometer = msg["data"]["imu_state"]["accelerometer"]
-        imu.gyroscope = msg["data"]["imu_state"]["gyroscope"]
-        imu.rpy = msg["data"]["imu_state"]["rpy"]
-        imu.temperature = msg["data"]["imu_state"]["temperature"]
-        self.imu_pub.publish(imu) 
+            RR_hip_joint, RR_thigh_joint, RR_calf_joint = get_joints_go2(
+                rr_foot_pos_array,
+                3
+                )
+            
+            joint_state.name = [
+                'FL_hip_joint', 'FL_thigh_joint', 'FL_calf_joint',
+                'FR_hip_joint', 'FR_thigh_joint', 'FR_calf_joint',
+                'RL_hip_joint', 'RL_thigh_joint', 'RL_calf_joint',
+                'RR_hip_joint', 'RR_thigh_joint', 'RR_calf_joint',
+                ]
+            joint_state.position = [
+                FL_hip_joint, FL_thigh_joint, FL_calf_joint,
+                FR_hip_joint, FR_thigh_joint, FR_calf_joint,
+                RL_hip_joint, RL_thigh_joint, RL_calf_joint,
+                RR_hip_joint, RR_thigh_joint, RR_calf_joint,
+                ]
+            
+            self.joint_pub.publish(joint_state) 
+
+    def publish_robot_state(self):
+        if self.robot_sport_state:
+            go2_state = Go2State()
+            go2_state.mode = self.robot_sport_state["data"]["mode"]
+            go2_state.progress = self.robot_sport_state["data"]["progress"]
+            go2_state.gait_type = self.robot_sport_state["data"]["gait_type"]
+            go2_state.position = self.robot_sport_state["data"]["position"]
+            go2_state.body_height = self.robot_sport_state["data"]["body_height"]
+            go2_state.velocity = self.robot_sport_state["data"]["velocity"]
+            go2_state.range_obstacle = self.robot_sport_state["data"]["range_obstacle"]
+            go2_state.foot_force = self.robot_sport_state["data"]["foot_force"]
+            go2_state.foot_position_body = self.robot_sport_state["data"]["foot_position_body"]
+            go2_state.foot_speed_body = self.robot_sport_state["data"]["foot_speed_body"]
+            self.go2_state_pub.publish(go2_state) 
+
+            imu = IMU()
+            imu.quaternion = self.robot_sport_state["data"]["imu_state"]["quaternion"]
+            imu.accelerometer = self.robot_sport_state["data"]["imu_state"]["accelerometer"]
+            imu.gyroscope = self.robot_sport_state["data"]["imu_state"]["gyroscope"]
+            imu.rpy = self.robot_sport_state["data"]["imu_state"]["rpy"]
+            imu.temperature = self.robot_sport_state["data"]["imu_state"]["temperature"]
+            self.imu_pub.publish(imu) 
 
 
     
