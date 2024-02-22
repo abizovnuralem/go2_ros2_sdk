@@ -1,7 +1,9 @@
 # go2_ros2_sdk
 Unitree go2 ROS 2 drivers are implemented using the go2-WebRTC interface originally designed by @tfoldi (https://github.com/tfoldi/go2-webrtc)
 
-This project enables ROS2 SDK functionality for your Unithree GO2 AIR/PRO
+This project enables ROS2 SDK functionality for your Unitree GO2 AIR/PRO/EDU
+
+Also you can get foot force sensors feadback from GO2 PRO enabled.
 
 ![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/go2.gif?raw=true)
 
@@ -32,8 +34,13 @@ pip install -r requirements.txt
 colcon build
 ```
 
-don't forget to put your GO2 in Wifi-mode only and get robot IP
-PUT these data into webrtc_driver.py
+don't forget to setup your GO2-robot in Wifi-mode only and get IP
+copy ip to go2_robot_sdk/webrtc_driver.py
+
+```
+# ROBOT WIFI IP
+ROBOT_IP = "192.168.31.20" 
+```
 
 ## Usage
 ```
