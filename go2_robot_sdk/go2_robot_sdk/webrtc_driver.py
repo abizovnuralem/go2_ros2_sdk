@@ -30,6 +30,7 @@ import datetime
 import hashlib
 import json
 import logging
+import os
 import random
 import struct
 import threading
@@ -62,8 +63,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-# PUT YOUR ROBOT WIFI IP
-ROBOT_IP = "192.168.31.20" 
 JOY_SENSITIVITY = 0.3
 
 
@@ -708,7 +707,7 @@ class RobotBaseNode(Node):
     async def run(self, conn):
         self.conn = conn
         await self.conn.connect()
-        self.get_logger().info("Connected to Go2 !!!")
+        self.get_logger().info(f"Connected to {os.environ.get('ROBOT_IP')}")
 
         while True:
             self.joy_cmd()
@@ -741,7 +740,7 @@ async def just_do_it():
     base_node = RobotBaseNode()
 
     conn = Go2ConnectionAsync(
-        ROBOT_IP,
+        os.environ.get('ROBOT_IP'),
         on_validated=base_node.on_validated,
         on_message=base_node.on_data_channel_message,
 

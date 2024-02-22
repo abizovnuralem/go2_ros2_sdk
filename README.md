@@ -35,11 +35,10 @@ colcon build
 ```
 
 don't forget to setup your GO2-robot in Wifi-mode only and get IP
-copy ip to go2_robot_sdk/webrtc_driver.py
+then
 
 ```
-# ROBOT WIFI IP
-ROBOT_IP = "192.168.31.20" 
+export ROBOT_IP="Your robot ip"
 ```
 
 ## Usage
