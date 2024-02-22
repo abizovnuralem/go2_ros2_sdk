@@ -3,6 +3,8 @@ Unitree go2 ROS 2 drivers are implemented using the go2-WebRTC interface origina
 
 This project enables ROS2 SDK functionality for your Unithree GO2 AIR/PRO
 
+![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/go2.gif?raw=true)
+
 Current state:
 1. URDF ( :white_check_mark: )
 2. Joint states sync in real time ( :white_check_mark: )
