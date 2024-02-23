@@ -25,7 +25,7 @@ Real time Go2 Air/PRO ROS2 topics
 
 ## Getting started
 
-install ROS 2 (tested on iron)
+install ROS 2 (tested on ROS2 Iron with Ubuntu 22.04 and ROS2 Humble with MacOS)
 
 clone this rep and build it (put go2_interfaces and go2_robot_sdk to src folder of your own ros2_ws repo)
 ```
