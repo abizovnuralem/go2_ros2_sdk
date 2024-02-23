@@ -524,6 +524,7 @@ class RobotBaseNode(Node):
         if self.robot_cmd_vel:
             self.get_logger().info("Attack!")
             self.conn.data_channel.send(self.robot_cmd_vel)
+            self.robot_cmd_vel = None
 
 
         if self.joy_state.buttons and self.joy_state.buttons[1]:
