@@ -681,7 +681,6 @@ class RobotBaseNode(Node):
     def publish_robot_state(self):
         if self.robot_sport_state:
             go2_state = Go2State()
-            print(self.robot_sport_state)
             go2_state.mode = self.robot_sport_state["data"]["mode"]
             go2_state.progress = self.robot_sport_state["data"]["progress"]
             go2_state.gait_type = self.robot_sport_state["data"]["gait_type"]
