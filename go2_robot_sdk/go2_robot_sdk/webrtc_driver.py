@@ -405,7 +405,7 @@ class Go2ConnectionAsync():
                 "sdp": offer,
                 "id": "STA_localNetwork",
                 "type": "offer",
-                "token": "",
+                "token": os.getenv("GO2_TOKEN") or "",
             }
             async with session.post(url, json=data, headers=headers) as resp:
                 if resp.status == 200:
@@ -681,22 +681,23 @@ class RobotBaseNode(Node):
     def publish_robot_state(self):
         if self.robot_sport_state:
             go2_state = Go2State()
+            print(self.robot_sport_state)
             go2_state.mode = self.robot_sport_state["data"]["mode"]
             go2_state.progress = self.robot_sport_state["data"]["progress"]
             go2_state.gait_type = self.robot_sport_state["data"]["gait_type"]
             go2_state.position = self.robot_sport_state["data"]["position"]
             go2_state.body_height = self.robot_sport_state["data"]["body_height"]
             go2_state.velocity = self.robot_sport_state["data"]["velocity"]
-            go2_state.range_obstacle = self.robot_sport_state["data"]["range_obstacle"]
+            go2_state.range_obstacle = list(map(float, self.robot_sport_state["data"]["range_obstacle"]))
             go2_state.foot_force = self.robot_sport_state["data"]["foot_force"]
             go2_state.foot_position_body = self.robot_sport_state["data"]["foot_position_body"]
-            go2_state.foot_speed_body = self.robot_sport_state["data"]["foot_speed_body"]
+            go2_state.foot_speed_body = list(map(float, self.robot_sport_state["data"]["foot_speed_body"]))
             self.go2_state_pub.publish(go2_state) 
 
             imu = IMU()
             imu.quaternion = self.robot_sport_state["data"]["imu_state"]["quaternion"]
-            imu.accelerometer = self.robot_sport_state["data"]["imu_state"]["accelerometer"]
-            imu.gyroscope = self.robot_sport_state["data"]["imu_state"]["gyroscope"]
+            imu.accelerometer = list(map(float,self.robot_sport_state["data"]["imu_state"]["accelerometer"]))
+            imu.gyroscope = list(map(float,self.robot_sport_state["data"]["imu_state"]["gyroscope"]))
             imu.rpy = self.robot_sport_state["data"]["imu_state"]["rpy"]
             imu.temperature = self.robot_sport_state["data"]["imu_state"]["temperature"]
             self.imu_pub.publish(imu) 
