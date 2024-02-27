@@ -6,6 +6,7 @@ This project enables ROS2 SDK functionality for your Unitree GO2 AIR/PRO/EDU
 Also you can get foot force sensors feadback from GO2 PRO enabled.
 
 ![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/go2.gif?raw=true)
+![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/go2_on_steroids.gif?raw=true)
 
 Current state:
 1. URDF ( :white_check_mark: )
