@@ -6,8 +6,11 @@ This project enables ROS2 SDK functionality for your Unitree GO2 AIR/PRO/EDU
 Also you can get foot force sensors feadback from GO2 PRO enabled.
 
 The original GO2 PRO
+
 ![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/go2.gif?raw=true)
+
 Modified GO2 PRO with Nvidia AGX Jetson 64gb and Ouster Lidar
+
 ![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/go2_on_steroids.gif?raw=true)
 
 Current state:
