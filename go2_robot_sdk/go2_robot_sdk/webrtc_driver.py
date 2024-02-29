@@ -34,28 +34,33 @@ import os
 import random
 import struct
 import threading
+import asyncio
+import math
+import ctypes
+import time
+import numpy as np
+
+from wasmtime import Config, Engine, Store, Module, Instance, Func, FuncType
+from wasmtime import ValType
+from ament_index_python import get_package_share_directory
+
 import rclpy
+from rclpy.node import Node
+from rclpy.qos import QoSProfile
+
 import aiohttp
 from aiortc import (
     RTCPeerConnection,
     RTCSessionDescription
 )
-import asyncio
 from aiortc.contrib.media import MediaBlackhole
 
-from rclpy.node import Node
-from sensor_msgs.msg import JointState
-
 from tf2_ros import TransformBroadcaster, TransformStamped
-from geometry_msgs.msg import TransformStamped
-from sensor_msgs.msg import JointState
-from rclpy.qos import QoSProfile
-
-from geometry_msgs.msg import Twist
-from sensor_msgs.msg import Joy
-import numpy as np
+from geometry_msgs.msg import Twist, TransformStamped
 from go2_interfaces.msg import Go2State, IMU
-import math
+from sensor_msgs.msg import PointCloud2, PointField, JointState, Joy
+from sensor_msgs_py import point_cloud2
+from std_msgs.msg import Header
 
 
 logging.basicConfig(level=logging.WARN)
@@ -141,6 +146,167 @@ RTC_TOPIC = {
 }
 
 
+def update_meshes_for_cloud2(positions, uvs, res, origin):
+    # Convert the list of positions to a NumPy array for vectorized operations
+    position_array = np.array(positions).reshape(-1, 3).astype(np.float32)
+
+    # Do some resolution for each point
+    position_array *= res
+
+    # Recalculate origin
+    position_array += origin
+
+    # Convert the list of uvs to a NumPy array
+    uv_array = np.array(uvs, dtype=np.float32).reshape(-1, 2)
+
+    # Calculate intensities for unique positions based on their UV values
+    intensities = np.min(uv_array, axis=1, keepdims=True)
+
+    # Merge uvs with points
+    positions_with_uvs = np.hstack((position_array, intensities))
+
+    # Remove duplicated points by creating a set of tuples
+    positions_with_uvs = np.unique(positions_with_uvs, axis=0)
+    return positions_with_uvs
+
+
+class LidarDecoder:
+    def __init__(self) -> None:
+
+        config = Config()
+        config.wasm_multi_value = True
+        config.debug_info = True
+        self.store = Store(Engine(config))
+
+        libvoxel_path = os.path.join(
+            get_package_share_directory('go2_robot_sdk'),
+            "external_lib",
+            'libvoxel.wasm')
+        
+        self.module = Module.from_file(self.store.engine, libvoxel_path)
+
+        self.a_callback_type = FuncType([ValType.i32()], [ValType.i32()])
+        self.b_callback_type = FuncType([ValType.i32(), ValType.i32(), ValType.i32()], [])
+
+        a = Func(self.store, self.a_callback_type, self.adjust_memory_size)
+        b = Func(self.store, self.b_callback_type, self.copy_memory_region)
+
+        self.instance = Instance(self.store, self.module, [a, b])
+
+        self.generate = self.instance.exports(self.store)["e"]
+        self.malloc = self.instance.exports(self.store)["f"]
+        self.free = self.instance.exports(self.store)["g"]
+        self.wasm_memory = self.instance.exports(self.store)["c"]
+
+        self.buffer = self.wasm_memory.data_ptr(self.store)
+        self.memory_size = self.wasm_memory.data_len(self.store)
+
+        self.buffer_ptr = int.from_bytes(self.buffer, "little")
+
+        self.HEAP8 = (ctypes.c_int8 * self.memory_size).from_address(self.buffer_ptr)
+        self.HEAP16 = (ctypes.c_int16 * (self.memory_size // 2)).from_address(self.buffer_ptr)
+        self.HEAP32 = (ctypes.c_int32 * (self.memory_size // 4)).from_address(self.buffer_ptr)
+        self.HEAPU8 = (ctypes.c_uint8 * self.memory_size).from_address(self.buffer_ptr)
+        self.HEAPU16 = (ctypes.c_uint16 * (self.memory_size // 2)).from_address(self.buffer_ptr)
+        self.HEAPU32 = (ctypes.c_uint32 * (self.memory_size // 4)).from_address(self.buffer_ptr)
+        self.HEAPF32 = (ctypes.c_float * (self.memory_size // 4)).from_address(self.buffer_ptr)
+        self.HEAPF64 = (ctypes.c_double * (self.memory_size // 8)).from_address(self.buffer_ptr)
+
+        self.input = self.malloc(self.store, 61440)
+        self.decompressBuffer = self.malloc(self.store, 80000)
+        self.positions = self.malloc(self.store, 2880000)
+        self.uvs = self.malloc(self.store, 1920000)
+        self.indices = self.malloc(self.store, 5760000)
+        self.decompressedSize = self.malloc(self.store, 4)
+        self.faceCount = self.malloc(self.store, 4)
+        self.pointCount = self.malloc(self.store, 4)
+        self.decompressBufferSize = 80000
+
+    def adjust_memory_size(self, t):
+        return len(self.HEAPU8)
+
+    def copy_within(self, target, start, end):
+        # Copy the sublist for the specified range [start:end]
+        sublist = self.HEAPU8[start:end]
+
+        # Replace elements in the list starting from index 'target'
+        for i in range(len(sublist)):
+            if target + i < len(self.HEAPU8):
+                self.HEAPU8[target + i] = sublist[i]
+    
+    def copy_memory_region(self, t, n, a):
+        self.copy_within(t, n, n + a)
+
+    def get_value(self, t, n="i8"):
+        if n.endswith("*"):
+            n = "*"
+        if n == "i1" or n == "i8":
+            return self.HEAP8[t]
+        elif n == "i16":
+            return self.HEAP16[t >> 1]
+        elif n == "i32" or n == "i64":
+            return self.HEAP32[t >> 2]
+        elif n == "float":
+            return self.HEAPF32[t >> 2]
+        elif n == "double":
+            return self.HEAPF64[t >> 3]
+        elif n == "*":
+            return self.HEAPU32[t >> 2]
+        else:
+            raise ValueError(f"invalid type for getValue: {n}")
+        
+    def add_value_arr(self, start, value):
+        if start + len(value) <= len(self.HEAPU8):
+            for i, byte in enumerate(value):
+                self.HEAPU8[start + i] = byte
+        else:
+            raise ValueError("Not enough space to insert bytes at the specified index.")
+
+    def decode(self, compressed_data, data):
+        self.add_value_arr(self.input, compressed_data)
+
+        some_v = math.floor(data["origin"][2] / data["resolution"])
+
+        self.generate(
+            self.store,
+            self.input,
+            len(compressed_data),
+            self.decompressBufferSize,
+            self.decompressBuffer,
+            self.decompressedSize, 
+            self.positions,
+            self.uvs,
+            self.indices,          
+            self.faceCount,
+            self.pointCount,        
+            some_v
+        )
+
+        self.get_value(self.decompressedSize, "i32")
+        c = self.get_value(self.pointCount, "i32")
+        u = self.get_value(self.faceCount, "i32")
+
+        positions_slice = self.HEAPU8[self.positions:self.positions + u * 12]
+        positions_copy = bytearray(positions_slice)
+        p = np.frombuffer(positions_copy, dtype=np.uint8)
+
+        uvs_slice = self.HEAPU8[self.uvs:self.uvs + u * 8]
+        uvs_copy = bytearray(uvs_slice)
+        r = np.frombuffer(uvs_copy, dtype=np.uint8)
+
+        indices_slice = self.HEAPU8[self.indices:self.indices + u * 24]
+        indices_copy = bytearray(indices_slice)
+        o = np.frombuffer(indices_copy, dtype=np.uint32)
+
+        return {
+            "point_count": c,
+            "face_count": u,
+            "positions": p,
+            "uvs": r,
+            "indices": o
+        }
+
+
 def generate_id():
     return int(datetime.datetime.now().timestamp() * 1000 % 2147483648) + random.randint(0, 999)
 
@@ -193,7 +359,6 @@ def gen_mov_command(x: float, y: float, z: float):
 
 
 class Quaternion:
-      
     def __init__(self, x, y, z, w):
         self.x = x
         self.y = y
@@ -207,17 +372,14 @@ class Quaternion:
         self.y = n.y * c
         self.z = n.z * c
         self.w = math.cos(s)
-
         return self.x, self.y, self.z, self.w
     
     def invert(self):
         self.x *= -1
         self.y *= -1
         self.z *= -1
-
         return self.x, self.y, self.z, self.w
       
-
 class Vector3:
     def __init__(self, x, y, z):
         self.x = x
@@ -250,7 +412,6 @@ class Vector3:
         self.x = g * _ + E * -u + v * -f - T * -l
         self.y = v * _ + E * -l + T * -u - g * -f
         self.z = T * _ + E * -f + g * -l - v * -u
-        
         return self.x, self.y, self.z
     
     def negate(self): 
@@ -274,7 +435,6 @@ class Vector3:
 
 
 def get_joints_go2(footPositionValue, foot_num):
-
     # URDF GO2 real values
     hip_length = 0.0955
     thigh_length = 0.213
@@ -405,7 +565,7 @@ class Go2ConnectionAsync():
                 "sdp": offer,
                 "id": "STA_localNetwork",
                 "type": "offer",
-                "token": os.getenv("GO2_TOKEN") or "",
+                "token": "",
             }
             async with session.post(url, json=data, headers=headers) as resp:
                 if resp.status == 200:
@@ -463,13 +623,18 @@ class Go2ConnectionAsync():
     
     @staticmethod
     def deal_array_buffer(n):
-        length = struct.unpack("H", n[:2])[0]
-        json_segment = n[4 : 4 + length]
-        remaining_data = n[4 + length :]
-        json_str = json_segment.decode("utf-8")
-        obj = json.loads(json_str)
-        obj["data"]["data"] = remaining_data
-        return obj
+
+        if isinstance(n, bytes):
+            length = struct.unpack("H", n[:2])[0]
+            json_segment = n[4 : 4 + length]
+            compressed_data = n[4 + length :]
+            json_str = json_segment.decode("utf-8")
+            obj = json.loads(json_str)
+            decoder = LidarDecoder()
+            decoded_data = decoder.decode(compressed_data, obj['data'])
+            obj["decoded_data"] = decoded_data
+            return obj
+        return None
 
 class RobotBaseNode(Node):
 
@@ -480,6 +645,8 @@ class RobotBaseNode(Node):
         qos_profile = QoSProfile(depth=10)
         self.joint_pub = self.create_publisher(JointState, 'joint_states', qos_profile)
         self.go2_state_pub = self.create_publisher(Go2State, 'go2_states', qos_profile)
+        self.go2_lidar_pub = self.create_publisher(PointCloud2, 'point_cloud2', qos_profile)
+        
         self.imu_pub = self.create_publisher(IMU, 'imu', qos_profile)
         self.broadcaster = TransformBroadcaster(self, qos=qos_profile)
 
@@ -487,6 +654,7 @@ class RobotBaseNode(Node):
         self.robot_odom = None
         self.robot_low_cmd = None
         self.robot_sport_state = None
+        self.robot_lidar = None
         self.joy_state = Joy()
         
         self.cmd_vel_sub = self.create_subscription(
@@ -501,15 +669,18 @@ class RobotBaseNode(Node):
             self.joy_cb,
             qos_profile)
         
-        timer_period = 0.1  
-        self.timer = self.create_timer(timer_period, self.timer_callback)
+
+        self.timer = self.create_timer(0.1, self.timer_callback)
+        self.timer_lidar = self.create_timer(0.5, self.timer_callback_lidar)
 
     def timer_callback(self):
         self.publish_odom()
         self.publish_robot_state()
         self.publish_joint_state()
 
-    
+    def timer_callback_lidar(self):
+        self.publish_lidar()
+
     def cmd_vel_cb(self, msg):
         x = msg.linear.x
         y = msg.linear.y
@@ -542,10 +713,11 @@ class RobotBaseNode(Node):
         self.conn.data_channel.send('{"type": "subscribe", "topic": "rt/utlidar/robot_pose"}')
         self.conn.data_channel.send('{"type": "subscribe", "topic": "rt/lf/sportmodestate"}')
         self.conn.data_channel.send('{"type": "subscribe", "topic": "rt/utlidar/foot_position"}')
-
-        
+        self.conn.data_channel.send('{"type": "subscribe", "topic": "rt/utlidar/voxel_map_compressed"}')
 
     def on_data_channel_message(self, _, msg):
+        if msg.get('topic') == "rt/utlidar/voxel_map_compressed":
+            self.robot_lidar = msg
 
         if msg.get('topic') == RTC_TOPIC['ROBOTODOM']:
             self.robot_odom = msg
@@ -556,9 +728,7 @@ class RobotBaseNode(Node):
         if msg.get('topic') == RTC_TOPIC['LOW_STATE']:
             self.robot_low_cmd = msg
 
-
     def publish_odom(self):
-
         if self.robot_odom:
             odom_trans = TransformStamped()
             odom_trans.header.stamp = self.get_clock().now().to_msg()
@@ -573,11 +743,8 @@ class RobotBaseNode(Node):
             odom_trans.transform.rotation.w = self.robot_odom['data']['pose']['orientation']['w']
             self.broadcaster.sendTransform(odom_trans)
 
-
     def publish_slow_joint_state(self):
-
         if self.robot_low_cmd:
-
             joint_state = JointState()
             joint_state.header.stamp = self.get_clock().now().to_msg()
 
@@ -597,7 +764,6 @@ class RobotBaseNode(Node):
             RR_thigh_joint = self.robot_low_cmd["data"]["motor_state"][10]["q"]
             RR_calf_joint = self.robot_low_cmd["data"]["motor_state"][11]["q"]
             
-
             joint_state.name = [
                 'FL_hip_joint', 'FL_thigh_joint', 'FL_calf_joint',
                 'FR_hip_joint', 'FR_thigh_joint', 'FR_calf_joint',
@@ -610,12 +776,31 @@ class RobotBaseNode(Node):
                 RL_hip_joint, RL_thigh_joint, RL_calf_joint,
                 RR_hip_joint, RR_thigh_joint, RR_calf_joint,
                 ]
-
             self.joint_pub.publish(joint_state) 
 
+    def publish_lidar(self):
+        if self.robot_lidar:
+            points = update_meshes_for_cloud2(
+                self.robot_lidar["decoded_data"]["positions"], 
+                self.robot_lidar["decoded_data"]["uvs"], 
+                self.robot_lidar['data']['resolution'], 
+                self.robot_lidar['data']['origin']
+                )
+            
+            point_cloud = PointCloud2()
+            point_cloud.header = Header(frame_id="odom")
 
-    def publish_joint_state(self):
+            fields = [
+                PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
+                PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
+                PointField(name='z', offset=8, datatype=PointField.FLOAT32, count=1),
+                PointField(name='intensity', offset=12, datatype=PointField.FLOAT32, count=1),
+            ]
 
+            point_cloud = point_cloud2.create_cloud(point_cloud.header, fields, points)
+            self.go2_lidar_pub.publish(point_cloud)
+
+    def publish_joint_state(self): 
         if self.robot_sport_state:
             joint_state = JointState()
             joint_state.header.stamp = self.get_clock().now().to_msg()
@@ -676,7 +861,6 @@ class RobotBaseNode(Node):
                 RL_hip_joint, RL_thigh_joint, RL_calf_joint,
                 RR_hip_joint, RR_thigh_joint, RR_calf_joint,
                 ]
-            
             self.joint_pub.publish(joint_state) 
 
     def publish_robot_state(self):
@@ -691,7 +875,7 @@ class RobotBaseNode(Node):
             go2_state.range_obstacle = list(map(float, self.robot_sport_state["data"]["range_obstacle"]))
             go2_state.foot_force = self.robot_sport_state["data"]["foot_force"]
             go2_state.foot_position_body = self.robot_sport_state["data"]["foot_position_body"]
-            go2_state.foot_speed_body = list(map(float, self.robot_sport_state["data"]["foot_speed_body"]))
+            go2_state.foot_speed_body = self.robot_sport_state["data"]["foot_speed_body"]
             self.go2_state_pub.publish(go2_state) 
 
             imu = IMU()
@@ -701,9 +885,6 @@ class RobotBaseNode(Node):
             imu.rpy = self.robot_sport_state["data"]["imu_state"]["rpy"]
             imu.temperature = self.robot_sport_state["data"]["imu_state"]["temperature"]
             self.imu_pub.publish(imu) 
-
-
-    
 
     async def run(self, conn):
         self.conn = conn
@@ -736,28 +917,23 @@ async def spin(node: Node):
     node.destroy_guard_condition(cancel)
 
 
-async def just_do_it():
-
+async def execute_all():
     base_node = RobotBaseNode()
-
     conn = Go2ConnectionAsync(
         os.environ.get('ROBOT_IP'),
         on_validated=base_node.on_validated,
         on_message=base_node.on_data_channel_message,
 
     )
-
     spin_task = asyncio.get_event_loop().create_task(spin(base_node))
     sleep_task = asyncio.get_event_loop().create_task(base_node.run(conn))
     await asyncio.wait([spin_task, sleep_task], return_when=asyncio.FIRST_COMPLETED)
 
-
 def main():
     rclpy.init()
-    asyncio.get_event_loop().run_until_complete(just_do_it())
+    asyncio.get_event_loop().run_until_complete(execute_all())
     asyncio.get_event_loop().close()
     rclpy.shutdown()
 
-        
 if __name__ == '__main__':
     main()

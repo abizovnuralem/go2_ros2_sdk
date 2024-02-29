@@ -1,17 +1,18 @@
 # go2_ros2_sdk
-Unitree go2 ROS 2 drivers are implemented using the go2-WebRTC interface originally designed by @tfoldi (https://github.com/tfoldi/go2-webrtc)
+Unitree go2 ROS 2 sdk are implemented using the go2-WebRTC interface originally designed by @tfoldi (https://github.com/tfoldi/go2-webrtc)
 
 This project enables ROS2 SDK functionality for your Unitree GO2 AIR/PRO/EDU
 
 Also you can get foot force sensors feadback from GO2 PRO enabled.
 
-The original GO2 PRO
+Real time Go2 Air/PRO joints sync:
 
 ![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/go2.gif?raw=true)
 
-Modified GO2 PRO with Nvidia AGX Jetson 64gb and Ouster Lidar
+Go2 Air/PRO lidar point cloud:
 
-![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/go2_on_steroids.gif?raw=true)
+![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/go2_lidar_1.gif?raw=true)
+![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/go2_lidar_2.gif?raw=true)
 
 Current state:
 1. URDF ( :white_check_mark: )
@@ -20,18 +21,29 @@ Current state:
 4. Joystick control in real time ( :white_check_mark: )
 6. Go2 topics info in real time ( :white_check_mark: )
 7. Foot force sensors info in real time ( :white_check_mark: )
-8. Camera stream
-9. Lidar stream
+8. Lidar stream ( :white_check_mark: ) (slow update rate (1sec), working on fix)
+9. Camera stream
+
 
 ## Topic
 Real time Go2 Air/PRO ROS2 topics
+
 ![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/topics_2.png?raw=true)
+
 ![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/topics_1.png?raw=true)
 
 
 ## Getting started
 
-install ROS 2 (tested on ROS2 Iron with Ubuntu 22.04 and ROS2 Humble with MacOS)
+# Configuration
+## System requirements
+Tested systems and ROS2 distro
+|systems|ROS2 distro|
+|--|--|
+|Ubuntu 22.04|humble|
+|Ubuntu 22.04|iron|
+
+
 
 clone this rep and build it (put go2_interfaces and go2_robot_sdk to src folder of your own ros2_ws repo)
 ```
@@ -40,7 +52,7 @@ pip install -r requirements.txt
 colcon build
 ```
 
-don't forget to setup your GO2-robot in Wifi-mode only and get IP
+don't forget to setup your GO2-robot in Wifi-mode and get IP
 then
 
 ```
@@ -52,5 +64,14 @@ export ROBOT_IP="Your robot ip"
 source install/setup.bash
 ros2 launch go2_robot_sdk robot.launch.py
 ```
+
+## Development
+
+To contribute or modify the project, refer to these resources for implementing additional features or improving the existing codebase. PRs are welcome.
+1. We need to optimize perfomance of the lidar and point cloud sync
+2. We need to ingertare camera stream
+
+## Thanks
+Special thanks to @legion1581, @tfoldi, @budavariam, @alex.lin and TheRoboVerse community for their work on this project!
 
 
