@@ -53,7 +53,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'webrtc_driver = go2_robot_sdk.webrtc_driver:main',
+            'go2_driver_node = go2_robot_sdk.go2_driver_node:main',
             'main_node = go2_robot_sdk.main_node:main',
         ],
     },

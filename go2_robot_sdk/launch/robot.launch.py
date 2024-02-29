@@ -60,7 +60,6 @@ def generate_launch_description():
             output='screen',
             parameters=[{'use_sim_time': use_sim_time, 'robot_description': robot_desc}],
             arguments=[urdf]),
-
         Node(
             package='joy',
             executable='joy_node',
@@ -73,7 +72,7 @@ def generate_launch_description():
 
         Node(
             package='go2_robot_sdk',
-            executable='webrtc_driver'
+            executable='go2_driver_node'
             ),
         Node(
             package='go2_robot_sdk',
