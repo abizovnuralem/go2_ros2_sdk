@@ -1,11 +1,10 @@
-# go2_ros2_sdk
-Welcome to the Unitree Go2 ROS2 SDK Project!
+# Welcome to the Unitree Go2 ROS2 SDK Project!
 
 We are delighted to present you with our integration of the Unitree Go2 ROS2 SDK, leveraging the innovative go2-WebRTC interface, originally designed by the talented @tfoldi. You can explore and utilize his groundbreaking work at go2-webrtc on GitHub.
 
 This resourceful project is here to empower your Unitree GO2 AIR/PRO/EDU robots with ROS2 SDK capabilities. We're thrilled to offer an enhanced level of control and interaction, enabling you to take your robotics projects to new heights.
 
-Exciting Features:
+## Exciting Features:
 
 :sparkles: Full ROS2 SDK support for your Unitree GO2
 
@@ -13,7 +12,7 @@ Exciting Features:
 
 :footprints: Access to foot force sensors feedback (available on GO2 AIR/PRO)
 
-Your feedback and support mean the world to us. 
+## Your feedback and support mean the world to us. 
 
 If you're as enthusiastic about this project as we are, please consider giving it a :star: star on our GitHub repository. 
 
@@ -32,7 +31,7 @@ Go2 Air/PRO/EDU lidar point cloud:
 ![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/go2_lidar_1.gif?raw=true)
 
 
-Project RoadMap:
+## Project RoadMap:
 1. URDF ( :white_check_mark: )
 2. Joint states sync in real time ( :white_check_mark: )
 3. IMU sync in real time ( :white_check_mark: )
