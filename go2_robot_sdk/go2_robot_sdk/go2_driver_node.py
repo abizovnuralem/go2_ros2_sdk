@@ -146,47 +146,12 @@ class RobotBaseNode(Node):
             odom_trans.child_frame_id = 'base'
             odom_trans.transform.translation.x = self.robot_odom['data']['pose']['position']['x']
             odom_trans.transform.translation.y = self.robot_odom['data']['pose']['position']['y']
-            odom_trans.transform.translation.z = self.robot_odom['data']['pose']['position']['z']
+            odom_trans.transform.translation.z = self.robot_odom['data']['pose']['position']['z'] + 0.07
             odom_trans.transform.rotation.x = self.robot_odom['data']['pose']['orientation']['x']
             odom_trans.transform.rotation.y = self.robot_odom['data']['pose']['orientation']['y']
             odom_trans.transform.rotation.z = self.robot_odom['data']['pose']['orientation']['z']
             odom_trans.transform.rotation.w = self.robot_odom['data']['pose']['orientation']['w']
             self.broadcaster.sendTransform(odom_trans)
-
-    def publish_slow_joint_state(self):
-        if self.robot_low_cmd:
-            joint_state = JointState()
-            joint_state.header.stamp = self.get_clock().now().to_msg()
-
-            FL_hip_joint = self.robot_low_cmd["data"]["motor_state"][0]["q"]
-            FL_thigh_joint = self.robot_low_cmd["data"]["motor_state"][1]["q"]
-            FL_calf_joint = self.robot_low_cmd["data"]["motor_state"][2]["q"]
-
-            FR_hip_joint = self.robot_low_cmd["data"]["motor_state"][3]["q"]
-            FR_thigh_joint = self.robot_low_cmd["data"]["motor_state"][4]["q"]
-            FR_calf_joint = self.robot_low_cmd["data"]["motor_state"][5]["q"]
-
-            RL_hip_joint = self.robot_low_cmd["data"]["motor_state"][6]["q"]
-            RL_thigh_joint = self.robot_low_cmd["data"]["motor_state"][7]["q"]
-            RL_calf_joint = self.robot_low_cmd["data"]["motor_state"][8]["q"]
-
-            RR_hip_joint = self.robot_low_cmd["data"]["motor_state"][9]["q"]
-            RR_thigh_joint = self.robot_low_cmd["data"]["motor_state"][10]["q"]
-            RR_calf_joint = self.robot_low_cmd["data"]["motor_state"][11]["q"]
-            
-            joint_state.name = [
-                'FL_hip_joint', 'FL_thigh_joint', 'FL_calf_joint',
-                'FR_hip_joint', 'FR_thigh_joint', 'FR_calf_joint',
-                'RL_hip_joint', 'RL_thigh_joint', 'RL_calf_joint',
-                'RR_hip_joint', 'RR_thigh_joint', 'RR_calf_joint',
-                ]
-            joint_state.position = [
-                FL_hip_joint, FL_thigh_joint, FL_calf_joint,
-                FR_hip_joint, FR_thigh_joint, FR_calf_joint,
-                RL_hip_joint, RL_thigh_joint, RL_calf_joint,
-                RR_hip_joint, RR_thigh_joint, RR_calf_joint,
-                ]
-            self.joint_pub.publish(joint_state) 
 
     def publish_lidar(self):
         if self.robot_lidar:
@@ -194,9 +159,9 @@ class RobotBaseNode(Node):
                 self.robot_lidar["decoded_data"]["positions"], 
                 self.robot_lidar["decoded_data"]["uvs"], 
                 self.robot_lidar['data']['resolution'], 
-                self.robot_lidar['data']['origin']
+                self.robot_lidar['data']['origin'],
+                0
                 )
-            
             point_cloud = PointCloud2()
             point_cloud.header = Header(frame_id="odom")
             fields = [

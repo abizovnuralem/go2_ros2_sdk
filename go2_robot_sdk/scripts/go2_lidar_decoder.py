@@ -31,7 +31,7 @@ from wasmtime import ValType
 from ament_index_python import get_package_share_directory
 
 
-def update_meshes_for_cloud2(positions, uvs, res, origin):
+def update_meshes_for_cloud2(positions, uvs, res, origin, intense_limiter):
     # Convert the list of positions to a NumPy array for vectorized operations
     position_array = np.array(positions).reshape(-1, 3).astype(np.float32)
 
@@ -50,11 +50,14 @@ def update_meshes_for_cloud2(positions, uvs, res, origin):
     # Merge uvs with points
     positions_with_uvs = np.hstack((position_array, intensities))
 
+    # Remove points with limit intensity
+    positions_with_uvs = positions_with_uvs[positions_with_uvs[:, -1] > intense_limiter]
+
     # Remove duplicated points by creating a set of tuples
     positions_with_uvs = np.unique(positions_with_uvs, axis=0)
     return positions_with_uvs
 
-
+    
 class LidarDecoder:
     def __init__(self) -> None:
 
