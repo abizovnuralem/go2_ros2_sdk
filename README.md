@@ -13,7 +13,8 @@ Go2 Air/PRO/EDU lidar point cloud:
 
 ![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/go2_lidar_1.gif?raw=true)
 
-![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/go2_lidar_2.gif?raw=true)
+![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/go2_lidar_3.gif?raw=true)
+
 
 Current state:
 1. URDF ( :white_check_mark: )
@@ -22,8 +23,11 @@ Current state:
 4. Joystick control in real time ( :white_check_mark: )
 6. Go2 topics info in real time ( :white_check_mark: )
 7. Foot force sensors info in real time ( :white_check_mark: )
-8. Lidar stream ( :white_check_mark: ) (slow update rate (1sec), working on fix)
-9. Camera stream
+8. Lidar stream ( :white_check_mark: ) **
+9. Camera stream ***
+10. Integrate Foxglove
+11. Integrate Object detection
+12. Integrate AutoPilot
 
 ## Topic
 Real time Go2 Air/PRO ROS2 topics
@@ -63,8 +67,8 @@ ros2 launch go2_robot_sdk robot.launch.py
 ## Development
 
 To contribute or modify the project, refer to these resources for implementing additional features or improving the existing codebase. PRs are welcome!
-1. We need to optimize the performance of LiDAR and point cloud synchronization.
-2. We need to integrate the camera stream.
+** We need to optimize the performance of LiDAR and point cloud synchronization.
+*** We need to integrate the camera stream.
 
 ## Thanks
 Special thanks to @legion1581, @tfoldi, @budavariam, @alex.lin and TheRoboVerse community!
