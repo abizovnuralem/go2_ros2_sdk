@@ -1,5 +1,5 @@
 # go2_ros2_sdk
-Welcome to the Unitree Go2 AIR/PRO/EDU ROS2 SDK Project!
+Welcome to the Unitree Go2 ROS2 SDK Project!
 
 We are delighted to present you with our integration of the Unitree Go2 ROS2 SDK, leveraging the innovative go2-WebRTC interface, originally designed by the talented @tfoldi. You can explore and utilize his groundbreaking work at go2-webrtc on GitHub.
 
@@ -8,10 +8,16 @@ This resourceful project is here to empower your Unitree GO2 AIR/PRO/EDU robots 
 Exciting Features:
 
 :sparkles: Full ROS2 SDK support for your Unitree GO2
+
 :robot: Compatible with AIR, PRO, and EDU variants
+
 :footprints: Access to foot force sensors feedback (available on GO2 AIR/PRO)
 
-Your feedback and support mean the world to us. If you're as enthusiastic about this project as we are, please consider giving it a :star: star on our GitHub repository. Your encouragement fuels our passion and helps us develop our RoadMap further. We welcome any help or suggestions you can offer!
+Your feedback and support mean the world to us. 
+
+If you're as enthusiastic about this project as we are, please consider giving it a :star: star on our GitHub repository. 
+
+Your encouragement fuels our passion and helps us develop our RoadMap further. We welcome any help or suggestions you can offer!
 
 Together, let's push the boundaries of what's possible with the Unitree Go2 and ROS2!
 
