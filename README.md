@@ -5,13 +5,14 @@ This project enables ROS2 SDK functionality for your Unitree GO2 AIR/PRO/EDU
 
 Also you can get foot force sensors feadback from GO2 PRO enabled.
 
-Real time Go2 Air/PRO joints sync:
+Real time Go2 Air/PRO/EDU joints sync:
 
 ![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/go2.gif?raw=true)
 
-Go2 Air/PRO lidar point cloud:
+Go2 Air/PRO/EDU lidar point cloud:
 
 ![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/go2_lidar_1.gif?raw=true)
+
 ![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/go2_lidar_2.gif?raw=true)
 
 Current state:
@@ -24,7 +25,6 @@ Current state:
 8. Lidar stream ( :white_check_mark: ) (slow update rate (1sec), working on fix)
 9. Camera stream
 
-
 ## Topic
 Real time Go2 Air/PRO ROS2 topics
 
@@ -33,17 +33,12 @@ Real time Go2 Air/PRO ROS2 topics
 ![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/topics_1.png?raw=true)
 
 
-## Getting started
-
-# Configuration
 ## System requirements
 Tested systems and ROS2 distro
 |systems|ROS2 distro|
 |--|--|
 |Ubuntu 22.04|humble|
 |Ubuntu 22.04|iron|
-
-
 
 clone this rep and build it (put go2_interfaces and go2_robot_sdk to src folder of your own ros2_ws repo)
 ```
@@ -67,11 +62,11 @@ ros2 launch go2_robot_sdk robot.launch.py
 
 ## Development
 
-To contribute or modify the project, refer to these resources for implementing additional features or improving the existing codebase. PRs are welcome.
-1. We need to optimize perfomance of the lidar and point cloud sync
-2. We need to ingertare camera stream
+To contribute or modify the project, refer to these resources for implementing additional features or improving the existing codebase. PRs are welcome!
+1. We need to optimize the performance of LiDAR and point cloud synchronization.
+2. We need to integrate the camera stream.
 
 ## Thanks
-Special thanks to @legion1581, @tfoldi, @budavariam, @alex.lin and TheRoboVerse community for their work on this project!
+Special thanks to @legion1581, @tfoldi, @budavariam, @alex.lin and TheRoboVerse community!
 
 
