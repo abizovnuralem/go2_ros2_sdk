@@ -299,7 +299,7 @@ async def spin(node: Node):
 async def start_node():
     base_node = RobotBaseNode()
     conn = Go2Connection(
-        base_node.robot_ip,
+        robot_ip=base_node.robot_ip,
         token=base_node.token,
         on_validated=base_node.on_validated,
         on_message=base_node.on_data_channel_message,
