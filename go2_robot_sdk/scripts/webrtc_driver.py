@@ -45,7 +45,8 @@ logger.setLevel(logging.INFO)
 class Go2Connection():
     def __init__(
             self, 
-            robot_ip=None, 
+            robot_ip=None,
+            token="",
             on_validated=None, 
             on_message=None, 
             on_open=None
@@ -53,6 +54,7 @@ class Go2Connection():
 
         self.pc = RTCPeerConnection()
         self.robot_ip = robot_ip
+        self.token = token
         self.robot_validation = "PENDING"
         self.on_validated = on_validated
         self.on_message = on_message
@@ -124,7 +126,7 @@ class Go2Connection():
                 "sdp": offer,
                 "id": "STA_localNetwork",
                 "type": "offer",
-                "token": "",
+                "token": self.token,
             }
             async with session.post(url, json=data, headers=headers) as resp:
                 if resp.status == 200:

@@ -24,6 +24,7 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
+from launch.conditions import UnlessCondition
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -32,6 +33,7 @@ from launch_ros.actions import Node
 def generate_launch_description():
 
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
+    no_rviz2 = LaunchConfiguration('no_rviz2', default='false')
 
     urdf_file_name = 'go2.urdf'
     urdf = os.path.join(
@@ -82,6 +84,7 @@ def generate_launch_description():
             package='rviz2',
             namespace='',
             executable='rviz2',
+            condition=UnlessCondition(no_rviz2),
             name='rviz2',
             arguments=['-d' + os.path.join(get_package_share_directory('go2_robot_sdk'), 'config', 'conf.rviz')]
         )
