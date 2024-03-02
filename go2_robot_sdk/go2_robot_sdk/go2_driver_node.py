@@ -55,7 +55,13 @@ class RobotBaseNode(Node):
 
     def __init__(self):
         super().__init__('go2_driver_node')
+
+        self.declare_parameter('robot_ip', os.getenv('ROBOT_IP', os.getenv('GO2_IP')))
+        self.declare_parameter('token', os.getenv('ROBOT_TOKEN', os.getenv('GO2_TOKEN','')))
         
+        self.robot_ip = self.get_parameter('robot_ip').get_parameter_value().string_value
+        self.token = self.get_parameter('token').get_parameter_value().string_value
+
         self.conn = None
         qos_profile = QoSProfile(depth=10)
         self.joint_pub = self.create_publisher(JointState, 'joint_states', qos_profile)
@@ -242,20 +248,20 @@ class RobotBaseNode(Node):
             go2_state.mode = self.robot_sport_state["data"]["mode"]
             go2_state.progress = self.robot_sport_state["data"]["progress"]
             go2_state.gait_type = self.robot_sport_state["data"]["gait_type"]
-            go2_state.position = self.robot_sport_state["data"]["position"]
-            go2_state.body_height = self.robot_sport_state["data"]["body_height"]
+            go2_state.position = list(map(float,self.robot_sport_state["data"]["position"]))
+            go2_state.body_height = float(self.robot_sport_state["data"]["body_height"])
             go2_state.velocity = self.robot_sport_state["data"]["velocity"]
             go2_state.range_obstacle = list(map(float, self.robot_sport_state["data"]["range_obstacle"]))
             go2_state.foot_force = self.robot_sport_state["data"]["foot_force"]
-            go2_state.foot_position_body = self.robot_sport_state["data"]["foot_position_body"]
-            go2_state.foot_speed_body = self.robot_sport_state["data"]["foot_speed_body"]
+            go2_state.foot_position_body = list(map(float,self.robot_sport_state["data"]["foot_position_body"]))
+            go2_state.foot_speed_body = list(map(float, self.robot_sport_state["data"]["foot_speed_body"]))
             self.go2_state_pub.publish(go2_state) 
 
             imu = IMU()
-            imu.quaternion = self.robot_sport_state["data"]["imu_state"]["quaternion"]
+            imu.quaternion = list(map(float,self.robot_sport_state["data"]["imu_state"]["quaternion"]))
             imu.accelerometer = list(map(float,self.robot_sport_state["data"]["imu_state"]["accelerometer"]))
             imu.gyroscope = list(map(float,self.robot_sport_state["data"]["imu_state"]["gyroscope"]))
-            imu.rpy = self.robot_sport_state["data"]["imu_state"]["rpy"]
+            imu.rpy = list(map(float,self.robot_sport_state["data"]["imu_state"]["rpy"]))
             imu.temperature = self.robot_sport_state["data"]["imu_state"]["temperature"]
             self.imu_pub.publish(imu) 
 
@@ -293,7 +299,8 @@ async def spin(node: Node):
 async def start_node():
     base_node = RobotBaseNode()
     conn = Go2Connection(
-        os.environ.get('ROBOT_IP'),
+        base_node.robot_ip,
+        token=base_node.token,
         on_validated=base_node.on_validated,
         on_message=base_node.on_data_channel_message,
 
