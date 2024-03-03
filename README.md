@@ -83,10 +83,12 @@ ros2 launch go2_robot_sdk robot.launch.py
 ## Development
 
 To contribute or modify the project, refer to these resources for implementing additional features or improving the existing codebase. PRs are welcome!
-** We need to optimize the performance of LiDAR and point cloud synchronization.
-*** We need to integrate the camera stream.
+
 
 ## Thanks
 Special thanks to @legion1581, @tfoldi, @budavariam, @alex.lin and TheRoboVerse community!
 
 
+## License
+
+This project is licensed under the BSD 2-clause License - see the [LICENSE](https://github.com/tfoldi/go2-webrtc/blob/master/LICENSE) file for details.
