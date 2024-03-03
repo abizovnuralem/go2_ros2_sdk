@@ -91,4 +91,4 @@ Special thanks to @legion1581, @tfoldi, @budavariam, @alex.lin and TheRoboVerse 
 
 ## License
 
-This project is licensed under the BSD 2-clause License - see the [LICENSE](https://github.com/tfoldi/go2-webrtc/blob/master/LICENSE) file for details.
+This project is licensed under the BSD 2-clause License - see the [LICENSE](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/LICENSE) file for details.
