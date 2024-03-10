@@ -65,6 +65,8 @@ clone this rep and build it (put go2_interfaces and go2_robot_sdk to src folder 
 ```
 git clone https://github.com/abizovnuralem/go2_ros2_sdk.git
 pip install -r requirements.txt
+sudo apt install ros-{ROS2_VER}-test-msgs
+sudo apt install ros-{ROS2_VER}-tf2-sensor-msgs
 colcon build
 ```
 
