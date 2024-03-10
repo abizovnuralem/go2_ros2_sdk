@@ -65,7 +65,6 @@ clone this rep and build it (put go2_interfaces and go2_robot_sdk to src folder 
 ```
 git clone https://github.com/abizovnuralem/go2_ros2_sdk.git
 pip install -r requirements.txt
-sudo apt install ros-{YOUR_ROS_VERSION}-pointcloud-to-laserscan
 colcon build
 ```
 
