@@ -1,0 +1,8 @@
+<launch>
+  <node name="foxglove_bridge" pkg="foxglove_bridge" type="foxglove_bridge" output="screen">
+    <param name="port" value="9876" />
+    <rosparam param="asset_uri_allowlist" subst_value="True">['file://.*']</rosparam>
+  </node>
+
+  <test test-name="smoke_test" pkg="foxglove_bridge" type="smoke_test" />
+</launch>

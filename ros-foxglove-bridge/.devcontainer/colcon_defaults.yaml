@@ -1,0 +1,14 @@
+"":
+  log-base: /ros_ws/log_ros2
+
+build:
+  symlink-install: True
+  build-base: /ros_ws/build_ros2
+  install-base: /ros_ws/install_ros2
+  event-handlers: ["console_direct+"]
+
+test:
+  build-base: /ros_ws/build_ros2
+  install-base: /ros_ws/install_ros2
+  return-code-on-test-failure: True
+  event-handlers: ["console_direct+"]

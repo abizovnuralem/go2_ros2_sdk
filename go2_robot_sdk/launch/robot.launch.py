@@ -28,6 +28,8 @@ from launch.conditions import UnlessCondition
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch.actions import IncludeLaunchDescription
+from launch.launch_description_sources import FrontendLaunchDescriptionSource
 
 
 def generate_launch_description():
@@ -43,6 +45,13 @@ def generate_launch_description():
     with open(urdf, 'r') as infp:
         robot_desc = infp.read()
 
+    
+    foxglove_launch = os.path.join(
+        get_package_share_directory('foxglove_bridge'), 
+        'launch', 
+        'foxglove_bridge_launch.xml'  
+    )
+
 
     joy_params = os.path.join(
         get_package_share_directory('go2_robot_sdk'), 
@@ -55,6 +64,11 @@ def generate_launch_description():
             'use_sim_time',
             default_value='false',
             description='Use simulation (Gazebo) clock if true'),
+
+        IncludeLaunchDescription(
+            FrontendLaunchDescriptionSource(foxglove_launch)
+        ),
+        
         Node(
             package='robot_state_publisher',
             executable='robot_state_publisher',

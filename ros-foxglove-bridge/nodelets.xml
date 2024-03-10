@@ -1,0 +1,9 @@
+<library path="lib/libfoxglove_bridge_nodelet">
+    <class name="foxglove_bridge/foxglove_bridge_nodelet"
+           type="foxglove_bridge::FoxgloveBridge"
+           base_class_type="nodelet::Nodelet">
+        <description>
+            Foxglove bridge nodelet.
+        </description>
+    </class>
+</library>

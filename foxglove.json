@@ -1,0 +1,159 @@
+{
+  "configById": {
+    "3D!1z5wp7g": {
+      "cameraState": {
+        "perspective": true,
+        "distance": 4.51871081984833,
+        "phi": 44.76377952755682,
+        "thetaOffset": 146.33858267716917,
+        "targetOffset": [
+          -0.7589250245619992,
+          0.315563322561357,
+          2.3955431119317754e-17
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "targetOrientation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "fovy": 45,
+        "near": 0.5,
+        "far": 5000
+      },
+      "followMode": "follow-pose",
+      "followTf": "base",
+      "scene": {
+        "transforms": {
+          "showLabel": false
+        },
+        "enableStats": true,
+        "labelScaleFactor": 1,
+        "ignoreColladaUpAxis": false
+      },
+      "transforms": {
+        "frame:base": {
+          "visible": true
+        },
+        "frame:FL_hip": {
+          "visible": false
+        },
+        "frame:FL_thigh": {
+          "visible": false
+        },
+        "frame:FL_calf": {
+          "visible": false
+        },
+        "frame:FL_calflower": {
+          "visible": false
+        },
+        "frame:FL_calflower1": {
+          "visible": false
+        },
+        "frame:FL_foot": {
+          "visible": false
+        },
+        "frame:FR_hip": {
+          "visible": false
+        },
+        "frame:FR_thigh": {
+          "visible": false
+        },
+        "frame:FR_calf": {
+          "visible": false
+        },
+        "frame:FR_calflower": {
+          "visible": false
+        },
+        "frame:FR_calflower1": {
+          "visible": false
+        },
+        "frame:FR_foot": {
+          "visible": false
+        },
+        "frame:Head_upper": {
+          "visible": false
+        },
+        "frame:Head_lower": {
+          "visible": false
+        },
+        "frame:imu": {
+          "visible": false
+        },
+        "frame:radar": {
+          "visible": false
+        },
+        "frame:RL_hip": {
+          "visible": false
+        },
+        "frame:RL_thigh": {
+          "visible": false
+        },
+        "frame:RL_calf": {
+          "visible": false
+        },
+        "frame:RL_calflower": {
+          "visible": false
+        },
+        "frame:RL_calflower1": {
+          "visible": false
+        },
+        "frame:RL_foot": {
+          "visible": false
+        },
+        "frame:RR_hip": {
+          "visible": false
+        },
+        "frame:RR_thigh": {
+          "visible": false
+        },
+        "frame:RR_calf": {
+          "visible": false
+        },
+        "frame:RR_calflower": {
+          "visible": false
+        },
+        "frame:RR_calflower1": {
+          "visible": false
+        },
+        "frame:RR_foot": {
+          "visible": false
+        }
+      },
+      "topics": {
+        "/robot_description": {
+          "visible": true
+        },
+        "/point_cloud2": {
+          "visible": true,
+          "colorField": "intensity",
+          "colorMode": "colormap",
+          "colorMap": "turbo"
+        }
+      },
+      "layers": {},
+      "publish": {
+        "type": "point",
+        "poseTopic": "/move_base_simple/goal",
+        "pointTopic": "/clicked_point",
+        "poseEstimateTopic": "/initialpose",
+        "poseEstimateXDeviation": 0.5,
+        "poseEstimateYDeviation": 0.5,
+        "poseEstimateThetaDeviation": 0.26179939
+      },
+      "imageMode": {},
+      "foxglovePanelTitle": "GO2 Unitree"
+    }
+  },
+  "globalVariables": {},
+  "userNodes": {},
+  "playbackConfig": {
+    "speed": 1
+  },
+  "layout": "3D!1z5wp7g"
+}

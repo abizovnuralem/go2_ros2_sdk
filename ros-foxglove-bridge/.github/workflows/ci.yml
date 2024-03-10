@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main, release/*]
+  pull_request:
+
+jobs:
+  lint:
+    strategy:
+      fail-fast: false
+
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - run: make lint
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        ros_distribution: [melodic, noetic, humble, iron, rolling]
+
+    name: Test (ROS ${{ matrix.ros_distribution }})
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: make ${{ matrix.ros_distribution }}-test
+
+  test-boost-asio:
+    strategy:
+      fail-fast: false
+      matrix:
+        ros_distribution: [noetic, humble, rolling]
+
+    name: Test (ROS ${{ matrix.ros_distribution }}, Boost Asio)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: make ${{ matrix.ros_distribution }}-test-boost-asio

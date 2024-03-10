@@ -42,6 +42,9 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
+decoder = LidarDecoder()
+
+
 class Go2Connection():
     def __init__(
             self, 
@@ -51,6 +54,8 @@ class Go2Connection():
             on_message=None, 
             on_open=None
             ):
+        
+        
 
         self.pc = RTCPeerConnection()
         self.robot_ip = robot_ip
@@ -191,7 +196,6 @@ class Go2Connection():
             compressed_data = n[4 + length :]
             json_str = json_segment.decode("utf-8")
             obj = json.loads(json_str)
-            decoder = LidarDecoder()
             decoded_data = decoder.decode(compressed_data, obj['data'])
             obj["decoded_data"] = decoded_data
             return obj

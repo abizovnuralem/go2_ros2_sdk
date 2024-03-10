@@ -1,0 +1,9 @@
+#include <foxglove_bridge/foxglove_bridge.hpp>
+
+namespace foxglove {
+
+const char FOXGLOVE_BRIDGE_VERSION[] = "@FOXGLOVE_BRIDGE_VERSION@";
+
+const char FOXGLOVE_BRIDGE_GIT_HASH[] = "@FOXGLOVE_BRIDGE_GIT_HASH@";
+
+}  // namespace foxglove

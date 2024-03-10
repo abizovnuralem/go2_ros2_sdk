@@ -32,15 +32,15 @@ Go2 Air/PRO/EDU lidar point cloud:
 
 
 ## Project RoadMap:
-1. URDF ( :white_check_mark: )
-2. Joint states sync in real time ( :white_check_mark: )
-3. IMU sync in real time ( :white_check_mark: )
-4. Joystick control in real time ( :white_check_mark: )
-6. Go2 topics info in real time ( :white_check_mark: )
-7. Foot force sensors info in real time ( :white_check_mark: )
-8. Lidar stream ( :white_check_mark: )
-9. Camera stream ***
-10. Foxglove
+1. URDF :white_check_mark: 
+2. Joint states sync in real time :white_check_mark: 
+3. IMU sync in real time :white_check_mark: 
+4. Joystick control in real time :white_check_mark: 
+6. Go2 topics info in real time :white_check_mark: 
+7. Foot force sensors info in real time :white_check_mark: 
+8. Lidar stream :white_check_mark: 
+9. Camera stream 
+10. Foxglove bridge :white_check_mark:
 11. SLAM
 12. Object detection
 13. AutoPilot
@@ -79,6 +79,21 @@ export ROBOT_IP="Your robot ip"
 source install/setup.bash
 ros2 launch go2_robot_sdk robot.launch.py
 ```
+
+
+## Foxglove
+
+![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/foxglove.gif?raw=true)
+
+To use Foxglove, you need to install Foxglove Studio:
+```
+sudo snap install foxglove-studio
+```
+
+1. Open Foxglove Studio and press "Open Connection".
+2. In the "Open Connection" settings, choose "Foxglove WebSocket" and use the default configuration ws://localhost:8765, then press "Open".
+3. (Optional) You can also import a default layout view from the foxglove.json file located inside this repository.
+
 
 ## Development
 

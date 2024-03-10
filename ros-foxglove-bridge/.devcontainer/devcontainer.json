@@ -1,0 +1,37 @@
+// -*- jsonc -*-
+{
+  "name": "ROS 2",
+  "workspaceFolder": "/ros_ws/src/ros-foxglove-bridge",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/ros_ws/src/ros-foxglove-bridge,type=bind,consistency=cached",
+  "dockerFile": "./Dockerfile",
+  "context": "..",
+  "forwardPorts": [
+    8765
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "xaver.clang-format",
+        "twxs.cmake"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "terminal.integrated.profiles.linux": {
+          "bash": {
+            "path": "/bin/bash",
+            "args": [
+              "-l"
+            ],
+            "icon": "terminal-bash"
+          }
+        }
+      }
+    }
+  },
+  "capAdd": [
+    "SYS_PTRACE"
+  ],
+  // More info: <https://aka.ms/dev-containers-non-root>
+  "remoteUser": "vscode"
+}

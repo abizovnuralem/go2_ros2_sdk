@@ -1,0 +1,42 @@
+<launch>
+  <arg name="port"                              default="8765" />
+  <arg name="address"                           default="0.0.0.0" />
+  <arg name="tls"                               default="false" />
+  <arg name="certfile"                          default="" />
+  <arg name="keyfile"                           default="" />
+  <arg name="topic_whitelist"                   default="['.*']" />
+  <arg name="param_whitelist"                   default="['.*']" />
+  <arg name="service_whitelist"                 default="['.*']" />
+  <arg name="client_topic_whitelist"            default="['.*']" />
+  <arg name="max_update_ms"                     default="5000" />
+  <arg name="send_buffer_limit"                 default="10000000" />
+  <arg name="nodelet_manager"                   default="foxglove_nodelet_manager" />
+  <arg name="num_threads"                       default="0" />
+  <arg name="capabilities"                      default="[clientPublish,parameters,parametersSubscribe,services,connectionGraph,assets]" />
+  <arg name="asset_uri_allowlist"               default="['^package://(?:\w+/)*\w+\.(?:dae|fbx|glb|gltf|jpeg|jpg|mtl|obj|png|stl|tif|tiff|urdf|webp|xacro)$']" />
+  <arg name="service_type_retrieval_timeout_ms" default="250" />
+
+  <node pkg="nodelet" type="nodelet" name="foxglove_nodelet_manager" args="manager"
+        if="$(eval nodelet_manager == 'foxglove_nodelet_manager')">
+    <param name="num_worker_threads"  type="int"        value="$(arg num_threads)" />
+  </node>
+
+  <node pkg="nodelet" type="nodelet" name="foxglove_bridge"
+        args="load foxglove_bridge/foxglove_bridge_nodelet $(arg nodelet_manager)">
+    <param name="port"                              type="int"        value="$(arg port)" />
+    <param name="address"                           type="string"     value="$(arg address)" />
+    <param name="tls"                               type="bool"       value="$(arg tls)" />
+    <param name="certfile"                          type="string"     value="$(arg certfile)" />
+    <param name="keyfile"                           type="string"     value="$(arg keyfile)" />
+    <param name="max_update_ms"                     type="int"        value="$(arg max_update_ms)" />
+    <param name="send_buffer_limit"                 type="int"        value="$(arg send_buffer_limit)" />
+    <param name="service_type_retrieval_timeout_ms" type="int"        value="$(arg service_type_retrieval_timeout_ms)" />
+
+    <rosparam param="topic_whitelist"         subst_value="True">$(arg topic_whitelist)</rosparam>
+    <rosparam param="param_whitelist"         subst_value="True">$(arg param_whitelist)</rosparam>
+    <rosparam param="service_whitelist"       subst_value="True">$(arg service_whitelist)</rosparam>
+    <rosparam param="client_topic_whitelist"  subst_value="True">$(arg client_topic_whitelist)</rosparam>
+    <rosparam param="capabilities"            subst_value="True">$(arg capabilities)</rosparam>
+    <rosparam param="asset_uri_allowlist"     subst_value="True">$(arg asset_uri_allowlist)</rosparam>
+  </node>
+</launch>
