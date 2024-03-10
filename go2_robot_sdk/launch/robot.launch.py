@@ -58,12 +58,25 @@ def generate_launch_description():
         'config', 'joystick.yaml'
         )
     
+    default_config_topics = os.path.join(get_package_share_directory('go2_robot_sdk'),
+                                         'config', 'twist_mux.yaml')
+    
     return LaunchDescription([
         
         DeclareLaunchArgument(
             'use_sim_time',
             default_value='false',
             description='Use simulation (Gazebo) clock if true'),
+
+        DeclareLaunchArgument(
+            'config_topics',
+            default_value=default_config_topics,
+            description='Default topics config file'),
+
+        DeclareLaunchArgument(
+            'cmd_vel_out',
+            default_value='cmd_vel',
+            description='cmd vel output topic'),
 
         IncludeLaunchDescription(
             FrontendLaunchDescriptionSource(foxglove_launch)
@@ -78,17 +91,17 @@ def generate_launch_description():
             ],
             parameters=[{
                 'target_frame': 'base',
-                'transform_tolerance': 0.01,
-                'min_height': 0.0,
-                'max_height': 1.0,
-                'angle_min': -3.14,  
-                'angle_max': 3.14,   
-                'angle_increment': 0.0087,
-                'scan_time': 0.3333,
-                'range_min': 0.1,
-                'range_max': 10.0,
-                'use_inf': True,
-                'concurrency_level': 1,
+                # 'transform_tolerance': 0.01,
+                # 'min_height': 0.0,
+                # 'max_height': 1.0,
+                # 'angle_min': -3.14,  
+                # 'angle_max': 3.14,   
+                # 'angle_increment': 0.0087,
+                # 'scan_time': 0.3333,
+                # 'range_min': 0.1,
+                # 'range_max': 10.0,
+                # 'use_inf': True,
+                # 'concurrency_level': 1,
             }]
         ),
         
@@ -107,8 +120,17 @@ def generate_launch_description():
             package='teleop_twist_joy',
             executable='teleop_node',
             name='teleop_node',
-            parameters=[joy_params]),
-
+            parameters=[joy_params],
+            remappings=[('/cmd_vel', '/cmd_vel_joy')],),
+        Node(
+            package='twist_mux',
+            executable='twist_mux',
+            output='screen',
+            remappings={('/cmd_vel_out', LaunchConfiguration('cmd_vel_out'))},
+            parameters=[
+                {'use_sim_time': LaunchConfiguration('use_sim_time')},
+                LaunchConfiguration('config_topics')]
+        ),
         Node(
             package='go2_robot_sdk',
             executable='go2_driver_node'

@@ -1,0 +1,26 @@
+name: Humble Binary Build - main
+# author: Denis Štogl <denis@stoglrobotics.de>
+# description: 'Build & test all dependencies from released (binary) packages.'
+
+on:
+  workflow_dispatch:
+    branches:
+      - rolling
+  pull_request:
+    branches:
+      - rolling
+  push:
+    branches:
+      - rolling
+  schedule:
+    # Run every morning to detect flakiness and broken dependencies
+    - cron: '03 1 * * *'
+
+jobs:
+  binary:
+    uses: ./.github/workflows/reusable-industrial-ci-with-cache.yml
+    with:
+      ros_distro: humble
+      ros_repo: main
+      upstream_workspace: twist_mux_deps.repos
+      ref_for_scheduled_build: rolling
