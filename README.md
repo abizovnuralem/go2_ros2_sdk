@@ -38,12 +38,13 @@ Go2 Air/PRO/EDU lidar point cloud:
 4. Joystick control in real time :white_check_mark: 
 6. Go2 topics info in real time :white_check_mark: 
 7. Foot force sensors info in real time :white_check_mark: 
-8. Lidar stream :white_check_mark: 
+8. Lidar stream (added pointCloud2) :white_check_mark: 
 9. Camera stream 
 10. Foxglove bridge :white_check_mark:
-11. SLAM
-12. Object detection
-13. AutoPilot
+11. Laser Scan :white_check_mark:
+12. SLAM
+13. Object detection
+14. AutoPilot
 
 ## Topic
 Real time Go2 Air/PRO ROS2 topics
@@ -64,6 +65,7 @@ clone this rep and build it (put go2_interfaces and go2_robot_sdk to src folder 
 ```
 git clone https://github.com/abizovnuralem/go2_ros2_sdk.git
 pip install -r requirements.txt
+sudo apt install ros-{YOUR_ROS_VERSION}-pointcloud-to-laserscan
 colcon build
 ```
 

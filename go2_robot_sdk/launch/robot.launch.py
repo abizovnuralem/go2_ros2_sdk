@@ -68,6 +68,29 @@ def generate_launch_description():
         IncludeLaunchDescription(
             FrontendLaunchDescriptionSource(foxglove_launch)
         ),
+
+        Node(
+            package='pointcloud_to_laserscan',
+            executable='pointcloud_to_laserscan_node',
+            name='pointcloud_to_laserscan',
+            remappings=[
+                ('cloud_in', '/point_cloud2'),
+            ],
+            parameters=[{
+                'target_frame': 'base',
+                'transform_tolerance': 0.01,
+                'min_height': 0.0,
+                'max_height': 1.0,
+                'angle_min': -3.14,  
+                'angle_max': 3.14,   
+                'angle_increment': 0.0087,
+                'scan_time': 0.3333,
+                'range_min': 0.1,
+                'range_max': 10.0,
+                'use_inf': True,
+                'concurrency_level': 1,
+            }]
+        ),
         
         Node(
             package='robot_state_publisher',
