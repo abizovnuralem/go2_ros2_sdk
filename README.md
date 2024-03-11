@@ -94,13 +94,14 @@ To use Foxglove, you need to install Foxglove Studio:
 sudo snap install foxglove-studio
 ```
 
-## SLAM
-
-![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/slam.gif?raw=true)
-
 1. Open Foxglove Studio and press "Open Connection".
 2. In the "Open Connection" settings, choose "Foxglove WebSocket" and use the default configuration ws://localhost:8765, then press "Open".
 3. (Optional) You can also import a default layout view from the foxglove.json file located inside this repository.
+
+
+## SLAM
+
+![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/slam.gif?raw=true)
 
 
 ## Development
