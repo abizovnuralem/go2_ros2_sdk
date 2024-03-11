@@ -29,7 +29,7 @@ from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch.actions import IncludeLaunchDescription
-from launch.launch_description_sources import FrontendLaunchDescriptionSource
+from launch.launch_description_sources import FrontendLaunchDescriptionSource, PythonLaunchDescriptionSource
 
 
 def generate_launch_description():
@@ -61,6 +61,13 @@ def generate_launch_description():
     default_config_topics = os.path.join(get_package_share_directory('go2_robot_sdk'),
                                          'config', 'twist_mux.yaml')
     
+
+    slam_toolbox_config = os.path.join(
+        get_package_share_directory('go2_robot_sdk'),
+        'config',
+        'mapper_params_online_async.yaml'
+    )
+    
     return LaunchDescription([
         
         DeclareLaunchArgument(
@@ -81,6 +88,21 @@ def generate_launch_description():
         IncludeLaunchDescription(
             FrontendLaunchDescriptionSource(foxglove_launch)
         ),
+
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource([
+                os.path.join(get_package_share_directory('slam_toolbox'), 'launch', 'online_async_launch.py')
+            ]),
+            launch_arguments={
+                'params_file': slam_toolbox_config,
+                'use_sim_time': LaunchConfiguration('use_sim_time')
+            }.items(),
+        ),
+
+        # IncludeLaunchDescription(
+        # PythonLaunchDescriptionSource(os.path.join(get_package_share_directory('nav2_bringup'), 'launch', 'navigation_launch.py')),
+        # launch_arguments={'use_sim_time': LaunchConfiguration('use_sim_time')}.items()
+        # ),
 
         Node(
             package='pointcloud_to_laserscan',
@@ -110,7 +132,7 @@ def generate_launch_description():
             executable='robot_state_publisher',
             name='robot_state_publisher',
             output='screen',
-            parameters=[{'use_sim_time': use_sim_time, 'robot_description': robot_desc}],
+            parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time'), 'robot_description': robot_desc}],
             arguments=[urdf]),
         Node(
             package='joy',
