@@ -54,7 +54,7 @@ setup(
     entry_points={
         'console_scripts': [
             'go2_driver_node = go2_robot_sdk.go2_driver_node:main',
-            'main_node = go2_robot_sdk.main_node:main',
+            'go2_camera_node = go2_robot_sdk.go2_camera_node:main',
         ],
     },
 )

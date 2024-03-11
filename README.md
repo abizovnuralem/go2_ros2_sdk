@@ -39,12 +39,13 @@ Go2 Air/PRO/EDU lidar point cloud:
 6. Go2 topics info in real time :white_check_mark: 
 7. Foot force sensors info in real time :white_check_mark: 
 8. Lidar stream (added pointCloud2) :white_check_mark: 
-9. Camera stream 
+9. Camera stream :white_check_mark:
 10. Foxglove bridge :white_check_mark:
 11. Laser Scan :white_check_mark:
-12. SLAM
-13. Object detection
-14. AutoPilot
+12. SLAM (slam_toolbox) :white_check_mark:
+13. Navigation (nav2) :white_check_mark:
+14. Object detection
+15. AutoPilot
 
 ## Topic
 Real time Go2 Air/PRO ROS2 topics
@@ -92,6 +93,10 @@ To use Foxglove, you need to install Foxglove Studio:
 ```
 sudo snap install foxglove-studio
 ```
+
+## SLAM
+
+![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/slam.gif?raw=true)
 
 1. Open Foxglove Studio and press "Open Connection".
 2. In the "Open Connection" settings, choose "Foxglove WebSocket" and use the default configuration ws://localhost:8765, then press "Open".

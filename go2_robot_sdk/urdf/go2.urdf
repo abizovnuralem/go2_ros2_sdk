@@ -43,20 +43,6 @@ Stephen Brawner (brawner@gmail.com)
     </collision>
   </link>
   <link
-    name="base_footprint">
-  </link>
-  <joint
-    name="base_footprint_joint"
-    type="fixed">
-    <origin
-      xyz="0 0 0"
-      rpy="0 0 0" />
-    <parent
-      link="base" />
-    <child
-      link="base_footprint" />
-  </joint>
-  <link
     name="odom">
   </link>
   <joint

@@ -159,7 +159,7 @@ def generate_launch_description():
             ),
         Node(
             package='go2_robot_sdk',
-            executable='main_node'
+            executable='go2_camera_node'
             ),
         Node(
             package='rviz2',
