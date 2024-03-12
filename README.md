@@ -100,7 +100,7 @@ ros2 launch go2_robot_sdk robot.launch.py
 ## Foxglove
 
 <p align="center">
-<img width="1280" height="640" src="https://github.com/abizovnuralem/go2_ros2_sdk/assets/33475993/f0920d6c-5b7a-4718-b781-8cfa03a88095" alt='Foxglove bridge'>
+<img width="1200" height="630" src="https://github.com/abizovnuralem/go2_ros2_sdk/assets/33475993/f0920d6c-5b7a-4718-b781-8cfa03a88095" alt='Foxglove bridge'>
 </p>
 
 To use Foxglove, you need to install Foxglove Studio:
