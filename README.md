@@ -22,13 +22,20 @@ Together, let's push the boundaries of what's possible with the Unitree Go2 and 
 
 Real time Go2 Air/PRO/EDU joints sync:
 
-![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/go2.gif?raw=true)
+<p align="center">
+<img width="1280" height="640" src="https://github.com/abizovnuralem/go2_ros2_sdk/assets/33475993/bf3f5a83-f02b-4c78-a7a1-b379ce057492" alt='Go2 joints sync'>
+</p>
 
 Go2 Air/PRO/EDU lidar point cloud:
 
-![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/go2_lidar_3.gif?raw=true)
 
-![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/go2_lidar_1.gif?raw=true)
+<p align="center">
+<img width="1280" height="640" src="https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/go2_lidar_3.gif?raw=true" alt='Go2 point cloud'>
+</p>
+
+<p align="center">
+<img width="1280" height="640" src="https://github.com/abizovnuralem/go2_ros2_sdk/assets/33475993/9c1c3826-f875-4da1-a650-747044e748e1" alt='Go2 point cloud'>
+</p>
 
 
 ## Project RoadMap:
@@ -50,9 +57,14 @@ Go2 Air/PRO/EDU lidar point cloud:
 ## Topic
 Real time Go2 Air/PRO ROS2 topics
 
-![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/topics_2.png?raw=true)
 
-![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/topics_1.png?raw=true)
+<p align="left">
+<img width="731" height="383" src="https://github.com/abizovnuralem/go2_ros2_sdk/assets/33475993/4d36c2c0-bd21-4af7-925e-b8fd6db68e61" alt='Go2 topic list'>
+</p>
+
+<p align="left">
+<img width="446" height="1045" src="https://github.com/abizovnuralem/go2_ros2_sdk/assets/33475993/671af655-877b-4f36-89d3-91730674526d" alt='Go2 topic list'>
+</p>
 
 
 ## System requirements
@@ -87,7 +99,9 @@ ros2 launch go2_robot_sdk robot.launch.py
 
 ## Foxglove
 
-![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/foxglove.gif?raw=true)
+<p align="center">
+<img width="1280" height="640" src="https://github.com/abizovnuralem/go2_ros2_sdk/assets/33475993/f0920d6c-5b7a-4718-b781-8cfa03a88095" alt='Foxglove bridge'>
+</p>
 
 To use Foxglove, you need to install Foxglove Studio:
 ```
@@ -101,8 +115,9 @@ sudo snap install foxglove-studio
 
 ## SLAM
 
-![alt text](https://github.com/abizovnuralem/go2_ros2_sdk/blob/master/slam.gif?raw=true)
-
+<p align="center">
+<img width="1280" height="640" src="https://github.com/abizovnuralem/go2_ros2_sdk/assets/33475993/30c6c38e-68ae-4edc-8c6b-861e47738054" alt='Slam'>
+</p>
 
 ## Development
 
