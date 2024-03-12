@@ -10,7 +10,7 @@ slam_toolbox:
     # ROS Parameters
     odom_frame: odom
     map_frame: map
-    base_frame: base
+    base_frame: base_link
     scan_topic: /scan
     mode: mapping #localization
 

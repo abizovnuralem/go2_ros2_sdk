@@ -112,7 +112,7 @@ def generate_launch_description():
                 ('cloud_in', '/point_cloud2'),
             ],
             parameters=[{
-                'target_frame': 'base',
+                'target_frame': 'base_link',
                 # 'transform_tolerance': 0.01,
                 # 'min_height': 0.0,
                 # 'max_height': 1.0,

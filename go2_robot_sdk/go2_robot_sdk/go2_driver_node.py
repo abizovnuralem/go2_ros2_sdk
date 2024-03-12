@@ -149,7 +149,7 @@ class RobotBaseNode(Node):
             odom_trans = TransformStamped()
             odom_trans.header.stamp = self.get_clock().now().to_msg()
             odom_trans.header.frame_id = 'odom'
-            odom_trans.child_frame_id = 'base'
+            odom_trans.child_frame_id = 'base_link'
             odom_trans.transform.translation.x = self.robot_odom['data']['pose']['position']['x']
             odom_trans.transform.translation.y = self.robot_odom['data']['pose']['position']['y']
             odom_trans.transform.translation.z = self.robot_odom['data']['pose']['position']['z'] + 0.07

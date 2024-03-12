@@ -6,7 +6,7 @@ Stephen Brawner (brawner@gmail.com)
 <robot
   name="go2">
   <link
-    name="base">
+    name="base_link">
     <inertial>
       <origin
         xyz="0.021112 0 -0.005366"
@@ -27,7 +27,7 @@ Stephen Brawner (brawner@gmail.com)
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://go2_robot_sdk/meshes/base.STL" />
+          filename="package://go2_robot_sdk/meshes/base_link.STL" />
       </geometry>
       <material
         name="">
@@ -74,7 +74,7 @@ Stephen Brawner (brawner@gmail.com)
       xyz="0.285 0 0.01"
       rpy="0 0 0" />
     <parent
-      link="base" />
+      link="base_link" />
     <child
       link="Head_upper" />
     <axis
@@ -162,7 +162,7 @@ Stephen Brawner (brawner@gmail.com)
       xyz="0.1934 0.0465 0"
       rpy="0 0 0" />
     <parent
-      link="base" />
+      link="base_link" />
     <child
       link="FL_hip" />
     <axis
@@ -421,7 +421,7 @@ Stephen Brawner (brawner@gmail.com)
       xyz="0.1934 -0.0465 0"
       rpy="0 0 0" />
     <parent
-      link="base" />
+      link="base_link" />
     <child
       link="FR_hip" />
     <axis
@@ -680,7 +680,7 @@ Stephen Brawner (brawner@gmail.com)
       xyz="-0.1934 0.0465 0"
       rpy="0 0 0" />
     <parent
-      link="base" />
+      link="base_link" />
     <child
       link="RL_hip" />
     <axis
@@ -939,7 +939,7 @@ Stephen Brawner (brawner@gmail.com)
       xyz="-0.1934 -0.0465 0"
       rpy="0 0 0" />
     <parent
-      link="base" />
+      link="base_link" />
     <child
       link="RR_hip" />
     <axis
@@ -1178,7 +1178,7 @@ Stephen Brawner (brawner@gmail.com)
       xyz="-0.02557 0 0.04232"
       rpy="0 0 0" />
     <parent
-      link="base" />
+      link="base_link" />
     <child
       link="imu" />
     <axis
@@ -1208,7 +1208,7 @@ Stephen Brawner (brawner@gmail.com)
       xyz="0.28945 0 -0.046825"
       rpy="0 2.8782 0" />
     <parent
-      link="base" />
+      link="base_link" />
     <child
       link="radar" />
     <axis
@@ -1261,7 +1261,7 @@ Stephen Brawner (brawner@gmail.com)
       xyz="0.0018320158435115 0.000108320625906232 0.253633251213134"
       rpy="0 0 0" />
     <parent
-      link="base" />
+      link="base_link" />
     <child
       link="lidar" />
     <axis
@@ -1314,7 +1314,7 @@ Stephen Brawner (brawner@gmail.com)
       xyz="0.332761371962967 0.035144542794233 0.114710483453634"
       rpy="-1.96494556716039 0 -1.5707963268002" />
     <parent
-      link="base" />
+      link="base_link" />
     <child
       link="front_d_camera" />
     <axis
@@ -1367,7 +1367,7 @@ Stephen Brawner (brawner@gmail.com)
       xyz="-0.0324679841559152 0.109005675946275 0.100330987587743"
       rpy="-2.2771453163264 0 0" />
     <parent
-      link="base" />
+      link="base_link" />
     <child
       link="left_d_camera" />
     <axis
@@ -1420,7 +1420,7 @@ Stephen Brawner (brawner@gmail.com)
       xyz="0.0381320158429426 -0.106245986157609 0.0996860279722756"
       rpy="-2.30468924064394 0 3.14159265358449" />
     <parent
-      link="base" />
+      link="base_link" />
     <child
       link="right_d_camera" />
     <axis
