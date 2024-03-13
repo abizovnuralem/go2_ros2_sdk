@@ -10,7 +10,7 @@ This resourceful project is here to empower your Unitree GO2 AIR/PRO/EDU robots 
 
 :robot: Compatible with AIR, PRO, and EDU variants
 
-:footprints: Access to foot force sensors feedback (available on GO2 AIR/PRO)
+:footprints: Access to foot force sensors feedback (available on GO2 PRO/EDU)
 
 ## Your feedback and support mean the world to us. 
 

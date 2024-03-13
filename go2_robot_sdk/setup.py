@@ -42,7 +42,11 @@ setup(
         (os.path.join('share', package_name, 'dae'), glob(os.path.join('dae', '*'))),
         (os.path.join('share', package_name, 'meshes'), glob(os.path.join('meshes', '*'))),
         (os.path.join('share', package_name, 'config'), glob(os.path.join('config', '*'))),
-        (os.path.join('share', package_name, 'external_lib'), glob(os.path.join('external_lib', '*'))),
+        (os.path.join('share', package_name, 'external_lib/camera_webrtc_rc/src'), ['external_lib/camera_webrtc_rc/src/main.rs']),
+        (os.path.join('share', package_name, 'external_lib/camera_webrtc_rc'), ['external_lib/camera_webrtc_rc/Cargo.toml', 'external_lib/camera_webrtc_rc/Cargo.lock']),
+        (os.path.join('share', package_name, 'external_lib'), ['external_lib/libvoxel.wasm']),
+        
+        
     ],
     install_requires=['setuptools'],
     zip_safe=True,

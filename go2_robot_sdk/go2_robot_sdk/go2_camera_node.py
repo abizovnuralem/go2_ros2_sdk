@@ -21,6 +21,7 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import logging
 import os
 import time
 import cv2
@@ -34,12 +35,34 @@ import subprocess
 import threading
 
 
-class Go2CameraStream(Node):
-    def __init__(self):
-        super().__init__('go2_camera_stream')
+logging.basicConfig(level=logging.WARN)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+
+def build_camera_rust_stream():
+    webrtc_rc_exists = os.path.isdir(
+        get_package_share_directory('go2_robot_sdk') + "/external_lib/target")
+    
+    if not webrtc_rc_exists:
         go2webrtc_rc_path = os.path.join(
             get_package_share_directory('go2_robot_sdk'),
             "external_lib",
+            'camera_webrtc_rc')
+        logger.info(f"Building go2webrtc-rc at {go2webrtc_rc_path}")
+        cmd = f"cd {go2webrtc_rc_path}; cargo build --release"
+        subprocess.call(cmd, shell=True)
+    else:
+        logging.info("go2webrtc-rc already built..")
+
+
+class Go2CameraStream(Node):
+    def __init__(self):
+        super().__init__('go2_camera_stream')
+        build_camera_rust_stream()
+        go2webrtc_rc_path = os.path.join(
+            get_package_share_directory('go2_robot_sdk'),
+            "external_lib/camera_webrtc_rc/target/release",
             'go2webrtc-rc')
                 
         time.sleep(2)
