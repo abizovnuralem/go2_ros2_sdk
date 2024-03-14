@@ -52,7 +52,6 @@ def generate_launch_description():
         'foxglove_bridge_launch.xml'  
     )
 
-
     joy_params = os.path.join(
         get_package_share_directory('go2_robot_sdk'), 
         'config', 'joystick.yaml'
@@ -61,7 +60,6 @@ def generate_launch_description():
     default_config_topics = os.path.join(get_package_share_directory('go2_robot_sdk'),
                                          'config', 'twist_mux.yaml')
     
-
     slam_toolbox_config = os.path.join(
         get_package_share_directory('go2_robot_sdk'),
         'config',
@@ -99,11 +97,6 @@ def generate_launch_description():
             }.items(),
         ),
 
-        # IncludeLaunchDescription(
-        # PythonLaunchDescriptionSource(os.path.join(get_package_share_directory('nav2_bringup'), 'launch', 'navigation_launch.py')),
-        # launch_arguments={'use_sim_time': LaunchConfiguration('use_sim_time')}.items()
-        # ),
-
         Node(
             package='pointcloud_to_laserscan',
             executable='pointcloud_to_laserscan_node',
@@ -113,17 +106,6 @@ def generate_launch_description():
             ],
             parameters=[{
                 'target_frame': 'base_link',
-                # 'transform_tolerance': 0.01,
-                # 'min_height': 0.0,
-                # 'max_height': 1.0,
-                # 'angle_min': -3.14,  
-                # 'angle_max': 3.14,   
-                # 'angle_increment': 0.0087,
-                # 'scan_time': 0.3333,
-                # 'range_min': 0.1,
-                # 'range_max': 10.0,
-                # 'use_inf': True,
-                # 'concurrency_level': 1,
             }]
         ),
         

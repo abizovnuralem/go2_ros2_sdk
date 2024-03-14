@@ -9,6 +9,21 @@
 
   <depend>rclpy</depend>
   <depend>go2_interfaces</depend>
+
+  <exec_depend>twist_mux</exec_depend>
+  <exec_depend>joy</exec_depend>
+  <exec_depend>teleop_twist_joy</exec_depend>
+  <exec_depend>navigation2</exec_depend>
+  <exec_depend>nav2_amcl</exec_depend>
+  <exec_depend>nav2_bringup</exec_depend>
+  <exec_depend>nav2_map_server</exec_depend>
+  <exec_depend>nav2_util</exec_depend>
+  <exec_depend>pointcloud_to_laserscan</exec_depend>
+  
+  <exec_depend>slam_toolbox</exec_depend>
+
+  <exec_depend>foxglove_bridge</exec_depend>
+
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_pep257</test_depend>
