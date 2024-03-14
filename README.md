@@ -75,11 +75,13 @@ Tested systems and ROS2 distro
 |Ubuntu 22.04|iron|
 
 clone this rep and build it (put go2_interfaces and go2_robot_sdk to src folder of your own ros2_ws repo)
+install rust language support in your system (cargo build should work in terminal)
 ```
 git clone https://github.com/abizovnuralem/go2_ros2_sdk.git
 pip install -r requirements.txt
 sudo apt install ros-{ROS2_VER}-test-msgs
 sudo apt install ros-{ROS2_VER}-tf2-sensor-msgs
+source /opt/ros/<your_ros_ver>/setup.bash
 colcon build
 ```
 
