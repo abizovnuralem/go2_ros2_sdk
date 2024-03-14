@@ -26,7 +26,7 @@ namespace nav2_util
  * @class nav2_util::ServiceClient
  * @brief A simple wrapper on ROS2 services for invoke() and block-style calling
  */
-template<class ServiceT, typename NodeT = rclcpp::Node::SharedPtr>
+template<class ServiceT>
 class ServiceClient
 {
 public:
@@ -37,16 +37,16 @@ public:
   */
   explicit ServiceClient(
     const std::string & service_name,
-    const NodeT & provided_node)
+    const rclcpp::Node::SharedPtr & provided_node)
   : service_name_(service_name), node_(provided_node)
   {
     callback_group_ = node_->create_callback_group(
       rclcpp::CallbackGroupType::MutuallyExclusive,
       false);
     callback_group_executor_.add_callback_group(callback_group_, node_->get_node_base_interface());
-    client_ = node_->template create_client<ServiceT>(
+    client_ = node_->create_client<ServiceT>(
       service_name,
-      rclcpp::SystemDefaultsQoS(),
+      rclcpp::ServicesQoS().get_rmw_qos_profile(),
       callback_group_);
   }
 
@@ -147,7 +147,7 @@ public:
 
 protected:
   std::string service_name_;
-  NodeT node_;
+  rclcpp::Node::SharedPtr node_;
   rclcpp::CallbackGroup::SharedPtr callback_group_;
   rclcpp::executors::SingleThreadedExecutor callback_group_executor_;
   typename rclcpp::Client<ServiceT>::SharedPtr client_;

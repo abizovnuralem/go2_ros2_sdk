@@ -18,7 +18,6 @@
 #include <cmath>
 #include <memory>
 
-#include "tf2/convert.h"
 #include "nav2_util/robot_utils.hpp"
 #include "rclcpp/logger.hpp"
 
@@ -170,11 +169,6 @@ bool validateTwist(const geometry_msgs::msg::Twist & msg)
   }
 
   return true;
-}
-
-bool validateTwist(const geometry_msgs::msg::TwistStamped & msg)
-{
-  return validateTwist(msg.twist);
 }
 
 }  // end namespace nav2_util
