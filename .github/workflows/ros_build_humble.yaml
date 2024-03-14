@@ -1,0 +1,45 @@
+name: ROS2 Humble
+
+on:
+  pull_request:
+    branches:
+      - 'humble'
+  push:
+    branches:
+      - 'humble'
+
+jobs:
+  test_environment:
+    runs-on: [ubuntu-latest]
+    strategy:
+      fail-fast: false
+      matrix:
+        ros_distribution:
+          - humble 
+        include:
+          - docker_image: rostooling/setup-ros-docker:ubuntu-jammy-ros-humble-ros-base-latest
+            ros_distribution: humble
+            ros_version: 2          
+    container:
+      image: ${{ matrix.docker_image }}
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+      - name: Install Ceres dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libunwind-dev \
+            libgoogle-glog-dev \
+            libatlas-base-dev \
+            libsuitesparse-dev
+      - name: Install Ceres
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libceres-dev
+      - name: build and test
+        uses: ros-tooling/action-ros-ci@master
+        with:
+          target-ros2-distro: ${{ matrix.ros_distribution }}
+          vcs-repo-file-url: ""
+          skip-tests: true

@@ -72,6 +72,7 @@ Tested systems and ROS2 distro
 |systems|ROS2 distro|Build status
 |--|--|--|
 |Ubuntu 22.04|iron|![example workflow](https://github.com/abizovnuralem/go2_ros2_sdk/actions/workflows/ros_build.yaml/badge.svg)
+|Ubuntu 22.04|humble|![example workflow](https://github.com/abizovnuralem/go2_ros2_sdk/actions/workflows/ros_build_humble.yaml/badge.svg)
 
 A single workspace can contain as many packages as you want, each in their own folder. You can also have packages of different build types in one workspace (CMake, Python, etc.). You cannot have nested packages.
 
