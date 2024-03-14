@@ -1,4 +1,4 @@
-name: ROS2 CI
+name: ROS2 Iron
 
 on:
   pull_request:
@@ -15,12 +15,8 @@ jobs:
       fail-fast: false
       matrix:
         ros_distribution:
-          - humble
           - iron 
         include:
-          - docker_image: rostooling/setup-ros-docker:ubuntu-jammy-ros-humble-ros-base-latest
-            ros_distribution: humble
-            ros_version: 2
           - docker_image: rostooling/setup-ros-docker:ubuntu-jammy-ros-iron-ros-base-latest
             ros_distribution: iron
             ros_version: 2            
