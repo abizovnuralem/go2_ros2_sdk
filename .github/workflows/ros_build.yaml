@@ -31,7 +31,7 @@ jobs:
           - docker_image: rostooling/setup-ros-docker:ubuntu-jammy-ros-rolling-ros-base-latest
             ros_distribution: rolling
             ros_version: 2
-          - docker_image: rostooling/setup-ros-docker:ubuntu-jammy-ros-foxy-ros-base-latest
+          - docker_image: osrf/ros2:foxy-desktop
             ros_distribution: foxy
             ros_version: 2
     container:
