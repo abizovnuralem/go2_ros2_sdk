@@ -74,7 +74,7 @@ Tested systems and ROS2 distro
 |Ubuntu 22.04|humble|
 |Ubuntu 22.04|iron|
 
-clone this rep and build it (put go2_interfaces and go2_robot_sdk to src folder of your own ros2_ws repo)
+clone this rep and build it (put this repo to src folder of your own ros2_ws repo)
 
 install rust language support in your system https://www.rust-lang.org/tools/install 
 
