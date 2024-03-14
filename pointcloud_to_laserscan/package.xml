@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
     <name>pointcloud_to_laserscan</name>
-    <version>2.0.2</version>
+    <version>2.0.1</version>
     <description>Converts a 3D Point Cloud into a 2D laser scan. This is useful for making devices like the Kinect appear like a laser scanner for 2D-based algorithms (e.g. laser-based SLAM).</description>
 
     <maintainer email="paul@bovbel.com">Paul Bovbel</maintainer>
@@ -16,7 +16,7 @@
     <url type="bugtracker">https://github.com/ros-perception/perception_pcl/issues</url>
     <url type="repository">https://github.com/ros-perception/perception_pcl</url>
 
-    <buildtool_depend>ament_cmake</buildtool_depend>
+    <buildtool_depend>ament_cmake_auto</buildtool_depend>
 
     <depend>laser_geometry</depend>
     <depend>message_filters</depend>

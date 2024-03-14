@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>navigation2</name>
-  <version>1.2.0</version>
+  <version>1.1.13</version>
   <description>
     ROS2 Navigation Stack
   </description>
@@ -22,7 +22,6 @@
   <exec_depend>nav2_core</exec_depend>
   <exec_depend>nav2_costmap_2d</exec_depend>
   <exec_depend>nav2_dwb_controller</exec_depend>
-  <exec_depend>nav2_graceful_controller</exec_depend>
   <exec_depend>nav2_lifecycle_manager</exec_depend>
   <exec_depend>nav2_map_server</exec_depend>
   <exec_depend>nav2_msgs</exec_depend>

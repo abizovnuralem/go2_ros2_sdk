@@ -2,16 +2,6 @@
 Changelog for package pointcloud_to_laserscan
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-2.0.2 (2024-02-16)
-------------------
-* feat: use exported targets (`#69 <https://github.com/ros-perception/pointcloud_to_laserscan/issues/69>`_)
-* Stop using the deprecated tf2_sensor_msgs.h header. (`#73 <https://github.com/ros-perception/pointcloud_to_laserscan/issues/73>`_)
-* Fix default parameters in README (`#65 <https://github.com/ros-perception/pointcloud_to_laserscan/issues/65>`_)
-* fix: update static transfrom publisher arguments (`#70 <https://github.com/ros-perception/pointcloud_to_laserscan/issues/70>`_)
-* Cleanup CMakeLists.txt with ament_cmake_auto (`#57 <https://github.com/ros-perception/pointcloud_to_laserscan/issues/57>`_)
-* Add BSD-3 clause LICENSE
-* Contributors: Carlos Andrés Álvarez Restrepo, Chris Lalancette, Daisuke Nishimatsu, Michel Hidalgo
-
 2.0.1 (2021-10-19)
 ------------------
 * Replace deprecated launch api (`#56 <https://github.com/ros-perception/pointcloud_to_laserscan/issues/56>`_)
