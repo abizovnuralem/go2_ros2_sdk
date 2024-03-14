@@ -79,6 +79,7 @@ A single workspace can contain as many packages as you want, each in their own f
 Best practice is to have a src folder within your workspace, and to create your packages in there. This keeps the top level of the workspace “clean”.
 
 Your workspace should look like:
+
 ```
 workspace_folder/
     src/
