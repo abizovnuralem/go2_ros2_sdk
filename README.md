@@ -75,7 +75,14 @@ Tested systems and ROS2 distro
 |Ubuntu 22.04|iron|
 
 clone this rep and build it (put go2_interfaces and go2_robot_sdk to src folder of your own ros2_ws repo)
-install rust language support in your system (cargo build should work in terminal)
+
+install rust language support in your system https://www.rust-lang.org/tools/install 
+
+cargo should work in terminal
+```
+cargo --version
+```
+
 ```
 git clone https://github.com/abizovnuralem/go2_ros2_sdk.git
 pip install -r requirements.txt
