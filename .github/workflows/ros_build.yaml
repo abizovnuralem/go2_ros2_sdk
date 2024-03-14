@@ -18,7 +18,6 @@ jobs:
           - humble
           - iron 
           - rolling
-          - foxy
         include:
           # Humble Hawksbill (May 2022 - May 2027)
           - docker_image: rostooling/setup-ros-docker:ubuntu-jammy-ros-humble-ros-base-latest
@@ -30,9 +29,6 @@ jobs:
           # Rolling Ridley  (June 2020 - Present)
           - docker_image: rostooling/setup-ros-docker:ubuntu-jammy-ros-rolling-ros-base-latest
             ros_distribution: rolling
-            ros_version: 2
-          - docker_image: osrf/ros2:foxy-desktop
-            ros_distribution: foxy
             ros_version: 2
     container:
       image: ${{ matrix.docker_image }}

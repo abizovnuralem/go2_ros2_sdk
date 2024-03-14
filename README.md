@@ -76,7 +76,6 @@ Tested systems and ROS2 distro
 |Ubuntu 22.04|iron|![ROS2 CI](https://github.com/abizovnuralem/go2_ros2_sdk/actions/workflows/ros_build.yaml/badge.svg)
 |Ubuntu 22.04|humble|![ROS2 CI](https://github.com/abizovnuralem/go2_ros2_sdk/actions/workflows/ros_build.yaml/badge.svg)
 |Ubuntu 20.04|rolling|![ROS2 CI](https://github.com/abizovnuralem/go2_ros2_sdk/actions/workflows/ros_build.yaml/badge.svg)
-|Ubuntu 20.04|foxy|![ROS2 CI](https://github.com/abizovnuralem/go2_ros2_sdk/actions/workflows/ros_build.yaml/badge.svg)
 
 A single workspace can contain as many packages as you want, each in their own folder. You can also have packages of different build types in one workspace (CMake, Python, etc.). You cannot have nested packages.
 
@@ -124,8 +123,9 @@ cargo --version
 build it
 
 ```
-source /opt/ros/<your_ros_ver>/setup.bash
+source /opt/ros/$ROS_DISTRO/setup.bash
 cd ros2_ws
+rosdep install --from-paths src --ignore-src -r -y
 colcon build
 ```
 
