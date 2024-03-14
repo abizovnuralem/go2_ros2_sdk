@@ -1,5 +1,7 @@
 # Welcome to the Unitree Go2 ROS2 SDK Project!
 
+![ROS2 CI](https://github.com/abizovnuralem/go2_ros2_sdk/actions/workflows/ros_build.yaml/badge.svg)
+
 We are delighted to present you with our integration of the Unitree Go2 ROS2 SDK, leveraging the innovative go2-WebRTC interface, originally designed by the talented @tfoldi. You can explore and utilize his groundbreaking work at go2-webrtc on GitHub.
 
 This resourceful project is here to empower your Unitree GO2 AIR/PRO/EDU robots with ROS2 SDK capabilities. We're thrilled to offer an enhanced level of control and interaction, enabling you to take your robotics projects to new heights.
@@ -71,8 +73,10 @@ Real time Go2 Air/PRO ROS2 topics
 Tested systems and ROS2 distro
 |systems|ROS2 distro|Build status
 |--|--|--|
-|Ubuntu 22.04|iron|![example workflow](https://github.com/abizovnuralem/go2_ros2_sdk/actions/workflows/ros_build.yaml/badge.svg)
-|Ubuntu 22.04|humble|![example workflow](https://github.com/abizovnuralem/go2_ros2_sdk/actions/workflows/ros_build_humble.yaml/badge.svg)
+|Ubuntu 22.04|iron|![ROS2 CI](https://github.com/abizovnuralem/go2_ros2_sdk/actions/workflows/ros_build.yaml/badge.svg)
+|Ubuntu 22.04|humble|![ROS2 CI](https://github.com/abizovnuralem/go2_ros2_sdk/actions/workflows/ros_build.yaml/badge.svg)
+|Ubuntu 20.04|rolling|![ROS2 CI](https://github.com/abizovnuralem/go2_ros2_sdk/actions/workflows/ros_build.yaml/badge.svg)
+|Ubuntu 20.04|foxy|![ROS2 CI](https://github.com/abizovnuralem/go2_ros2_sdk/actions/workflows/ros_build.yaml/badge.svg)
 
 A single workspace can contain as many packages as you want, each in their own folder. You can also have packages of different build types in one workspace (CMake, Python, etc.). You cannot have nested packages.
 
