@@ -74,7 +74,41 @@ Tested systems and ROS2 distro
 |Ubuntu 22.04|humble|
 |Ubuntu 22.04|iron|
 
-clone this rep and build it (put this repo to src folder of your own ros2_ws repo)
+A single workspace can contain as many packages as you want, each in their own folder. You can also have packages of different build types in one workspace (CMake, Python, etc.). You cannot have nested packages.
+
+Best practice is to have a src folder within your workspace, and to create your packages in there. This keeps the top level of the workspace “clean”.
+
+Your workspace should look like:
+```
+workspace_folder/
+    src/
+      py_package_1/
+          package.xml
+          resource/py_package_1
+          setup.cfg
+          setup.py
+          py_package_1/
+
+      py_package_2/
+          package.xml
+          resource/py_package_2
+          setup.cfg
+          setup.py
+          py_package_2/
+```
+
+clone this repo to src folder of your own ros2_ws repo
+
+```
+git clone https://github.com/abizovnuralem/go2_ros2_sdk.git
+cd go2_ros2_sdk
+pip install -r requirements.txt
+sudo apt install ros-{ROS2_VER}-test-msgs
+sudo apt install ros-{ROS2_VER}-tf2-sensor-msgs
+cd ..
+mkdir -p ros2_ws/src
+copy all files inside go2_ros2_sdk folder to ros2_ws/src folder
+```
 
 install rust language support in your system https://www.rust-lang.org/tools/install 
 
@@ -83,24 +117,20 @@ cargo should work in terminal
 cargo --version
 ```
 
+build it
+
 ```
-git clone https://github.com/abizovnuralem/go2_ros2_sdk.git
-pip install -r requirements.txt
-sudo apt install ros-{ROS2_VER}-test-msgs
-sudo apt install ros-{ROS2_VER}-tf2-sensor-msgs
 source /opt/ros/<your_ros_ver>/setup.bash
+cd ros2_ws
 colcon build
 ```
 
-don't forget to setup your GO2-robot in Wifi-mode and get IP
-then
+## Usage
+don't forget to setup your GO2-robot in Wifi-mode and get IP then
 
 ```
 export ROBOT_IP="Your robot ip"
-```
-
-## Usage
-```
+cd ros2_ws
 source install/setup.bash
 ros2 launch go2_robot_sdk robot.launch.py
 ```
