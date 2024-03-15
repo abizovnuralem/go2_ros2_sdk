@@ -75,7 +75,7 @@ Tested systems and ROS2 distro
 |--|--|--|
 |Ubuntu 22.04|iron|![ROS2 CI](https://github.com/abizovnuralem/go2_ros2_sdk/actions/workflows/ros_build.yaml/badge.svg)
 |Ubuntu 22.04|humble|![ROS2 CI](https://github.com/abizovnuralem/go2_ros2_sdk/actions/workflows/ros_build.yaml/badge.svg)
-|Ubuntu 20.04|rolling|![ROS2 CI](https://github.com/abizovnuralem/go2_ros2_sdk/actions/workflows/ros_build.yaml/badge.svg)
+|Ubuntu 22.04|rolling|![ROS2 CI](https://github.com/abizovnuralem/go2_ros2_sdk/actions/workflows/ros_build.yaml/badge.svg)
 
 A single workspace can contain as many packages as you want, each in their own folder. You can also have packages of different build types in one workspace (CMake, Python, etc.). You cannot have nested packages.
 
@@ -100,11 +100,19 @@ workspace_folder/
           py_package_2/
 ```
 
-clone this repo to src folder of your own ros2_ws repo
 
-first, you need to manualy compile your opencv-python to support gstreamer (remove current opencv-python version)
+install gstreamer in ubuntu
 
 ```
+
+sudo apt-get install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-tools gstreamer1.0-x gstreamer1.0-alsa gstreamer1.0-gl gstreamer1.0-gtk3 gstreamer1.0-qt5 gstreamer1.0-pulseaudio
+
+
+```
+you need to manualy compile your opencv-python to support gstreamer (remove current opencv-python version)
+
+```
+
 
 pip uninstall opencv-python
 
@@ -135,15 +143,20 @@ cmake ../opencv-4.x
  
 # Build
 cmake --build .
+
+# Install
+sudo make install
+
 ```
 
+
+clone this repo to src folder of your own ros2_ws repo
 
 ```
 git clone https://github.com/abizovnuralem/go2_ros2_sdk.git
 cd go2_ros2_sdk
+sudo apt install python3-pip
 pip install -r requirements.txt
-sudo apt install ros-{ROS2_VER}-test-msgs
-sudo apt install ros-{ROS2_VER}-tf2-sensor-msgs
 cd ..
 mkdir -p ros2_ws/src
 copy all files inside go2_ros2_sdk folder to ros2_ws/src folder
@@ -157,6 +170,11 @@ cargo --version
 ```
 
 build it
+
+You need to install ros2 and rosdep package first.
+
+https://docs.ros.org/en/humble/Installation.html
+
 
 ```
 source /opt/ros/$ROS_DISTRO/setup.bash
