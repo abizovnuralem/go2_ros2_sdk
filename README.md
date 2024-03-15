@@ -201,6 +201,7 @@ Your encouragement fuels our passion and helps us develop our RoadMap further. W
 Together, let's push the boundaries of what's possible with the Unitree Go2 and ROS2!
 
 ## Thanks
+
 Special thanks to @legion1581, @tfoldi, @budavariam, @alex.lin and TheRoboVerse community!
 
 ## License
