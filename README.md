@@ -143,7 +143,7 @@ cargo should work in terminal
 cargo --version
 ```
 
-build it
+Build it
 
 You need to install ros2 and rosdep package first.
 
