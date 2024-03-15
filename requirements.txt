@@ -3,4 +3,3 @@ aiohttp
 paho-mqtt
 python-dotenv
 wasmtime
-opencv-python

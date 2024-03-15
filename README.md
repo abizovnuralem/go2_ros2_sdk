@@ -102,6 +102,26 @@ workspace_folder/
 
 clone this repo to src folder of your own ros2_ws repo
 
+first, you need to use special opencv-python version with support gstreamer (remove current opencv-python version)
+
+```
+
+pip uninstall opencv-python
+
+sudo apt-get install --quiet -y --no-install-recommends \
+  gstreamer1.0-gl \
+  gstreamer1.0-opencv \
+  gstreamer1.0-plugins-bad \
+  gstreamer1.0-plugins-good \
+  gstreamer1.0-plugins-ugly \
+  gstreamer1.0-tools \
+  libgstreamer-plugins-base1.0-dev \
+  libgstreamer1.0-0 \
+  libgstreamer1.0-dev \
+
+```
+
+
 ```
 git clone https://github.com/abizovnuralem/go2_ros2_sdk.git
 cd go2_ros2_sdk
