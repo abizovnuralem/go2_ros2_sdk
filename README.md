@@ -125,7 +125,7 @@ sudo apt-get install --quiet -y --no-install-recommends \
   gstreamer1.0-tools \
   libgstreamer-plugins-base1.0-dev \
   libgstreamer1.0-0 \
-  libgstreamer1.0-dev \
+  libgstreamer1.0-dev
 
 
 # Install minimal prerequisites (Ubuntu 18.04 as reference)
