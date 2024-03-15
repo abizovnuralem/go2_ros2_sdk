@@ -59,7 +59,6 @@ Go2 Air/PRO/EDU lidar point cloud:
 ## Topic
 Real time Go2 Air/PRO ROS2 topics
 
-
 <p align="left">
 <img width="731" height="383" src="https://github.com/abizovnuralem/go2_ros2_sdk/assets/33475993/4d36c2c0-bd21-4af7-925e-b8fd6db68e61" alt='Go2 topic list'>
 </p>
