@@ -117,15 +117,8 @@ you need to manualy compile your opencv-python to support gstreamer (remove curr
 pip uninstall opencv-python
 
 sudo apt-get install --quiet -y --no-install-recommends \
-  gstreamer1.0-gl \
   gstreamer1.0-opencv \
-  gstreamer1.0-plugins-bad \
-  gstreamer1.0-plugins-good \
-  gstreamer1.0-plugins-ugly \
-  gstreamer1.0-tools \
-  libgstreamer-plugins-base1.0-dev \
-  libgstreamer1.0-0 \
-  libgstreamer1.0-dev
+  libgstreamer1.0-0 
 
 
 # Install minimal prerequisites (Ubuntu 18.04 as reference)
