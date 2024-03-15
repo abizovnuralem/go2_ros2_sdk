@@ -112,8 +112,6 @@ sudo apt-get install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgst
 you need to manualy compile your opencv-python to support gstreamer (remove current opencv-python version)
 
 ```
-
-
 pip uninstall opencv-python
 
 sudo apt-get install --quiet -y --no-install-recommends \
@@ -141,7 +139,6 @@ cmake --build .
 sudo make install
 
 ```
-
 
 clone this repo to src folder of your own ros2_ws repo
 
