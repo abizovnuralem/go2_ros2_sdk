@@ -65,6 +65,12 @@ def generate_launch_description():
         'config',
         'mapper_params_online_async.yaml'
     )
+
+    nav2_config = os.path.join(
+        get_package_share_directory('go2_robot_sdk'),
+        'config',
+        'nav2_params.yaml'
+    )
     
     return LaunchDescription([
         
@@ -93,6 +99,16 @@ def generate_launch_description():
             ]),
             launch_arguments={
                 'params_file': slam_toolbox_config,
+                'use_sim_time': LaunchConfiguration('use_sim_time')
+            }.items(),
+        ),
+
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource([
+                os.path.join(get_package_share_directory('nav2_bringup'), 'launch', 'navigation_launch.py')
+            ]),
+            launch_arguments={
+                'params_file': nav2_config,
                 'use_sim_time': LaunchConfiguration('use_sim_time')
             }.items(),
         ),

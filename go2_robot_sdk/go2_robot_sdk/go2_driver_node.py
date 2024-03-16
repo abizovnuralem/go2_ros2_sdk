@@ -105,7 +105,8 @@ class RobotBaseNode(Node):
         x = msg.linear.x
         y = msg.linear.y
         z = msg.angular.z
-        self.robot_cmd_vel = gen_mov_command(x, y, z)
+        if x > 0.0 or y > 0.0 or z > 0.0:
+            self.robot_cmd_vel = gen_mov_command(x, y, z)
 
     def joy_cb(self, msg):
         self.joy_state = msg
