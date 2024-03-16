@@ -192,11 +192,10 @@ sudo snap install foxglove-studio
 2. In the "Open Connection" settings, choose "Foxglove WebSocket" and use the default configuration ws://localhost:8765, then press "Open".
 3. (Optional) You can also import a default layout view from the foxglove.json file located inside this repository.
 
-
 ## SLAM
 
 <p align="center">
-<img width="1280" height="640" src="https://github.com/abizovnuralem/go2_ros2_sdk/assets/33475993/30c6c38e-68ae-4edc-8c6b-861e47738054" alt='Slam'>
+<img width="1280" height="640" src="https://github.com/abizovnuralem/go2_ros2_sdk/assets/33475993/59f33599-a54c-4cff-8ac2-6859a05ccb8a" alt='Slam'>
 </p>
 
 ## Development
