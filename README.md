@@ -22,6 +22,14 @@ This resourceful project is here to empower your Unitree GO2 AIR/PRO/EDU robots 
 14. Object detection
 15. AutoPilot
 
+## Your feedback and support mean the world to us. 
+
+If you're as enthusiastic about this project as we are, please consider giving it a :star: star on our GitHub repository. 
+
+Your encouragement fuels our passion and helps us develop our RoadMap further. We welcome any help or suggestions you can offer!
+
+Together, let's push the boundaries of what's possible with the Unitree Go2 and ROS2!
+
 ## Exciting Features:
 
 :sparkles: Full ROS2 SDK support for your Unitree GO2
@@ -191,14 +199,6 @@ sudo snap install foxglove-studio
 ## Development
 
 To contribute or modify the project, refer to these resources for implementing additional features or improving the existing codebase. PRs are welcome!
-
-## Your feedback and support mean the world to us. 
-
-If you're as enthusiastic about this project as we are, please consider giving it a :star: star on our GitHub repository. 
-
-Your encouragement fuels our passion and helps us develop our RoadMap further. We welcome any help or suggestions you can offer!
-
-Together, let's push the boundaries of what's possible with the Unitree Go2 and ROS2!
 
 ## Thanks
 
