@@ -42,8 +42,6 @@ setup(
         (os.path.join('share', package_name, 'dae'), glob(os.path.join('dae', '*'))),
         (os.path.join('share', package_name, 'meshes'), glob(os.path.join('meshes', '*'))),
         (os.path.join('share', package_name, 'config'), glob(os.path.join('config', '*'))),
-        (os.path.join('share', package_name, 'external_lib/camera_webrtc_rc/src'), ['external_lib/camera_webrtc_rc/src/main.rs']),
-        (os.path.join('share', package_name, 'external_lib/camera_webrtc_rc'), ['external_lib/camera_webrtc_rc/Cargo.toml', 'external_lib/camera_webrtc_rc/Cargo.lock']),
         (os.path.join('share', package_name, 'external_lib'), ['external_lib/libvoxel.wasm']),
         
         
@@ -52,13 +50,12 @@ setup(
     zip_safe=True,
     maintainer='brimo',
     maintainer_email='abizov94@gmail.com',
-    description='TODO: Package description',
-    license='Apache-2.0',
+    description='Go2 ROS2 SDK for Unitree Go2 Edu/Pro/Air models',
+    license='BSD-3-Clause',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             'go2_driver_node = go2_robot_sdk.go2_driver_node:main',
-            'go2_camera_node = go2_robot_sdk.go2_camera_node:main',
         ],
     },
 )
