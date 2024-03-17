@@ -35,6 +35,10 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - name: rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: build and test
         uses: ros-tooling/action-ros-ci@master
         with:
