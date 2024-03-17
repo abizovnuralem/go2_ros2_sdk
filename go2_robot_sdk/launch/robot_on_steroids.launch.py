@@ -34,6 +34,9 @@ def generate_launch_description():
 
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
     no_rviz2 = LaunchConfiguration('no_rviz2', default='false')
+    robot_ip = LaunchConfiguration('robot_ip', default=os.getenv('ROBOT_IP'))
+    robot_token = LaunchConfiguration('robot_token', default=os.getenv('ROBOT_TOEKN',''))
+
 
     urdf_file_name = 'go2_on_steroids.urdf'
     urdf = os.path.join(
@@ -71,14 +74,15 @@ def generate_launch_description():
             executable='teleop_node',
             name='teleop_node',
             parameters=[joy_params]),
-
         Node(
             package='go2_robot_sdk',
-            executable='go2_driver_node'
+            executable='go2_driver_node',
+            parameters=[{'robot_ip': robot_ip, 'token': robot_token}],
             ),
         Node(
-            package='go2_robot_sdk',
-            executable='go2_camera_node'
+            package='ros2_go2_video',
+            executable='ros2_go2_video',
+            parameters=[{'robot_ip': robot_ip, 'robot_token': robot_token}],
             ),
         Node(
             package='rviz2',
