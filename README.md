@@ -108,7 +108,14 @@ pip install -r requirements.txt
 cd ..
 mkdir -p ros2_ws/src
 copy all files inside go2_ros2_sdk folder to ros2_ws/src folder
-``
+
+```
+install rust language support in your system https://www.rust-lang.org/tools/install 
+
+cargo should work in terminal
+```
+cargo --version
+```
 
 Build it
 
