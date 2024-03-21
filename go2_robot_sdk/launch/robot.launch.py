@@ -36,6 +36,10 @@ def generate_launch_description():
 
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
     no_rviz2 = LaunchConfiguration('no_rviz2', default='false')
+    robot_ip = LaunchConfiguration('robot_ip', default=os.getenv('ROBOT_IP'))
+    robot_token = LaunchConfiguration('robot_token', default=os.getenv('ROBOT_TOKEN',''))
+
+
 
     urdf_file_name = 'go2.urdf'
     urdf = os.path.join(
@@ -49,8 +53,14 @@ def generate_launch_description():
     foxglove_launch = os.path.join(
         get_package_share_directory('foxglove_bridge'), 
         'launch', 
-        'foxglove_bridge_launch.xml'  
+        'foxglove_bridge_launch.xml',
     )
+
+    if not os.path.exists(foxglove_launch):
+        foxglove_launch = os.path.join(
+            get_package_share_directory('foxglove_bridge'), 
+            'foxglove_bridge_launch.xml'
+        )
 
     joy_params = os.path.join(
         get_package_share_directory('go2_robot_sdk'), 
@@ -99,7 +109,7 @@ def generate_launch_description():
             ]),
             launch_arguments={
                 'params_file': slam_toolbox_config,
-                'use_sim_time': LaunchConfiguration('use_sim_time')
+                'use_sim_time': use_sim_time,
             }.items(),
         ),
 
@@ -109,7 +119,7 @@ def generate_launch_description():
             ]),
             launch_arguments={
                 'params_file': nav2_config,
-                'use_sim_time': LaunchConfiguration('use_sim_time')
+                'use_sim_time': use_sim_time,
             }.items(),
         ),
 
@@ -130,7 +140,7 @@ def generate_launch_description():
             executable='robot_state_publisher',
             name='robot_state_publisher',
             output='screen',
-            parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time'), 'robot_description': robot_desc}],
+            parameters=[{'use_sim_time': use_sim_time, 'robot_description': robot_desc}],
             arguments=[urdf]),
         Node(
             package='joy',
@@ -153,11 +163,13 @@ def generate_launch_description():
         ),
         Node(
             package='go2_robot_sdk',
-            executable='go2_driver_node'
+            executable='go2_driver_node',
+            parameters=[{'robot_ip': robot_ip, 'token': robot_token}],
             ),
         Node(
-            package='go2_robot_sdk',
-            executable='go2_camera_node'
+            package='ros2_go2_video',
+            executable='ros2_go2_video',
+            parameters=[{'robot_ip': robot_ip, 'robot_token': robot_token}],
             ),
         Node(
             package='rviz2',
