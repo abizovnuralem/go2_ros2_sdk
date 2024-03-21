@@ -97,53 +97,19 @@ workspace_folder/
           py_package_2/
 ```
 
-install gstreamer in ubuntu
-
-```
-sudo apt-get install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav gstreamer1.0-tools gstreamer1.0-x gstreamer1.0-alsa gstreamer1.0-gl gstreamer1.0-gtk3 gstreamer1.0-qt5 gstreamer1.0-pulseaudio libwebsocketpp-dev libasio-dev
-```
-you need to manualy compile your opencv-python to support gstreamer (remove current opencv-python version)
-
-```
-pip uninstall opencv-python
-
-sudo apt-get install --quiet -y --no-install-recommends \
-  gstreamer1.0-opencv \
-  libgstreamer1.0-0 
-
-# Install minimal prerequisites (Ubuntu 18.04 as reference)
-sudo apt update && sudo apt install -y cmake g++ wget unzip
- 
-# Download and unpack sources
-wget -O opencv.zip https://github.com/opencv/opencv/archive/4.x.zip
-unzip opencv.zip
- 
-# Create build directory
-mkdir -p build && cd build
- 
-# Configure
-cmake ../opencv-4.x
- 
-# Build
-cmake --build .
-
-# Install
-sudo make install
-
-```
-
 clone this repo to src folder of your own ros2_ws repo
 
 ```
-git clone https://github.com/abizovnuralem/go2_ros2_sdk.git
+git clone --recurse-submodules https://github.com/abizovnuralem/go2_ros2_sdk.git
+
 cd go2_ros2_sdk
 sudo apt install python3-pip
 pip install -r requirements.txt
 cd ..
 mkdir -p ros2_ws/src
 copy all files inside go2_ros2_sdk folder to ros2_ws/src folder
-```
 
+```
 install rust language support in your system https://www.rust-lang.org/tools/install 
 
 cargo should work in terminal
