@@ -103,7 +103,7 @@ clone this repo to src folder of your own ros2_ws repo
 git clone --recurse-submodules https://github.com/abizovnuralem/go2_ros2_sdk.git
 
 cd go2_ros2_sdk
-sudo apt install python3-pip
+sudo apt install python3-pip clang
 pip install -r requirements.txt
 cd ..
 mkdir -p ros2_ws/src
