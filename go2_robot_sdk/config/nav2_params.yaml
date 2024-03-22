@@ -35,7 +35,7 @@ amcl:
     update_min_d: 0.25
     z_hit: 0.5
     z_max: 0.05
-    z_rand: 0.5
+    z_rand: 0.1
     z_short: 0.05
     scan_topic: scan
 
@@ -122,7 +122,7 @@ controller_server:
     # Progress checker parameters
     progress_checker:
       plugin: "nav2_controller::SimpleProgressChecker"
-      required_movement_radius: 0.5
+      required_movement_radius: 0.1
       movement_time_allowance: 10.0
     # Goal checker parameters
     #precise_goal_checker:
@@ -141,11 +141,11 @@ controller_server:
       debug_trajectory_details: True
       min_vel_x: 0.0
       min_vel_y: 0.0
-      max_vel_x: 0.25 #0.15
+      max_vel_x: 3.0 #changed
       max_vel_y: 0.0
-      max_vel_theta: 0.5
+      max_vel_theta: 3.0 #changed
       min_speed_xy: 0.0
-      max_speed_xy: 0.26
+      max_speed_xy: 3.0 #changed
       min_speed_theta: 0.0
       # Add high threshold velocity for turtlebot 3 issue.
       # https://github.com/ROBOTIS-GIT/turtlebot3_simulations/issues/75
@@ -219,7 +219,7 @@ local_costmap:
         scan3d:
           topic: /point_cloud2
           max_obstacle_height: 10.0
-          min_obstacle_height: 0.2
+          min_obstacle_height: 0.1
           clearing: True
           marking: True
           data_type: "PointCloud2"
@@ -261,7 +261,7 @@ global_costmap:
         scan3d:
           topic: /point_cloud2
           max_obstacle_height: 5.0
-          min_obstacle_height: 0.2
+          min_obstacle_height: 0.1
           clearing: True
           marking: True
           data_type: "PointCloud2"
