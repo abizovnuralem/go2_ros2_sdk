@@ -111,6 +111,9 @@ mkdir -p ros2_ws/src
 
 copy all files inside go2_ros2_sdk folder to ros2_ws/src folder
 
+for ros2 and gazebo case it has some bug with package:// so to fix it:
+copy go2_robot_sdk/mesh and go2_robot_sdk/dae inside ~/.gazebo/models folder
+
 install rust language support in your system https://www.rust-lang.org/tools/install 
 
 cargo should work in terminal
