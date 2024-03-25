@@ -103,13 +103,14 @@ clone this repo to src folder of your own ros2_ws repo
 git clone --recurse-submodules https://github.com/abizovnuralem/go2_ros2_sdk.git
 
 cd go2_ros2_sdk
-sudo apt install python3-pip clang
+sudo apt install python3-pip clang ros-${ROS-DISTRO}-gazebo-ros-pkgs
 pip install -r requirements.txt
 cd ..
 mkdir -p ros2_ws/src
+```
+
 copy all files inside go2_ros2_sdk folder to ros2_ws/src folder
 
-```
 install rust language support in your system https://www.rust-lang.org/tools/install 
 
 cargo should work in terminal
