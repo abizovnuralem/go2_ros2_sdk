@@ -19,6 +19,16 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Go2Move.msg"
   "msg/Go2RpyCmd.msg"
   "msg/IMU.msg"
+  "msg/BmsCmd.msg"
+  "msg/BmsState.msg"
+  "msg/Cartesian.msg"
+  "msg/HighCmd.msg"
+  "msg/HighState.msg"
+  "msg/LED.msg"
+  "msg/LowCmd.msg"
+  "msg/LowState.msg"
+  "msg/MotorCmd.msg"
+  "msg/MotorState.msg"
 
   DEPENDENCIES geometry_msgs # Add packages that above messages depend on, in this case geometry_msgs for Sphere.msg
 )

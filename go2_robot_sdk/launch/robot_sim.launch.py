@@ -117,6 +117,6 @@ def generate_launch_description():
         Node(
         package="gazebo_ros",
         executable="spawn_entity.py",
-        arguments=["-topic", "robot_description", "-entity", "robot", "-x", "0.0", "-y", "0.0", "-z", "0.0"],
+        arguments=["-topic", "robot_description", "-entity", "robot", "-z", "0.6"],
         output="screen"),
     ])

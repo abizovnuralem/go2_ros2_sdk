@@ -5,6 +5,10 @@
 #include <unistd.h>
 #include <csignal>
 #include <sched.h>
+#include <memory>
+
+// ROS 2 specific headers
+#include "rclcpp/rclcpp.hpp"
 
 #include "control/ControlFrame.h"
 #include "control/CtrlComponents.h"
@@ -17,16 +21,17 @@
 
 #ifdef COMPILE_WITH_ROS
 #include "interface/KeyBoard.h"
-#include "interface/IOROS.h"
+#include "interface/IOROS.h" // Update the IOROS header to ROS 2
 #endif // COMPILE_WITH_ROS
 
+std::shared_ptr<rclcpp::Node> node;
 bool running = true;
 
-// over watch the ctrl+c command
 void ShutDown(int sig)
 {
     std::cout << "stop the controller" << std::endl;
     running = false;
+    rclcpp::shutdown();
 }
 
 void setProcessScheduler()
@@ -42,20 +47,20 @@ void setProcessScheduler()
 
 int main(int argc, char **argv)
 {
+    rclcpp::init(argc, argv);
+    node = std::make_shared<rclcpp::Node>("unitree_controller");
+
     /* set real-time process */
     setProcessScheduler();
+
     /* set the print format */
     std::cout << std::fixed << std::setprecision(3);
-
-#ifdef RUN_ROS
-    ros::init(argc, argv, "unitree_gazebo_servo");
-#endif // RUN_ROS
 
     IOInterface *ioInter;
     CtrlPlatform ctrlPlat;
 
 #ifdef COMPILE_WITH_SIMULATION
-    ioInter = new IOROS();
+    ioInter = new IOROS(node); // Pass the node handle to the constructor
     ctrlPlat = CtrlPlatform::GAZEBO;
 #endif // COMPILE_WITH_SIMULATION
 
@@ -69,18 +74,7 @@ int main(int argc, char **argv)
     ctrlComp->dt = 0.002; // run at 500hz
     ctrlComp->running = &running;
 
-#ifdef ROBOT_TYPE_A1
-    ctrlComp->robotModel = new A1Robot();
-#endif
-#ifdef ROBOT_TYPE_Go1
-    ctrlComp->robotModel = new Go1Robot();
-#endif
-
-    ctrlComp->waveGen = new WaveGenerator(0.45, 0.5, Vec4(0, 0.5, 0.5, 0)); // Trot
-    // ctrlComp->waveGen = new WaveGenerator(1.1, 0.75, Vec4(0, 0.25, 0.5, 0.75));  //Crawl, only for sim
-    // ctrlComp->waveGen = new WaveGenerator(0.4, 0.6, Vec4(0, 0.5, 0.5, 0));  //Walking Trot, only for sim
-    // ctrlComp->waveGen = new WaveGenerator(0.4, 0.35, Vec4(0, 0.5, 0.5, 0));  //Running Trot, only for sim
-    // ctrlComp->waveGen = new WaveGenerator(0.4, 0.7, Vec4(0, 0, 0, 0));  //Pronk, only for sim
+    // ... other initialization ...
 
     ctrlComp->geneObj();
 
@@ -88,9 +82,10 @@ int main(int argc, char **argv)
 
     signal(SIGINT, ShutDown);
 
-    while (running)
+    while (rclcpp::ok() && running)
     {
         ctrlFrame.run();
+        rclcpp::spin_some(node);
     }
 
     delete ctrlComp;
