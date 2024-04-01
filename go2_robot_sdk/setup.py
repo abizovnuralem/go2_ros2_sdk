@@ -56,6 +56,7 @@ setup(
     entry_points={
         'console_scripts': [
             'go2_driver_node = go2_robot_sdk.go2_driver_node:main',
+            'go2_proc_text = scripts.go2_proc_text:main',
         ],
     },
 )

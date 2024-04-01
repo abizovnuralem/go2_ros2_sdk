@@ -43,7 +43,7 @@ from geometry_msgs.msg import Twist, TransformStamped
 from go2_interfaces.msg import Go2State, IMU
 from sensor_msgs.msg import PointCloud2, PointField, JointState, Joy
 from sensor_msgs_py import point_cloud2
-from std_msgs.msg import Header
+from std_msgs.msg import Header, String
 
 
 logging.basicConfig(level=logging.WARN)
@@ -76,6 +76,7 @@ class RobotBaseNode(Node):
         self.robot_low_cmd = None
         self.robot_sport_state = None
         self.robot_lidar = None
+        self.robot_command_queue = []
         self.joy_state = Joy()
         
         self.cmd_vel_sub = self.create_subscription(
@@ -88,6 +89,12 @@ class RobotBaseNode(Node):
             Joy,
             'joy',
             self.joy_cb,
+            qos_profile)
+        
+        self.command_sub = self.create_subscription(
+            String,
+            'command',
+            self.command_cb,
             qos_profile)
         
         self.timer = self.create_timer(0.1, self.timer_callback)
@@ -111,11 +118,22 @@ class RobotBaseNode(Node):
     def joy_cb(self, msg):
         self.joy_state = msg
 
+    def command_cb(self, msg):
+        self.get_logger().info(f"Received command: {msg.data}")
+        self.robot_command_queue.append(msg)
+
     def joy_cmd(self):
         if self.robot_cmd_vel:
             self.get_logger().info("Attack!")
             self.conn.data_channel.send(self.robot_cmd_vel)
             self.robot_cmd_vel = None
+
+        if len(self.robot_command_queue) > 0:
+            msg = self.robot_command_queue[0]
+            robot_cmd = gen_command(ROBOT_CMD[msg.data])
+            self._logger.info(f"Sending command: {ROBOT_CMD[msg.data]}")
+            self.conn.data_channel.send(robot_cmd)
+            self.robot_command_queue.pop(0)
 
         if self.joy_state.buttons and self.joy_state.buttons[1]:
             self.get_logger().info("Stand down")
@@ -126,6 +144,8 @@ class RobotBaseNode(Node):
             self.get_logger().info("Stand up")
             stand_up_cmd = gen_command(ROBOT_CMD["StandUp"])
             self.conn.data_channel.send(stand_up_cmd)
+            balance_stand_cmd = gen_command(ROBOT_CMD['BalanceStand'])
+            self.conn.data_channel.send(balance_stand_cmd)
 
     def on_validated(self):
         for topic in RTC_TOPIC.values():

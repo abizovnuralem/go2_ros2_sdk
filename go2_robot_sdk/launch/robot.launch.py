@@ -167,6 +167,10 @@ def generate_launch_description():
             parameters=[{'robot_ip': robot_ip, 'token': robot_token}],
             ),
         Node(
+            package='go2_robot_sdk',
+            executable='go2_proc_text',
+            ),
+        Node(
             package='ros2_go2_video',
             executable='ros2_go2_video',
             parameters=[{'robot_ip': robot_ip, 'robot_token': robot_token}],
