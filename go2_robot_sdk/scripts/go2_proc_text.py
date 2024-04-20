@@ -53,7 +53,6 @@ class Go2ProcText(Node):
 
     def update(self):
         line = self.tmp_file.readline()
-        self.get_logger().info('I heard: "%s"' % line)
 
         # TODO: replace this with chatGPT to process natural language
         # and translate it into a queue of robot actions
