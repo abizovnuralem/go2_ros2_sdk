@@ -191,6 +191,7 @@ class RobotBaseNode(Node):
                 )
             point_cloud = PointCloud2()
             point_cloud.header = Header(frame_id="odom")
+            point_cloud.header.stamp = self.get_clock().now().to_msg()
             fields = [
                 PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
                 PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
