@@ -44,6 +44,7 @@ from go2_interfaces.msg import Go2State, IMU
 from sensor_msgs.msg import PointCloud2, PointField, JointState, Joy
 from sensor_msgs_py import point_cloud2
 from std_msgs.msg import Header, String
+from nav_msgs.msg import Odometry
 
 
 logging.basicConfig(level=logging.WARN)
@@ -67,6 +68,7 @@ class RobotBaseNode(Node):
         self.joint_pub = self.create_publisher(JointState, 'joint_states', qos_profile)
         self.go2_state_pub = self.create_publisher(Go2State, 'go2_states', qos_profile)
         self.go2_lidar_pub = self.create_publisher(PointCloud2, 'point_cloud2', qos_profile)
+        self.go2_odometry_pub = self.create_publisher(Odometry, 'odom', qos_profile)
         
         self.imu_pub = self.create_publisher(IMU, 'imu', qos_profile)
         self.broadcaster = TransformBroadcaster(self, qos=qos_profile)
@@ -102,6 +104,7 @@ class RobotBaseNode(Node):
 
     def timer_callback(self):
         self.publish_odom()
+        self.publish_odom_topic()
         self.publish_robot_state()
         self.publish_joint_state()
 
@@ -179,6 +182,21 @@ class RobotBaseNode(Node):
             odom_trans.transform.rotation.z = self.robot_odom['data']['pose']['orientation']['z']
             odom_trans.transform.rotation.w = self.robot_odom['data']['pose']['orientation']['w']
             self.broadcaster.sendTransform(odom_trans)
+    
+    def publish_odom_topic(self):
+        if self.robot_odom:
+            odom_msg = Odometry()
+            odom_msg.header.stamp = self.get_clock().now().to_msg()
+            odom_msg.header.frame_id = 'odom'
+            odom_msg.child_frame_id = 'base_link'
+            odom_msg.pose.pose.position.x = self.robot_odom['data']['pose']['position']['x']
+            odom_msg.pose.pose.position.y = self.robot_odom['data']['pose']['position']['y']
+            odom_msg.pose.pose.position.z = self.robot_odom['data']['pose']['position']['z'] + 0.07
+            odom_msg.pose.pose.orientation.x = self.robot_odom['data']['pose']['orientation']['x']
+            odom_msg.pose.pose.orientation.y = self.robot_odom['data']['pose']['orientation']['y']
+            odom_msg.pose.pose.orientation.z = self.robot_odom['data']['pose']['orientation']['z']
+            odom_msg.pose.pose.orientation.w = self.robot_odom['data']['pose']['orientation']['w']
+            self.go2_odometry_pub.publish(odom_msg)
 
     def publish_lidar(self):
         if self.robot_lidar:
