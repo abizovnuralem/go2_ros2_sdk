@@ -40,6 +40,7 @@ setup(
         (os.path.join('share', package_name, 'launch'), glob(os.path.join('launch', '*launch.[pxy][yma]*'))),
         (os.path.join('share', package_name, 'urdf'), glob(os.path.join('urdf', '*'))),
         (os.path.join('share', package_name, 'dae'), glob(os.path.join('dae', '*'))),
+        (os.path.join('share', package_name, 'calibration'), glob(os.path.join('calibration', '*'))),
         (os.path.join('share', package_name, 'meshes'), glob(os.path.join('meshes', '*'))),
         (os.path.join('share', package_name, 'config'), glob(os.path.join('config', '*'))),
         (os.path.join('share', package_name, 'external_lib'), ['external_lib/libvoxel.wasm']),
