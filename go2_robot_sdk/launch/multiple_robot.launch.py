@@ -34,6 +34,8 @@ def generate_launch_description():
 
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
     no_rviz2 = LaunchConfiguration('no_rviz2', default='false')
+    robot_token = os.getenv('ROBOT_TOKEN','')
+    robot_token_lst = robot_token.replace(" ", "").split(",")
     robot_ip = os.getenv('ROBOT_IP', '')
     robot_ip_lst = robot_ip.replace(" ", "").split(",")
 
@@ -61,7 +63,15 @@ def generate_launch_description():
                 output='screen',
                 namespace=f"robot{i}",
                 parameters=[{'use_sim_time': use_sim_time, 'robot_description': robot_desc_modified_lst[i]}],
-                arguments=[urdf]),
+                arguments=[urdf]
+            ),
+        )
+        urdf_launch_nodes.append(
+            Node(
+                package='ros2_go2_video',
+                executable='ros2_go2_video',
+                parameters=[{'robot_ip': robot_ip_lst[i], 'robot_token': robot_token}],
+            ),
         )
 
     print(len(urdf_launch_nodes))
@@ -119,11 +129,7 @@ def generate_launch_description():
         #     executable='go2_driver_node',
         #     parameters=[{'robot_ip': robot_ip, 'token': robot_token}],
         #     ),
-        # Node(
-        #     package='ros2_go2_video',
-        #     executable='ros2_go2_video',
-        #     parameters=[{'robot_ip': robot_ip, 'robot_token': robot_token}],
-        #     ),
+            
         Node(
             package='rviz2',
             namespace='',
