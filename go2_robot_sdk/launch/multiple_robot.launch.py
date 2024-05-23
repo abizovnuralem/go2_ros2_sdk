@@ -87,49 +87,13 @@ def generate_launch_description():
     
     return LaunchDescription([
         
-        # DeclareLaunchArgument(
-        #     'use_sim_time',
-        #     default_value='false',
-        #     description='Use simulation (Gazebo) clock if true'),
-
-        # DeclareLaunchArgument(
-        #     'config_topics',
-        #     default_value=default_config_topics,
-        #     description='Default topics config file'),
-
-        # DeclareLaunchArgument(
-        #     'cmd_vel_out',
-        #     default_value='cmd_vel',
-        #     description='cmd vel output topic'),
-
         *urdf_launch_nodes,
 
-
-        # Node(
-        #     package='joy',
-        #     executable='joy_node',
-        #     parameters=[joy_params]),
-        # Node(
-        #     package='teleop_twist_joy',
-        #     executable='teleop_node',
-        #     name='teleop_node',
-        #     parameters=[joy_params],
-        #     remappings=[('/cmd_vel', '/cmd_vel_joy')],),
-        # Node(
-        #     package='twist_mux',
-        #     executable='twist_mux',
-        #     output='screen',
-        #     remappings={('/cmd_vel_out', LaunchConfiguration('cmd_vel_out'))},
-        #     parameters=[
-        #         {'use_sim_time': LaunchConfiguration('use_sim_time')},
-        #         LaunchConfiguration('config_topics')]
-        # ),
-        # Node(
-        #     package='go2_robot_sdk',
-        #     executable='go2_driver_node',
-        #     parameters=[{'robot_ip': robot_ip, 'token': robot_token}],
-        #     ),
-            
+        Node(
+            package='go2_robot_sdk',
+            executable='go2_driver_node',
+            parameters=[{'robot_ip': robot_ip, 'token': robot_token}],
+            ),
         Node(
             package='rviz2',
             namespace='',
