@@ -314,7 +314,6 @@ class RobotBaseNode(Node):
                 self.imu_pub[i].publish(imu) 
 
     async def run(self, conn, robot_num):
-        robot_num = str(robot_num)
         self.conn.append(conn)
         await self.conn[robot_num].connect()
         self.get_logger().info(f"Connected to {os.environ.get('ROBOT_IP')}")
