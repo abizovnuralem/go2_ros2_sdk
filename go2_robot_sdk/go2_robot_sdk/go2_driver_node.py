@@ -66,7 +66,7 @@ class RobotBaseNode(Node):
 
         self.get_logger().info(f"Received ip list: {self.robot_ip_lst}")
 
-        self.conn = {}
+        self.conn = []
         qos_profile = QoSProfile(depth=10)
 
         self.joint_pub = []
@@ -315,7 +315,7 @@ class RobotBaseNode(Node):
 
     async def run(self, conn, robot_num):
         robot_num = str(robot_num)
-        self.conn[robot_num] = conn
+        self.conn.append(conn)
         await self.conn[robot_num].connect()
         self.get_logger().info(f"Connected to {os.environ.get('ROBOT_IP')}")
 
@@ -354,7 +354,7 @@ async def start_node():
         
         conn = Go2Connection(
         robot_ip=base_node.robot_ip_lst[i],
-        robot_num=str(i),
+        robot_num=i,
         token=base_node.token,
         on_validated=base_node.on_validated,
         on_message=base_node.on_data_channel_message,
