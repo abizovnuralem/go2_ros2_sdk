@@ -151,6 +151,7 @@ class RobotBaseNode(Node):
             self.conn[robot_num].data_channel.send(balance_stand_cmd)
 
     def on_validated(self, robot_num):
+        self.get_logger().info("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         for topic in RTC_TOPIC.values():
             self.conn[robot_num].data_channel.send(json.dumps({"type": "subscribe", "topic": topic}))
         
