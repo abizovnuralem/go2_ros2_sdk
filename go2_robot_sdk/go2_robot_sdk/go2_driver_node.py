@@ -313,7 +313,7 @@ class RobotBaseNode(Node):
         self.get_logger().info(f"Connected to {os.environ.get('ROBOT_IP')}")
 
         while True:
-            self.joy_cmd()
+            self.joy_cmd(robot_num)
             await asyncio.sleep(0.1)
 
 
