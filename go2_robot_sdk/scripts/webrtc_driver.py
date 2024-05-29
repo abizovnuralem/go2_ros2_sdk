@@ -49,6 +49,7 @@ class Go2Connection():
     def __init__(
             self, 
             robot_ip=None,
+            robot_num=0,
             token="",
             on_validated=None, 
             on_message=None, 
@@ -59,6 +60,7 @@ class Go2Connection():
 
         self.pc = RTCPeerConnection()
         self.robot_ip = robot_ip
+        self.robot_num = robot_num
         self.token = token
         self.robot_validation = "PENDING"
         self.on_validated = on_validated
@@ -117,7 +119,7 @@ class Go2Connection():
                 msgobj = Go2Connection.deal_array_buffer(msg)
 
             if self.on_message:
-                self.on_message(msg, msgobj)
+                self.on_message(msg, msgobj, self.robot_num)
 
         except json.JSONDecodeError:
             pass
@@ -145,7 +147,7 @@ class Go2Connection():
         if message.get("data") == "Validation Ok.":
             self.validation_result = "SUCCESS"
             if self.on_validated:
-                self.on_validated()
+                self.on_validated(self.robot_num)
         else:
             self.publish(
                 "",
