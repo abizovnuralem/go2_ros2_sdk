@@ -133,11 +133,10 @@ class RobotBaseNode(Node):
         self.joy_state = msg
 
     def joy_cmd(self, robot_num):
-        robot_num = str(robot_num)
-        if robot_num in self.robot_cmd_vel and robot_num in self.conn and self.robot_cmd_vel[robot_num]:
+        if str(robot_num) in self.robot_cmd_vel and robot_num in self.conn and self.robot_cmd_vel[str(robot_num)]:
             self.get_logger().info("Attack!")
-            self.conn[robot_num].data_channel.send(self.robot_cmd_vel[robot_num])
-            self.robot_cmd_vel[robot_num] = None
+            self.conn[robot_num].data_channel.send(self.robot_cmd_vel[str(robot_num)])
+            self.robot_cmd_vel[str(robot_num)] = None
 
         if robot_num in self.conn and self.joy_state.buttons and self.joy_state.buttons[1]:
             self.get_logger().info("Stand down")
@@ -152,7 +151,6 @@ class RobotBaseNode(Node):
             self.conn[robot_num].data_channel.send(balance_stand_cmd)
 
     def on_validated(self, robot_num):
-        robot_num = str(robot_num)
         for topic in RTC_TOPIC.values():
             self.conn[robot_num].data_channel.send(json.dumps({"type": "subscribe", "topic": topic}))
         
