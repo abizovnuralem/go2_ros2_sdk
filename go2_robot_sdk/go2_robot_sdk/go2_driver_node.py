@@ -155,6 +155,7 @@ class RobotBaseNode(Node):
             self.conn[robot_num].data_channel.send(json.dumps({"type": "subscribe", "topic": topic}))
         
     def on_data_channel_message(self, _, msg, robot_num):
+        self.get_logger().info(str(msg))
         robot_num = str(robot_num)
         
         if robot_num in self.robot_lidar and msg.get('topic') == RTC_TOPIC["ULIDAR_ARRAY"]:
