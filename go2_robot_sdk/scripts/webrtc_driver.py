@@ -49,7 +49,7 @@ class Go2Connection():
     def __init__(
             self, 
             robot_ip=None,
-            robot_num=0,
+            robot_num="0",
             token="",
             on_validated=None, 
             on_message=None, 
@@ -60,7 +60,7 @@ class Go2Connection():
 
         self.pc = RTCPeerConnection()
         self.robot_ip = robot_ip
-        self.robot_num = robot_num
+        self.robot_num = str(robot_num)
         self.token = token
         self.robot_validation = "PENDING"
         self.on_validated = on_validated
