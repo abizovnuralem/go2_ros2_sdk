@@ -124,16 +124,22 @@ class RobotBaseNode(Node):
         y = msg.linear.y
         z = msg.angular.z
         if x > 0.0 or y > 0.0 or z > 0.0:
-            self.robot_cmd_vel[robot_num] = gen_mov_command(x, y, z)
+            try:
+                self.robot_cmd_vel[robot_num] = gen_mov_command(x, y, z)
+            except:
+                pass
 
     def joy_cb(self, msg):
         self.joy_state = msg
 
     def joy_cmd(self, robot_num):
-        if self.robot_cmd_vel[robot_num]:
-            self.get_logger().info("Attack!")
-            self.conn[robot_num].data_channel.send(self.robot_cmd_vel[robot_num])
-            self.robot_cmd_vel[robot_num] = None
+        try:
+            if self.robot_cmd_vel[robot_num]:
+                self.get_logger().info("Attack!")
+                self.conn[robot_num].data_channel.send(self.robot_cmd_vel[robot_num])
+                self.robot_cmd_vel[robot_num] = None
+        except:
+            pass
 
         if self.joy_state.buttons and self.joy_state.buttons[1]:
             self.get_logger().info("Stand down")
