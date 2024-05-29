@@ -85,11 +85,11 @@ class RobotBaseNode(Node):
         
         self.broadcaster = TransformBroadcaster(self, qos=qos_profile)
 
-        self.robot_cmd_vel = []
-        self.robot_odom = []
-        self.robot_low_cmd = []
-        self.robot_sport_state = []
-        self.robot_lidar = []
+        self.robot_cmd_vel = {}
+        self.robot_odom = {}
+        self.robot_low_cmd = {}
+        self.robot_sport_state = {}
+        self.robot_lidar = {}
         
         self.joy_state = Joy()
 
@@ -120,26 +120,24 @@ class RobotBaseNode(Node):
         self.publish_lidar()
 
     def cmd_vel_cb(self, msg, robot_num):
+        robot_num = str(robot_num)
         x = msg.linear.x
         y = msg.linear.y
         z = msg.angular.z
         if x > 0.0 or y > 0.0 or z > 0.0:
-            try:
+            if robot_num in self.robot_cmd_vel:
                 self.robot_cmd_vel[robot_num] = gen_mov_command(x, y, z)
-            except:
-                pass
+
 
     def joy_cb(self, msg):
         self.joy_state = msg
 
     def joy_cmd(self, robot_num):
-        try:
-            if self.robot_cmd_vel[robot_num]:
-                self.get_logger().info("Attack!")
-                self.conn[robot_num].data_channel.send(self.robot_cmd_vel[robot_num])
-                self.robot_cmd_vel[robot_num] = None
-        except:
-            pass
+        robot_num = str(robot_num)
+        if self.robot_cmd_vel[robot_num]:
+            self.get_logger().info("Attack!")
+            self.conn[robot_num].data_channel.send(self.robot_cmd_vel[robot_num])
+            self.robot_cmd_vel[robot_num] = None
 
         if self.joy_state.buttons and self.joy_state.buttons[1]:
             self.get_logger().info("Stand down")
@@ -154,21 +152,23 @@ class RobotBaseNode(Node):
             self.conn[robot_num].data_channel.send(balance_stand_cmd)
 
     def on_validated(self, robot_num):
+        robot_num = str(robot_num)
         for topic in RTC_TOPIC.values():
             self.conn[robot_num].data_channel.send(json.dumps({"type": "subscribe", "topic": topic}))
         
     def on_data_channel_message(self, _, msg, robot_num):
+        robot_num = str(robot_num)
         
-        if msg.get('topic') == RTC_TOPIC["ULIDAR_ARRAY"]:
+        if robot_num in self.robot_lidar and msg.get('topic') == RTC_TOPIC["ULIDAR_ARRAY"]:
             self.robot_lidar[robot_num] = msg
 
-        if msg.get('topic') == RTC_TOPIC['ROBOTODOM']:
+        if robot_num in self.robot_odom and msg.get('topic') == RTC_TOPIC['ROBOTODOM']:
             self.robot_odom[robot_num] = msg
 
-        if msg.get('topic') == RTC_TOPIC['LF_SPORT_MOD_STATE']:
+        if robot_num in self.robot_sport_state and msg.get('topic') == RTC_TOPIC['LF_SPORT_MOD_STATE']:
             self.robot_sport_state[robot_num] = msg
             
-        if msg.get('topic') == RTC_TOPIC['LOW_STATE']:
+        if robot_num in self.robot_low_cmd and msg.get('topic') == RTC_TOPIC['LOW_STATE']:
             self.robot_low_cmd[robot_num] = msg
 
     def publish_odom(self):
@@ -314,6 +314,7 @@ class RobotBaseNode(Node):
                 self.imu_pub[i].publish(imu) 
 
     async def run(self, conn, robot_num):
+        robot_num = str(robot_num)
         self.conn.append(conn)
         await self.conn[robot_num].connect()
         self.get_logger().info(f"Connected to {os.environ.get('ROBOT_IP')}")
