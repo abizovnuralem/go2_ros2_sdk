@@ -123,6 +123,7 @@ class Go2Connection():
             pass
 
     async def connect(self):
+        logger.info("Failed!!!!!!!!!!!!!!!!!!!!!!!!!!!!! to get answer from server")
         offer = await self.generate_offer()
         async with aiohttp.ClientSession() as session:
             url = f"http://{self.robot_ip}:8081/offer"
