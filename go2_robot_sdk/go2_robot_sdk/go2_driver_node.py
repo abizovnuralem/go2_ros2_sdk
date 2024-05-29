@@ -170,8 +170,8 @@ class RobotBaseNode(Node):
             self.robot_low_cmd[robot_num] = msg
 
     def publish_odom(self):
-        self.get_logger().info(self.robot_odom)
-        self.get_logger().info(len(self.robot_odom))
+        self.get_logger().info(str(self.robot_odom))
+        self.get_logger().info(str(len(self.robot_odom)))
         for i in range(len(self.robot_odom)):
             if self.robot_odom[i]:
                 odom_trans = TransformStamped()
