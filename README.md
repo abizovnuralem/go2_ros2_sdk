@@ -162,6 +162,50 @@ sudo snap install foxglove-studio
 <img width="1280" height="640" src="https://github.com/abizovnuralem/go2_ros2_sdk/assets/33475993/59f33599-a54c-4cff-8ac2-6859a05ccb8a" alt='Slam'>
 </p>
 
+## WSL 2
+
+If you are running ROS2 under WSL2 - you may need to configure Joystick\Gamepad to navigate the robot.
+
+1. Step 1 - share device with WSL2
+
+    Follow steps here https://learn.microsoft.com/en-us/windows/wsl/connect-usb to share your console device with WSL2
+
+2. Step 2 - Enable WSL2 joystick drivers
+
+    WSL2 does not come by default with the modules for joysticks. Build WSL2 Kernel with the joystick drivers. Follow the instructions here: https://github.com/dorssel/usbipd-win/wiki/WSL-support#building-your-own-wsl-2-kernel-with-additional-drivers  If you're comfortable with WSl2, skip the export steps and start at `Install prerequisites.`
+
+    Before buiding, edit `.config` file and update the CONFIG_ values listed in this GitHub issue: https://github.com/microsoft/WSL/issues/7747#issuecomment-1328217406
+
+2. Step 3 - Give permissions to /dev/input devices
+
+    Once you've finished the guides under Step 3 - you should be able to see your joystick device under /dev/input
+
+    ```bash
+    ls /dev/input
+    by-id  by-path  event0  js0
+    ```
+
+    By default /dev/input/event* will only have root permissions, so joy node won't have access to the joystick
+
+    Create a file `/etc/udev/rules.d/99-userdev-input.rules` with the following content:
+    `KERNEL=="event*", SUBSYSTEM=="input", RUN+="/usr/bin/setfacl -m u:YOURUSERNAME:rw $env{DEVNAME}"`
+
+    Run as root: `udevadm control --reload-rules && udevadm trigger`
+
+    https://askubuntu.com/a/609678
+
+3. Step 3 - verify that joy node is able to see the device properly. 
+
+    Run `ros2 run joy joy_enumerate_devices`
+
+    You should see something like this
+
+    ```
+    ID : GUID                             : GamePad : Mapped : Joystick Device Name
+    -------------------------------------------------------------------------------
+    0 : 030000005e040000120b000007050000 :    true :  false : Xbox Series X Controller
+    ```
+
 ## Development
 
 To contribute or modify the project, refer to these resources for implementing additional features or improving the existing codebase. PRs are welcome!
