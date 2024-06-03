@@ -3,7 +3,7 @@
 <package format="3">
   <name>go2_robot_sdk</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>Unitree Go2 ROS2 Unofficial SDK</description>
   <maintainer email="abizov94@gmail.com">brimo</maintainer>
   <license>Apache-2.0</license>
 
