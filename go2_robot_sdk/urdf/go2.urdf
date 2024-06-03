@@ -134,7 +134,7 @@ Stephen Brawner (brawner@gmail.com)
     </collision>
   </link>
   <joint name="front_camera_joint" type="fixed">
-    <origin xyz="0.045 0 0.03" rpy="-1.5708 0 -1.5708" />
+    <origin xyz="0.045 0 0.03" rpy="1.5708 0 1.5708" />
     <parent link="Head_upper" />
     <child link="front_camera" />
     <axis xyz="0 0 0" />

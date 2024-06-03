@@ -27,6 +27,7 @@ import logging
 import os
 import threading
 import asyncio
+import yaml
 
 from scripts.go2_constants import ROBOT_CMD, RTC_TOPIC
 from scripts.go2_func import gen_command, gen_mov_command
@@ -39,9 +40,10 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile
 
 from tf2_ros import TransformBroadcaster, TransformStamped
+from ament_index_python.packages import get_package_share_directory
 from geometry_msgs.msg import Twist, TransformStamped
 from go2_interfaces.msg import Go2State, IMU
-from sensor_msgs.msg import PointCloud2, PointField, JointState, Joy
+from sensor_msgs.msg import PointCloud2, PointField, JointState, Joy, CameraInfo
 from sensor_msgs_py import point_cloud2
 from std_msgs.msg import Header, String
 from nav_msgs.msg import Odometry
@@ -69,6 +71,7 @@ class RobotBaseNode(Node):
         self.go2_state_pub = self.create_publisher(Go2State, 'go2_states', qos_profile)
         self.go2_lidar_pub = self.create_publisher(PointCloud2, 'point_cloud2', qos_profile)
         self.go2_odometry_pub = self.create_publisher(Odometry, 'odom', qos_profile)
+        self.go2_camera_info_pub = self.create_publisher(CameraInfo, 'camera_info', qos_profile)
         
         self.imu_pub = self.create_publisher(IMU, 'imu', qos_profile)
         self.broadcaster = TransformBroadcaster(self, qos=qos_profile)
@@ -101,6 +104,24 @@ class RobotBaseNode(Node):
         
         self.timer = self.create_timer(0.1, self.timer_callback)
         self.timer_lidar = self.create_timer(0.5, self.timer_callback_lidar)
+
+        self.publish_camera_info()
+
+    def publish_camera_info(self):
+        with open(get_package_share_directory('go2_robot_sdk') + '/calibration/front_camera.yaml', 'r') as stream:
+            calib_data = yaml.safe_load(stream)
+
+        camera_info = CameraInfo()
+        camera_info.header.frame_id = 'front_camera'
+        camera_info.width = calib_data['image_width']
+        camera_info.height = calib_data['image_height']
+        camera_info.k = calib_data['camera_matrix']['data']
+        camera_info.d = calib_data['distortion_coefficients']['data']
+        camera_info.r = calib_data['rectification_matrix']['data']
+        camera_info.p = calib_data['projection_matrix']['data']
+        camera_info.distortion_model = calib_data['distortion_model']
+        
+        self.go2_camera_info_pub.publish(camera_info)
 
     def timer_callback(self):
         self.publish_odom()
