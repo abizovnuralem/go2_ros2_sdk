@@ -25,7 +25,6 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.conditions import UnlessCondition
-from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
@@ -35,7 +34,6 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
     no_rviz2 = LaunchConfiguration('no_rviz2', default='false')
     robot_token = os.getenv('ROBOT_TOKEN','')
-    robot_token_lst = robot_token.replace(" ", "").split(",")
     robot_ip = os.getenv('ROBOT_IP', '')
     robot_ip_lst = robot_ip.replace(" ", "").split(",")
 
@@ -74,21 +72,9 @@ def generate_launch_description():
             ),
         )
 
-    print(len(urdf_launch_nodes))
-
-    joy_params = os.path.join(
-        get_package_share_directory('go2_robot_sdk'), 
-        'config', 'joystick.yaml'
-        )
-    
-    default_config_topics = os.path.join(get_package_share_directory('go2_robot_sdk'),
-                                         'config', 'twist_mux.yaml')
-    
-    
     return LaunchDescription([
         
         *urdf_launch_nodes,
-
         Node(
             package='go2_robot_sdk',
             executable='go2_driver_node',
