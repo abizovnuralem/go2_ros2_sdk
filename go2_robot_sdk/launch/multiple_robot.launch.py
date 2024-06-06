@@ -38,7 +38,7 @@ def generate_launch_description():
     robot_ip = os.getenv('ROBOT_IP', '')
     robot_ip_lst = robot_ip.replace(" ", "").split(",")
 
-    conn_type= os.getenv('CONN_TYPE', 'webrtc')
+    conn_type = "webrtc"
 
     urdf_file_name = 'multi_go2.urdf'
     urdf = os.path.join(
