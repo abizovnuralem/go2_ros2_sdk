@@ -25,7 +25,6 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.conditions import UnlessCondition
-from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
@@ -34,11 +33,14 @@ def generate_launch_description():
 
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
     no_rviz2 = LaunchConfiguration('no_rviz2', default='false')
-    robot_ip = LaunchConfiguration('robot_ip', default=os.getenv('ROBOT_IP'))
-    robot_token = LaunchConfiguration('robot_token', default=os.getenv('ROBOT_TOEKN',''))
+    
+    robot_token = os.getenv('ROBOT_TOKEN','')
+    robot_ip = os.getenv('ROBOT_IP', '')
+    robot_ip_lst = robot_ip.replace(" ", "").split(",")
 
+    conn_type= "cyclonedds"
 
-    urdf_file_name = 'go2_on_steroids.urdf'
+    urdf_file_name = 'multi_go2.urdf'
     urdf = os.path.join(
         get_package_share_directory('go2_robot_sdk'),
         "urdf",
@@ -46,43 +48,40 @@ def generate_launch_description():
     with open(urdf, 'r') as infp:
         robot_desc = infp.read()
 
+    robot_desc_modified_lst = []
 
-    joy_params = os.path.join(
-        get_package_share_directory('go2_robot_sdk'), 
-        'config', 'joystick.yaml'
+    for i in range(len(robot_ip_lst)):
+        robot_desc_modified_lst.append(robot_desc.format(robot_num=f"robot{i}"))
+
+    urdf_launch_nodes = []
+
+    for i in range(len(robot_ip_lst)):
+        urdf_launch_nodes.append(
+            Node(
+                package='robot_state_publisher',
+                executable='robot_state_publisher',
+                name='robot_state_publisher',
+                output='screen',
+                namespace=f"robot{i}",
+                parameters=[{'use_sim_time': use_sim_time, 'robot_description': robot_desc_modified_lst[i]}],
+                arguments=[urdf]
+            ),
         )
-    
+        urdf_launch_nodes.append(
+            Node(
+                package='ros2_go2_video',
+                executable='ros2_go2_video',
+                parameters=[{'robot_ip': robot_ip_lst[i], 'robot_token': robot_token}],
+            ),
+        )
+
     return LaunchDescription([
         
-        DeclareLaunchArgument(
-            'use_sim_time',
-            default_value='false',
-            description='Use simulation (Gazebo) clock if true'),
-        Node(
-            package='robot_state_publisher',
-            executable='robot_state_publisher',
-            name='robot_state_publisher',
-            output='screen',
-            parameters=[{'use_sim_time': use_sim_time, 'robot_description': robot_desc}],
-            arguments=[urdf]),
-        Node(
-            package='joy',
-            executable='joy_node',
-            parameters=[joy_params]),
-        Node(
-            package='teleop_twist_joy',
-            executable='teleop_node',
-            name='teleop_node',
-            parameters=[joy_params]),
+        *urdf_launch_nodes,
         Node(
             package='go2_robot_sdk',
             executable='go2_driver_node',
-            parameters=[{'robot_ip': robot_ip, 'token': robot_token}],
-            ),
-        Node(
-            package='ros2_go2_video',
-            executable='ros2_go2_video',
-            parameters=[{'robot_ip': robot_ip, 'robot_token': robot_token}],
+            parameters=[{'robot_ip': robot_ip, 'token': robot_token, "conn_type": conn_type}],
             ),
         Node(
             package='rviz2',
@@ -90,6 +89,6 @@ def generate_launch_description():
             executable='rviz2',
             condition=UnlessCondition(no_rviz2),
             name='rviz2',
-            arguments=['-d' + os.path.join(get_package_share_directory('go2_robot_sdk'), 'config', 'conf.rviz')]
+            arguments=['-d' + os.path.join(get_package_share_directory('go2_robot_sdk'), 'config', 'cyclonedds_config.rviz')]
         )
     ])

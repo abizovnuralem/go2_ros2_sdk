@@ -39,11 +39,12 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile
 
 from tf2_ros import TransformBroadcaster, TransformStamped
-from geometry_msgs.msg import Twist, TransformStamped
+from geometry_msgs.msg import Twist, TransformStamped, PoseStamped
 from go2_interfaces.msg import Go2State, IMU
+from unitree_go.msg import LowState
 from sensor_msgs.msg import PointCloud2, PointField, JointState, Joy
 from sensor_msgs_py import point_cloud2
-from std_msgs.msg import Header, String
+from std_msgs.msg import Header
 from nav_msgs.msg import Odometry
 
 
@@ -59,12 +60,15 @@ class RobotBaseNode(Node):
 
         self.declare_parameter('robot_ip', os.getenv('ROBOT_IP', os.getenv('GO2_IP')))
         self.declare_parameter('token', os.getenv('ROBOT_TOKEN', os.getenv('GO2_TOKEN','')))
+        self.declare_parameter('conn_type', os.getenv('CONN_TYPE', os.getenv('CONN_TYPE','')))
         
         self.robot_ip = self.get_parameter('robot_ip').get_parameter_value().string_value
         self.token = self.get_parameter('token').get_parameter_value().string_value
         self.robot_ip_lst = self.robot_ip.replace(" ", "").split(",")
+        self.conn_type = self.get_parameter('conn_type').get_parameter_value().string_value
 
         self.get_logger().info(f"Received ip list: {self.robot_ip_lst}")
+        self.get_logger().info(f"Connection type is {self.conn_type}")
 
         self.conn = {}
         qos_profile = QoSProfile(depth=10)
@@ -82,7 +86,6 @@ class RobotBaseNode(Node):
             self.go2_odometry_pub.append(self.create_publisher(Odometry, f'robot{i}/odom', qos_profile))
             self.imu_pub.append(self.create_publisher(IMU, f'robot{i}/imu', qos_profile))
         
-        
         self.broadcaster = TransformBroadcaster(self, qos=qos_profile)
 
         self.robot_cmd_vel = {}
@@ -92,7 +95,6 @@ class RobotBaseNode(Node):
         self.robot_lidar = {}
         
         self.joy_state = Joy()
-
 
         for i in range(len(self.robot_ip_lst)):
             self.create_subscription(
@@ -107,17 +109,39 @@ class RobotBaseNode(Node):
             self.joy_cb,
             qos_profile)
         
+        # Support for CycloneDDS (EDU version via ethernet)
+        if self.conn_type == 'cyclonedds':
+            self.create_subscription(
+                LowState,
+                'lowstate',
+                self.publish_joint_state_cyclonedds,
+                qos_profile)
+            
+            self.create_subscription(
+                PoseStamped,
+                '/utlidar/robot_pose',
+                self.publish_body_poss_cyclonedds,
+                qos_profile)
+            
+            self.create_subscription(
+                PointCloud2,
+                '/utlidar/cloud',
+                self.publish_lidar_cyclonedds,
+                qos_profile)
+
         self.timer = self.create_timer(0.1, self.timer_callback)
         self.timer_lidar = self.create_timer(0.5, self.timer_callback_lidar)
 
     def timer_callback(self):
-        self.publish_odom()
-        self.publish_odom_topic()
-        self.publish_robot_state()
-        self.publish_joint_state()
+        if self.conn_type == 'webrtc':
+            self.publish_odom_webrtc()
+            self.publish_odom_topic_webrtc()
+            self.publish_robot_state_webrtc()
+            self.publish_joint_state_webrtc()
 
     def timer_callback_lidar(self):
-        self.publish_lidar()
+        if self.conn_type == 'webrtc':
+            self.publish_lidar_webrtc()
 
     def cmd_vel_cb(self, msg, robot_num):
         x = msg.linear.x
@@ -127,9 +151,44 @@ class RobotBaseNode(Node):
             if robot_num in self.robot_cmd_vel:
                 self.robot_cmd_vel[robot_num] = gen_mov_command(x, y, z)
 
-
     def joy_cb(self, msg):
         self.joy_state = msg
+
+    def publish_body_poss_cyclonedds(self, msg):
+        odom_trans = TransformStamped()
+        odom_trans.header.stamp = self.get_clock().now().to_msg()
+        odom_trans.header.frame_id = 'odom'
+        odom_trans.child_frame_id = f"robot0/base_link"
+        odom_trans.transform.translation.x = msg.pose.position.x
+        odom_trans.transform.translation.y = msg.pose.position.y
+        odom_trans.transform.translation.z = msg.pose.position.z + 0.07
+        odom_trans.transform.rotation.x = msg.pose.orientation.x
+        odom_trans.transform.rotation.y = msg.pose.orientation.y
+        odom_trans.transform.rotation.z = msg.pose.orientation.z
+        odom_trans.transform.rotation.w = msg.pose.orientation.w
+        self.broadcaster.sendTransform(odom_trans)
+        
+    def publish_joint_state_cyclonedds(self, msg):
+        joint_state = JointState()
+        joint_state.header.stamp = self.get_clock().now().to_msg()
+        joint_state.name = [
+                    f'robot0/FL_hip_joint', f'robot0/FL_thigh_joint', f'robot0/FL_calf_joint',
+                    f'robot0/FR_hip_joint', f'robot0/FR_thigh_joint', f'robot0/FR_calf_joint',
+                    f'robot0/RL_hip_joint', f'robot0/RL_thigh_joint', f'robot0/RL_calf_joint',
+                    f'robot0/RR_hip_joint', f'robot0/RR_thigh_joint', f'robot0/RR_calf_joint',
+                    ]
+        joint_state.position = [
+            msg.motor_state[3].q, msg.motor_state[4].q, msg.motor_state[5].q,
+            msg.motor_state[0].q, msg.motor_state[1].q, msg.motor_state[2].q,
+            msg.motor_state[9].q, msg.motor_state[10].q, msg.motor_state[11].q,
+            msg.motor_state[6].q, msg.motor_state[7].q, msg.motor_state[8].q,
+            ]
+        self.joint_pub[0].publish(joint_state) 
+
+    def publish_lidar_cyclonedds(self, msg):
+        msg.header = Header(frame_id="robot0/radar")
+        msg.header.stamp = self.get_clock().now().to_msg()
+        self.go2_lidar_pub[0].publish(msg)
 
     def joy_cmd(self, robot_num):
         if robot_num in self.conn and robot_num in self.robot_cmd_vel:
@@ -168,7 +227,7 @@ class RobotBaseNode(Node):
         if msg.get('topic') == RTC_TOPIC['LOW_STATE']:
             self.robot_low_cmd[robot_num] = msg
 
-    def publish_odom(self):
+    def publish_odom_webrtc(self):
         for i in range(len(self.robot_odom)):
             if self.robot_odom[str(i)]:
                 odom_trans = TransformStamped()
@@ -184,7 +243,7 @@ class RobotBaseNode(Node):
                 odom_trans.transform.rotation.w = self.robot_odom[str(i)]['data']['pose']['orientation']['w']
                 self.broadcaster.sendTransform(odom_trans)
     
-    def publish_odom_topic(self):
+    def publish_odom_topic_webrtc(self):
         for i in range(len(self.robot_odom)):
             if self.robot_odom[str(i)]:
                 odom_msg = Odometry()
@@ -200,7 +259,7 @@ class RobotBaseNode(Node):
                 odom_msg.pose.pose.orientation.w = self.robot_odom[str(i)]['data']['pose']['orientation']['w']
                 self.go2_odometry_pub[i].publish(odom_msg)
 
-    def publish_lidar(self):
+    def publish_lidar_webrtc(self):
         for i in range(len(self.robot_lidar)):
             if self.robot_lidar[str(i)]:
                 points = update_meshes_for_cloud2(
@@ -222,7 +281,7 @@ class RobotBaseNode(Node):
                 point_cloud = point_cloud2.create_cloud(point_cloud.header, fields, points)
                 self.go2_lidar_pub[i].publish(point_cloud)
 
-    def publish_joint_state(self): 
+    def publish_joint_state_webrtc(self): 
         for i in range(len(self.robot_sport_state)):
             if self.robot_sport_state[str(i)]:
                 joint_state = JointState()
@@ -286,7 +345,9 @@ class RobotBaseNode(Node):
                     ]
                 self.joint_pub[i].publish(joint_state) 
 
-    def publish_robot_state(self):
+
+
+    def publish_robot_state_webrtc(self):
         for i in range(len(self.robot_sport_state)):
             if self.robot_sport_state[str(i)]:
                 go2_state = Go2State()
@@ -312,7 +373,9 @@ class RobotBaseNode(Node):
 
     async def run(self, conn, robot_num):
         self.conn[robot_num] = conn
-        await self.conn[robot_num].connect()
+
+        if self.conn_type == 'webrtc':
+            await self.conn[robot_num].connect()
 
         while True:
             self.joy_cmd(robot_num)
@@ -342,7 +405,7 @@ async def spin(node: Node):
 
 async def start_node():
     base_node = RobotBaseNode()
-    spin_task = asyncio.get_event_loop().create_task(spin(base_node))
+    spin_task = asyncio.get_event_loop().create_task(spin(base_node))    
     sleep_task_lst = []
     
     for i in range(len(base_node.robot_ip_lst)):

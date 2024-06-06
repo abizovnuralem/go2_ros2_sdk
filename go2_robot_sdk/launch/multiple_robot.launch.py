@@ -33,9 +33,12 @@ def generate_launch_description():
 
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
     no_rviz2 = LaunchConfiguration('no_rviz2', default='false')
+    
     robot_token = os.getenv('ROBOT_TOKEN','')
     robot_ip = os.getenv('ROBOT_IP', '')
     robot_ip_lst = robot_ip.replace(" ", "").split(",")
+
+    conn_type= os.getenv('CONN_TYPE', 'webrtc')
 
     urdf_file_name = 'multi_go2.urdf'
     urdf = os.path.join(
@@ -78,7 +81,7 @@ def generate_launch_description():
         Node(
             package='go2_robot_sdk',
             executable='go2_driver_node',
-            parameters=[{'robot_ip': robot_ip, 'token': robot_token}],
+            parameters=[{'robot_ip': robot_ip, 'token': robot_token, "conn_type": conn_type}],
             ),
         Node(
             package='rviz2',
