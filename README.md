@@ -182,8 +182,6 @@ If you are running ROS2 under WSL2 - you may need to configure Joystick\Gamepad 
 
     Run `ros2 run joy joy_enumerate_devices`
 
-    You should see something like this
-
     ```
     ID : GUID                             : GamePad : Mapped : Joystick Device Name
     -------------------------------------------------------------------------------
