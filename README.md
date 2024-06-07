@@ -25,17 +25,17 @@ This repo will empower your Unitree GO2 AIR/PRO/EDU robots with ROS2 capabilitie
 9. Camera stream :white_check_mark:
 10. Foxglove bridge :white_check_mark:
 11. Laser Scan :white_check_mark:
-12. SLAM (slam_toolbox) (in the current version is not working, need to fix params)
-13. Navigation (nav2) (in the current version is not working, need to fix params)
-14. Multi robot support :white_check_mark:
-15. WebRTC and CycloneDDS support :white_check_mark:
-16. Creating a PointCloud map and store it
+12. Multi robot support :white_check_mark:
+13. WebRTC and CycloneDDS support :white_check_mark:
+14. Creating a PointCloud map and store it
+15. SLAM (slam_toolbox) (in the current version is not working, need to fix params)
+16. Navigation (nav2) (in the current version is not working, need to fix params)
 17. Object detection
 18. AutoPilot
 
 ## Your feedback and support mean the world to us. 
 
-If you're as enthusiastic about this project as we are, please consider giving it a :star: star. 
+If you're as enthusiastic about this project as we are, please consider giving it a :star: star!!!
 
 Your encouragement fuels our passion and helps us develop our RoadMap further. We welcome any help or suggestions you can offer!
 
@@ -63,13 +63,6 @@ Together, let's push the boundaries of what's possible with the Unitree Go2 and 
 </p>
 
 
-## SLAM and Camera stream
-
-<p align="center">
-<img width="1280" height="640" src="https://github.com/abizovnuralem/go2_ros2_sdk/assets/33475993/59f33599-a54c-4cff-8ac2-6859a05ccb8a" alt='Slam'>
-</p>
-
-
 ## System requirements
 Tested systems and ROS2 distro
 |systems|ROS2 distro|Build status
@@ -81,18 +74,15 @@ Tested systems and ROS2 distro
 
 ## Installation
 
-clone this repo to src folder of your own ros2_ws folder
-
 ```
+mkdir -p ros2_ws/src
+cd ros2_ws/src
 git clone --recurse-submodules https://github.com/abizovnuralem/go2_ros2_sdk.git
-
-cd go2_ros2_sdk
+cp -a go2_ros2_sdk/. .
+rm -r -f go2_ros2_sdk
 sudo apt install python3-pip clang
 pip install -r requirements.txt
 cd ..
-mkdir -p ros2_ws/src
-copy all files from go2_ros2_sdk folder to ros2_ws/src folder
-
 ```
 install rust language support in your system https://www.rust-lang.org/tools/install 
 
@@ -110,18 +100,17 @@ https://docs.ros.org/en/humble/Installation.html
 
 ```
 source /opt/ros/$ROS_DISTRO/setup.bash
-cd ros2_ws
 rosdep install --from-paths src --ignore-src -r -y
 colcon build
 ```
 
 ## Usage
-don't forget to setup your GO2-robot in Wifi-mode and get IP then
+don't forget to setup your GO2-robot in Wifi-mode and get IP (You can use mobile app to get it, go to Device -> Data -> Automatic Machine Inspection, (look for STA Network: wlan0))
 
 ```
-cd ros2_ws
 source install/setup.bash
 export ROBOT_IP="robot_ip"
+export CONN_TYPE="webrtc"
 ros2 launch go2_robot_sdk robot.launch.py
 ```
 
@@ -136,7 +125,9 @@ export ROBOT_IP="robot_ip_1, robot_ip_2, robot_ip_N"
 ## Switching between webrtc connection (Wi-Fi) to CycloneDDS (Ethernet)
 ```
 export CONN_TYPE="webrtc"
+```
 or
+```
 export CONN_TYPE="cyclonedds"
 ```
 
@@ -198,8 +189,6 @@ If you are running ROS2 under WSL2 - you may need to configure Joystick\Gamepad 
     -------------------------------------------------------------------------------
     0 : 030000005e040000120b000007050000 :    true :  false : Xbox Series X Controller
     ```
-
-
 
 ## Thanks
 

@@ -191,22 +191,24 @@ class RobotBaseNode(Node):
         self.go2_lidar_pub[0].publish(msg)
 
     def joy_cmd(self, robot_num):
-        if robot_num in self.conn and robot_num in self.robot_cmd_vel and self.robot_cmd_vel[robot_num] != None:
-            self.get_logger().info("Move")
-            self.conn[robot_num].data_channel.send(self.robot_cmd_vel[robot_num])
-            self.robot_cmd_vel[robot_num] = None
 
-        if robot_num in self.conn and self.joy_state.buttons and self.joy_state.buttons[1]:
-            self.get_logger().info("Stand down")
-            stand_down_cmd = gen_command(ROBOT_CMD["StandDown"])
-            self.conn[robot_num].data_channel.send(stand_down_cmd)
+        if self.conn_type == 'webrtc':
+            if robot_num in self.conn and robot_num in self.robot_cmd_vel and self.robot_cmd_vel[robot_num] != None:
+                self.get_logger().info("Move")
+                self.conn[robot_num].data_channel.send(self.robot_cmd_vel[robot_num])
+                self.robot_cmd_vel[robot_num] = None
 
-        if robot_num in self.conn and self.joy_state.buttons and self.joy_state.buttons[0]:
-            self.get_logger().info("Stand up")
-            stand_up_cmd = gen_command(ROBOT_CMD["StandUp"])
-            self.conn[robot_num].data_channel.send(stand_up_cmd)
-            move_cmd = gen_command(ROBOT_CMD['BalanceStand'])
-            self.conn[robot_num].data_channel.send(move_cmd)
+            if robot_num in self.conn and self.joy_state.buttons and self.joy_state.buttons[1]:
+                self.get_logger().info("Stand down")
+                stand_down_cmd = gen_command(ROBOT_CMD["StandDown"])
+                self.conn[robot_num].data_channel.send(stand_down_cmd)
+
+            if robot_num in self.conn and self.joy_state.buttons and self.joy_state.buttons[0]:
+                self.get_logger().info("Stand up")
+                stand_up_cmd = gen_command(ROBOT_CMD["StandUp"])
+                self.conn[robot_num].data_channel.send(stand_up_cmd)
+                move_cmd = gen_command(ROBOT_CMD['BalanceStand'])
+                self.conn[robot_num].data_channel.send(move_cmd)
 
     def on_validated(self, robot_num):
         if robot_num in self.conn:
