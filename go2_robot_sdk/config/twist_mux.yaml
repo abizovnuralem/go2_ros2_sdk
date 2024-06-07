@@ -1,11 +1,25 @@
-twist_mux:
+/teleop_node:
+  ros__parameters:
+    axis_linear:
+      x: 1
+      y: 0
+      z: 3
+    scale_linear:
+      x: 0.4
+      y: 0.4
+      z: 1.0
+
+    require_enable_button: false
+
+
+/twist_mux:
   ros__parameters:
     topics:
+      joy:
+        topic   : cmd_vel_joy
+        timeout : 0.5
+        priority: 10
       navigation:
         topic   : cmd_vel
         timeout : 0.5
-        priority: 10
-      joystick:
-        topic   : cmd_vel_joy
-        timeout : 0.5
-        priority: 90
+        priority: 15

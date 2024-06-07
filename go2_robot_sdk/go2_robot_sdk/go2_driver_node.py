@@ -99,8 +99,8 @@ class RobotBaseNode(Node):
         for i in range(len(self.robot_ip_lst)):
             self.create_subscription(
                 Twist,
-                f'robot{i}/cmd_vel',
-                lambda msg: self.cmd_vel_cb(msg, i),
+                f'robot{str(i)}/cmd_vel',
+                lambda msg: self.cmd_vel_cb(msg, str(i)),
                 qos_profile)
                     
         self.create_subscription(
@@ -146,10 +146,10 @@ class RobotBaseNode(Node):
     def cmd_vel_cb(self, msg, robot_num):
         x = msg.linear.x
         y = msg.linear.y
-        z = msg.angular.z
-        if x > 0.0 or y > 0.0 or z > 0.0:
-            if robot_num in self.robot_cmd_vel:
-                self.robot_cmd_vel[robot_num] = gen_mov_command(x, y, z)
+        z = msg.linear.z
+
+        if x > 0.0 or y > 0.0 or z != 0.0:
+            self.robot_cmd_vel[robot_num] = gen_mov_command(round(x, 2), round(y, 2), round(z, 2))
 
     def joy_cb(self, msg):
         self.joy_state = msg
@@ -191,8 +191,8 @@ class RobotBaseNode(Node):
         self.go2_lidar_pub[0].publish(msg)
 
     def joy_cmd(self, robot_num):
-        if robot_num in self.conn and robot_num in self.robot_cmd_vel:
-            self.get_logger().info("Attack!")
+        if robot_num in self.conn and robot_num in self.robot_cmd_vel and self.robot_cmd_vel[robot_num] != None:
+            self.get_logger().info("Move")
             self.conn[robot_num].data_channel.send(self.robot_cmd_vel[robot_num])
             self.robot_cmd_vel[robot_num] = None
 
@@ -205,8 +205,8 @@ class RobotBaseNode(Node):
             self.get_logger().info("Stand up")
             stand_up_cmd = gen_command(ROBOT_CMD["StandUp"])
             self.conn[robot_num].data_channel.send(stand_up_cmd)
-            balance_stand_cmd = gen_command(ROBOT_CMD['BalanceStand'])
-            self.conn[robot_num].data_channel.send(balance_stand_cmd)
+            move_cmd = gen_command(ROBOT_CMD['BalanceStand'])
+            self.conn[robot_num].data_channel.send(move_cmd)
 
     def on_validated(self, robot_num):
         if robot_num in self.conn:
