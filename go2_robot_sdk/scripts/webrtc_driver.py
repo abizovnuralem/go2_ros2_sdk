@@ -24,6 +24,7 @@
 # WEB_RTC_COMM WAS ORIGINALY FORKED from https://github.com/tfoldi/go2-webrtc/tree/master
 # Big thanks for your passion! @tfoldi (Földi Tamás)
 
+import time
 import aiohttp
 import base64
 import hashlib
@@ -49,16 +50,16 @@ class Go2Connection():
     def __init__(
             self, 
             robot_ip=None,
+            robot_num=None,
             token="",
             on_validated=None, 
             on_message=None, 
             on_open=None
             ):
         
-        
-
         self.pc = RTCPeerConnection()
         self.robot_ip = robot_ip
+        self.robot_num = str(robot_num)
         self.token = token
         self.robot_validation = "PENDING"
         self.on_validated = on_validated
@@ -117,35 +118,41 @@ class Go2Connection():
                 msgobj = Go2Connection.deal_array_buffer(msg)
 
             if self.on_message:
-                self.on_message(msg, msgobj)
+                self.on_message(msg, msgobj, self.robot_num)
 
         except json.JSONDecodeError:
             pass
-
+    
     async def connect(self):
         offer = await self.generate_offer()
-        async with aiohttp.ClientSession() as session:
-            url = f"http://{self.robot_ip}:8081/offer"
-            headers = {"content-type": "application/json"}
-            data = {
-                "sdp": offer,
-                "id": "STA_localNetwork",
-                "type": "offer",
-                "token": self.token,
-            }
-            async with session.post(url, json=data, headers=headers) as resp:
-                if resp.status == 200:
-                    answer_data = await resp.json()
-                    answer_sdp = answer_data.get("sdp")
-                    await self.set_answer(answer_sdp)
-                else:
-                    logger.info("Failed to get answer from server")
+        url = f"http://{self.robot_ip}:8081/offer"
+        headers = {"Content-Type": "application/json"}
+        data = {
+            "sdp": offer,
+            "id": "STA_localNetwork",
+            "type": "offer",
+            "token": "",
+        }
+
+        connected = False
+        while not connected:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json=data, headers=headers) as resp:
+                    if resp.status == 200:
+                        answer_data = await resp.json()
+                        answer_sdp = answer_data.get("sdp")
+                        await self.set_answer(answer_sdp)
+                        connected = True
+                    else:
+                        logger.info(f"Failed to get answer from server: Reason: {resp}")
+                        logger.info("Try to reconnect...")
+                        time.sleep(1)
 
     def validate_robot_conn(self, message):
         if message.get("data") == "Validation Ok.":
             self.validation_result = "SUCCESS"
             if self.on_validated:
-                self.on_validated()
+                self.on_validated(self.robot_num)
         else:
             self.publish(
                 "",
