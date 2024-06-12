@@ -40,6 +40,9 @@ def generate_launch_description():
     robot_ip = os.getenv('ROBOT_IP', '')
     robot_ip_lst = robot_ip.replace(" ", "").split(",")
 
+    map_name = os.getenv('MAP_NAME','3d_map')
+    save_map = os.getenv('MAP_SAVE', "true")
+
     conn_type = os.getenv('CONN_TYPE', 'webrtc')
 
     rviz_config = "multi_robot_conf.rviz"
@@ -131,6 +134,11 @@ def generate_launch_description():
             package='go2_robot_sdk',
             executable='go2_driver_node',
             parameters=[{'robot_ip': robot_ip, 'token': robot_token, "conn_type": conn_type}],
+        ),
+        Node(
+            package='go2_robot_sdk',
+            executable='lidar_to_pointcloud',
+            parameters=[{'robot_ip_lst': robot_ip_lst, 'map_name': map_name, 'map_save': save_map}],
         ),
         Node(
             package='rviz2',
