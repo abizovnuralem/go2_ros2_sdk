@@ -27,7 +27,7 @@ This repo will empower your Unitree GO2 AIR/PRO/EDU robots with ROS2 capabilitie
 11. Laser Scan :white_check_mark:
 12. Multi robot support :white_check_mark:
 13. WebRTC and CycloneDDS support :white_check_mark:
-14. Creating a PointCloud map and store it
+14. Creating a PointCloud map and store it :white_check_mark:
 15. SLAM (slam_toolbox) (in the current version is not working, need to fix params)
 16. Navigation (nav2) (in the current version is not working, need to fix params)
 17. Object detection
@@ -113,6 +113,19 @@ export ROBOT_IP="robot_ip"
 export CONN_TYPE="webrtc"
 ros2 launch go2_robot_sdk robot.launch.py
 ```
+
+
+## 3D map generation
+
+In order to save the map, you need to:
+
+```
+export MAP_SAVE=True
+export MAP_NAME="3d_map"
+
+```
+
+Every 10 seconds, the map will be save to root folder of the repo.
 
 
 ## Multi robot support 
