@@ -87,7 +87,9 @@ pip install -r requirements.txt
 cd ..
 ```
 
-NOTE: check for any error messages, and do not disregard them. If `pip install` does not complete cleanly, various features will not work. For example, `open3d` does not yet support `python3.12` and therefore you will need to set up a 3.11 `venv` first etc.
+NOTE 1: check for any error messages, and do not disregard them. If `pip install` does not complete cleanly, various features will not work. For example, `open3d` does not yet support `python3.12` and therefore you will need to set up a 3.11 `venv` first etc.
+
+NOTE 2: for real time object detection and tracking, please install [PyTorch](https://pytorch.org/).
 
 Install `rust` language support in your system: [instructions](https://www.rust-lang.org/tools/install) 
 
