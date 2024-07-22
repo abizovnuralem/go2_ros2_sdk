@@ -119,7 +119,7 @@ ros2 launch go2_robot_sdk robot.launch.py
 <img width="300" src="https://github.com/abizovnuralem/go2_ros2_sdk/doc_images/go2_air_giraffe.png" alt='Giraffe Detection and Tracking'>
 </p>
 
-This capability is directly based on Once you have launched the system, the color image data will be available at `go2_camera/color/image`. In another terminal enter:
+This capability is directly based on [J. Francis's work](https://github.com/jfrancis71/ros2_coco_detector). Once you have launched the sdk, the color image data will be available at `go2_camera/color/image`. In another terminal enter:
 
 ```bash
 source install/setup.bash
