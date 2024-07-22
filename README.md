@@ -133,9 +133,11 @@ On another terminal, to view the detection messages:
 source install/setup.bash
 ros2 topic echo /detected_objects
 ```
+The detection messages contain the detected object (`class_id`) and the `score`, a number from 0 to 1. For example: `detections:results:hypothesis:class_id: giraffe` and `detections:results:hypothesis:score: 0.9989`. The `bbox:center:x` and `bbox:center:y` contain the centroid of the object in pixels. These data can be used to implement real-time object following for animals and people. People are detected as `detections:results:hypothesis:class_id: person`.
 
 To view the image stream annotated with the labels and bounding boxes:
 ```shell
+source install/setup.bash
 ros2 run image_tools showimage --ros-args -r /image:=/annotated_image
 ```
 
