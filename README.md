@@ -74,7 +74,7 @@ Tested systems and ROS2 distro
 
 ## Installation
 
-```
+```shell
 mkdir -p ros2_ws/src
 cd ros2_ws/src
 git clone --recurse-submodules https://github.com/abizovnuralem/go2_ros2_sdk.git
@@ -84,30 +84,27 @@ sudo apt install python3-pip clang
 pip install -r requirements.txt
 cd ..
 ```
-install rust language support in your system https://www.rust-lang.org/tools/install 
 
-cargo should work in terminal
-```
+NOTE: check for any error messages, and do not disregard them. If `pip install` does not complete cleanly, various features will not work. For example, `open3d` does not yet support `python3.12` and therefroe you will need to set up a 3.11 `venv` first etc.
+
+Install `rust` language support in your system: [instructions](https://www.rust-lang.org/tools/install) 
+
+`cargo` should work in terminal
+```shell
 cargo --version
 ```
 
-Build it
-
-You need to install ros2 and rosdep package first.
-
-https://docs.ros.org/en/humble/Installation.html
-
-
-```
+Build `go2_ros_sdk`. You need to have `ros2` and `rosdep` installed. If you do not: [instructions](https://docs.ros.org/en/humble/Installation.html). Then:
+```shell
 source /opt/ros/$ROS_DISTRO/setup.bash
 rosdep install --from-paths src --ignore-src -r -y
 colcon build
 ```
 
 ## Usage
-don't forget to setup your GO2-robot in Wifi-mode and get IP (You can use mobile app to get it, go to Device -> Data -> Automatic Machine Inspection, (look for STA Network: wlan0))
+Don't forget to set up your Go2 robot in Wifi-mode and obtain the IP. You can use the mobile app to get it, go to Device -> Data -> Automatic Machine Inspection and look for STA Network: wlan0.
 
-```
+```shell
 source install/setup.bash
 export ROBOT_IP="robot_ip"
 export CONN_TYPE="webrtc"
@@ -116,21 +113,18 @@ ros2 launch go2_robot_sdk robot.launch.py
 
 
 ## 3D map generation
+To save the map, you need to:
 
-In order to save the map, you need to:
-
-```
+```shell
 export MAP_SAVE=True
 export MAP_NAME="3d_map"
-
 ```
 
 Every 10 seconds, the map will be save to root folder of the repo.
 
-
 ## Multi robot support 
-
 If you want to connect several robots for collaboration:
+
 ```
 export ROBOT_IP="robot_ip_1, robot_ip_2, robot_ip_N"
 ```
@@ -157,7 +151,6 @@ sudo snap install foxglove-studio
 
 1. Open Foxglove Studio and press "Open Connection".
 2. In the "Open Connection" settings, choose "Foxglove WebSocket" and use the default configuration ws://localhost:8765, then press "Open".
-
 
 ## WSL 2
 
