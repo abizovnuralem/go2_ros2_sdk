@@ -30,7 +30,7 @@ This repo will empower your Unitree GO2 AIR/PRO/EDU robots with ROS2 capabilitie
 14. Creating a PointCloud map and store it :white_check_mark:
 15. SLAM (slam_toolbox) (in the current version is not working, need to fix params)
 16. Navigation (nav2) (in the current version is not working, need to fix params)
-17. Object detection
+17. Object detection :white_check_mark:
 18. AutoPilot
 
 ## Your feedback and support mean the world to us. 
@@ -80,12 +80,16 @@ cd ros2_ws/src
 git clone --recurse-submodules https://github.com/abizovnuralem/go2_ros2_sdk.git
 cp -a go2_ros2_sdk/. .
 rm -r -f go2_ros2_sdk
+sudo apt install ros-humble-image-tools
+sudo apt install ros-humble-vision-msgs
 sudo apt install python3-pip clang
 pip install -r requirements.txt
 cd ..
 ```
 
-NOTE: check for any error messages, and do not disregard them. If `pip install` does not complete cleanly, various features will not work. For example, `open3d` does not yet support `python3.12` and therefroe you will need to set up a 3.11 `venv` first etc.
+NOTE 1: check for any error messages, and do not disregard them. If `pip install` does not complete cleanly, various features will not work. For example, `open3d` does not yet support `python3.12` and therefore you will need to set up a 3.11 `venv` first etc.
+
+NOTE 2: for real time object detection and tracking, please install [PyTorch](https://pytorch.org/).
 
 Install `rust` language support in your system: [instructions](https://www.rust-lang.org/tools/install) 
 
@@ -111,6 +115,41 @@ export CONN_TYPE="webrtc"
 ros2 launch go2_robot_sdk robot.launch.py
 ```
 
+## Real time image detection and tracking
+
+<p align="center">
+<img width="300" src="https://github.com/abizovnuralem/go2_ros2_sdk/doc_images/go2_air_giraffe.png" alt='Giraffe Detection and Tracking'>
+</p>
+
+This capability is directly based on [J. Francis's work](https://github.com/jfrancis71/ros2_coco_detector). Once you have launched the sdk, the color image data will be available at `go2_camera/color/image`. In another terminal enter:
+
+```bash
+source install/setup.bash
+ros2 run coco_detector coco_detector_node
+```
+
+There will be a short delay the first time the node is run for PyTorch TorchVision to download the neural network. You should see a downloading progress bar. This network is then cached for subsequent runs.
+
+On another terminal, to view the detection messages:
+```shell
+source install/setup.bash
+ros2 topic echo /detected_objects
+```
+The detection messages contain the detected object (`class_id`) and the `score`, a number from 0 to 1. For example: `detections:results:hypothesis:class_id: giraffe` and `detections:results:hypothesis:score: 0.9989`. The `bbox:center:x` and `bbox:center:y` contain the centroid of the object in pixels. These data can be used to implement real-time object following for animals and people. People are detected as `detections:results:hypothesis:class_id: person`.
+
+To view the image stream annotated with the labels and bounding boxes:
+```shell
+source install/setup.bash
+ros2 run image_tools showimage --ros-args -r /image:=/annotated_image
+```
+
+Example Use:
+
+```shell
+ros2 run coco_detector coco_detector_node --ros-args -p publish_annotated_image:=False -p device:=cuda -p detection_threshold:=0.7
+```
+
+This will run the coco detector without publishing the annotated image (it is True by default) using the default CUDA device (device=cpu by default). It sets the detection_threshold to 0.7 (it is 0.9 by default). The detection_threshold should be between 0.0 and 1.0; the higher this number the more detections will be rejected. If you have too many false detections try increasing this number. Thus only Detection2DArray messages are published on topic /detected_objects.
 
 ## 3D map generation
 To save the map, you need to:
