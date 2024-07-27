@@ -82,8 +82,8 @@ cd ros2_ws/src
 git clone --recurse-submodules https://github.com/abizovnuralem/go2_ros2_sdk.git
 cp -a go2_ros2_sdk/. .
 rm -r -f go2_ros2_sdk
-sudo apt install ros-humble-image-tools
-sudo apt install ros-humble-vision-msgs
+sudo apt install ros-$ROS_DISTRO-image-tools
+sudo apt install ros-$ROS_DISTRO-vision-msgs
 sudo apt install python3-pip clang
 pip install -r requirements.txt
 cd ..
@@ -91,7 +91,6 @@ cd ..
 
 NOTE 1: check for any error messages, and do not disregard them. If `pip install` does not complete cleanly, various features will not work. For example, `open3d` does not yet support `python3.12` and therefore you will need to set up a 3.11 `venv` first etc.
 
-NOTE 2: for real time object detection and tracking, please install [PyTorch](https://pytorch.org/).
 
 Install `rust` language support in your system: [instructions](https://www.rust-lang.org/tools/install) 
 
@@ -127,9 +126,6 @@ ros2 launch go2_robot_sdk robot.launch.py
 
 ## Real time image detection and tracking
 
-<p align="center">
-<img width="300" src="https://github.com/abizovnuralem/go2_ros2_sdk/doc_images/go2_air_giraffe.png" alt='Giraffe Detection and Tracking'>
-</p>
 
 This capability is directly based on [J. Francis's work](https://github.com/jfrancis71/ros2_coco_detector). Once you have launched the sdk, the color image data will be available at `go2_camera/color/image`. In another terminal enter:
 
