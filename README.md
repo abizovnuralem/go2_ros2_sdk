@@ -95,7 +95,15 @@ NOTE 2: for real time object detection and tracking, please install [PyTorch](ht
 
 Install `rust` language support in your system: [instructions](https://www.rust-lang.org/tools/install) 
 
-`cargo` should work in terminal
+After, you need to install 1.79 version of the cargo
+
+```
+rustup install 1.79.0
+rustup default 1.79.0
+```
+
+
+`cargo` should work in terminal 1.79 version
 ```shell
 cargo --version
 ```
