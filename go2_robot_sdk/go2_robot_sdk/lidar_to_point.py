@@ -38,27 +38,44 @@ class LidarToPointCloud(Node):
         self.declare_parameter('map_name')
         self.declare_parameter('map_save')
 
-        self.robot_ip_lst = self.get_parameter('robot_ip_lst').get_parameter_value().string_array_value
-        self.map_name = self.get_parameter('map_name').get_parameter_value().string_value
-        self.save_map = self.get_parameter('map_save').get_parameter_value().string_value
-        
+        self.robot_ip_lst = self.get_parameter(
+            'robot_ip_lst').get_parameter_value().string_array_value
+        self.map_name = self.get_parameter(
+            'map_name').get_parameter_value().string_value
+        self.save_map = self.get_parameter(
+            'map_save').get_parameter_value().string_value
+
         self.points_len = 0
         self.map_full_name = f'{self.map_name}.ply'
-        
+
         if self.save_map.lower() == "true":
             self.get_logger().info(f"Map will be saved")
             self.get_logger().info(f"Map name is {self.map_full_name}")
 
-        for i in range(len(self.robot_ip_lst)):
-            # Subscribe to the PointCloud2 topic
+        self.conn_mode = "single" if len(self.robot_ip_lst) == 1 else "multi"
+
+        
+        if self.conn_mode == 'single':
+
             self.subscription = self.create_subscription(
                 PointCloud2,
-                f'/robot{i}/point_cloud2',
+                '/point_cloud2',
                 self.lidar_callback,
                 10
             )
+
+        else:
+            for i in range(len(self.robot_ip_lst)):
+                # Subscribe to the PointCloud2 topic
+                self.subscription = self.create_subscription(
+                    PointCloud2,
+                    f'/robot{i}/point_cloud2',
+                    self.lidar_callback,
+                    10
+                )
         self.points = set()
-        self.publisher = self.create_publisher(PointCloud2, '/pointcloud/deque', 10)
+        self.publisher = self.create_publisher(
+            PointCloud2, '/pointcloud/deque', 10)
 
         # Save map every 10 seconds
         if self.save_map.lower() == "true":
@@ -74,19 +91,18 @@ class LidarToPointCloud(Node):
         pointcloud = point_cloud2.create_cloud_xyz32(header, self.points)
         self.publisher.publish(pointcloud)
 
-
     def save_gen_map(self):
         # Convert the points to an Open3D point cloud and save it
         if not self.points:
-            self.get_logger().info("No points to save.")
             return
-        
+
         if len(self.points) != self.points_len:
             self.points_len = len(self.points)
             point_cloud = o3d.geometry.PointCloud()
             point_cloud.points = o3d.utility.Vector3dVector(self.points)
             o3d.io.write_point_cloud(self.map_full_name, point_cloud)
-            self.get_logger().info(f"Saved {len(self.points)} points to {self.map_full_name}.")
+            self.get_logger().info(
+                f"Saved {len(self.points)} points to {self.map_full_name}.")
 
 
 def main(args=None):
@@ -94,6 +110,7 @@ def main(args=None):
     node = LidarToPointCloud()
     rclpy.spin(node)
     rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()
