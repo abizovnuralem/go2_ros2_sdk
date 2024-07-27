@@ -181,7 +181,7 @@ class RobotBaseNode(Node):
 
         x = msg.linear.x
         y = msg.linear.y
-        z = msg.linear.z
+        z = msg.angular.z
 
         if x > 0.0 or y > 0.0 or z != 0.0:
             self.robot_cmd_vel[robot_num] = gen_mov_command(
