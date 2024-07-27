@@ -13,6 +13,8 @@ We are happy to present you our integration of the Unitree Go2 with ROS2 over Wi
 
 This repo will empower your Unitree GO2 AIR/PRO/EDU robots with ROS2 capabilities, using both WebRTC (Wi-Fi) and CycloneDDS (Ethernet) protocols.
 
+If you are using WebRTC (Wi-Fi) protocol, close the connection with a mobile app before connecting to the robot.
+
 ## Project RoadMap:
 
 1. URDF :white_check_mark: 
@@ -28,8 +30,8 @@ This repo will empower your Unitree GO2 AIR/PRO/EDU robots with ROS2 capabilitie
 12. Multi robot support :white_check_mark:
 13. WebRTC and CycloneDDS support :white_check_mark:
 14. Creating a PointCloud map and store it :white_check_mark:
-15. SLAM (slam_toolbox) (in the current version is not working, need to fix params)
-16. Navigation (nav2) (in the current version is not working, need to fix params)
+15. SLAM (slam_toolbox) :white_check_mark:
+16. Navigation (nav2) :white_check_mark:
 17. Object detection
 18. AutoPilot
 
