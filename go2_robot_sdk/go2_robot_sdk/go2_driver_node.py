@@ -187,6 +187,7 @@ class RobotBaseNode(Node):
             self.robot_cmd_vel[robot_num] = gen_mov_command(
                 round(x, 2), round(y, 2), round(z, 2))
 
+
     def joy_cb(self, msg):
         self.joy_state = msg
 

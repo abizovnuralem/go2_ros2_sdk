@@ -76,63 +76,96 @@ Tested systems and ROS2 distro
 
 ## Installation
 
-```
+```shell
 mkdir -p ros2_ws/src
 cd ros2_ws/src
 git clone --recurse-submodules https://github.com/abizovnuralem/go2_ros2_sdk.git
 cp -a go2_ros2_sdk/. .
 rm -r -f go2_ros2_sdk
+sudo apt install ros-humble-image-tools
+sudo apt install ros-humble-vision-msgs
 sudo apt install python3-pip clang
 pip install -r requirements.txt
 cd ..
 ```
-install rust language support in your system https://www.rust-lang.org/tools/install 
 
-cargo should work in terminal
-```
+NOTE 1: check for any error messages, and do not disregard them. If `pip install` does not complete cleanly, various features will not work. For example, `open3d` does not yet support `python3.12` and therefore you will need to set up a 3.11 `venv` first etc.
+
+NOTE 2: for real time object detection and tracking, please install [PyTorch](https://pytorch.org/).
+
+Install `rust` language support in your system: [instructions](https://www.rust-lang.org/tools/install) 
+
+`cargo` should work in terminal
+```shell
 cargo --version
 ```
 
-Build it
-
-You need to install ros2 and rosdep package first.
-
-https://docs.ros.org/en/humble/Installation.html
-
-
-```
+Build `go2_ros_sdk`. You need to have `ros2` and `rosdep` installed. If you do not: [instructions](https://docs.ros.org/en/humble/Installation.html). Then:
+```shell
 source /opt/ros/$ROS_DISTRO/setup.bash
 rosdep install --from-paths src --ignore-src -r -y
 colcon build
 ```
 
 ## Usage
-don't forget to setup your GO2-robot in Wifi-mode and get IP (You can use mobile app to get it, go to Device -> Data -> Automatic Machine Inspection, (look for STA Network: wlan0))
+Don't forget to set up your Go2 robot in Wifi-mode and obtain the IP. You can use the mobile app to get it, go to Device -> Data -> Automatic Machine Inspection and look for STA Network: wlan0.
 
-```
+```shell
 source install/setup.bash
 export ROBOT_IP="robot_ip"
 export CONN_TYPE="webrtc"
 ros2 launch go2_robot_sdk robot.launch.py
 ```
 
+## Real time image detection and tracking
+
+<p align="center">
+<img width="300" src="https://github.com/abizovnuralem/go2_ros2_sdk/doc_images/go2_air_giraffe.png" alt='Giraffe Detection and Tracking'>
+</p>
+
+This capability is directly based on [J. Francis's work](https://github.com/jfrancis71/ros2_coco_detector). Once you have launched the sdk, the color image data will be available at `go2_camera/color/image`. In another terminal enter:
+
+```bash
+source install/setup.bash
+ros2 run coco_detector coco_detector_node
+```
+
+There will be a short delay the first time the node is run for PyTorch TorchVision to download the neural network. You should see a downloading progress bar. This network is then cached for subsequent runs.
+
+On another terminal, to view the detection messages:
+```shell
+source install/setup.bash
+ros2 topic echo /detected_objects
+```
+The detection messages contain the detected object (`class_id`) and the `score`, a number from 0 to 1. For example: `detections:results:hypothesis:class_id: giraffe` and `detections:results:hypothesis:score: 0.9989`. The `bbox:center:x` and `bbox:center:y` contain the centroid of the object in pixels. These data can be used to implement real-time object following for animals and people. People are detected as `detections:results:hypothesis:class_id: person`.
+
+To view the image stream annotated with the labels and bounding boxes:
+```shell
+source install/setup.bash
+ros2 run image_tools showimage --ros-args -r /image:=/annotated_image
+```
+
+Example Use:
+
+```shell
+ros2 run coco_detector coco_detector_node --ros-args -p publish_annotated_image:=False -p device:=cuda -p detection_threshold:=0.7
+```
+
+This will run the coco detector without publishing the annotated image (it is True by default) using the default CUDA device (device=cpu by default). It sets the detection_threshold to 0.7 (it is 0.9 by default). The detection_threshold should be between 0.0 and 1.0; the higher this number the more detections will be rejected. If you have too many false detections try increasing this number. Thus only Detection2DArray messages are published on topic /detected_objects.
 
 ## 3D map generation
+To save the map, you need to:
 
-In order to save the map, you need to:
-
-```
+```shell
 export MAP_SAVE=True
 export MAP_NAME="3d_map"
-
 ```
 
 Every 10 seconds, the map will be save to root folder of the repo.
 
-
 ## Multi robot support 
-
 If you want to connect several robots for collaboration:
+
 ```
 export ROBOT_IP="robot_ip_1, robot_ip_2, robot_ip_N"
 ```
@@ -159,7 +192,6 @@ sudo snap install foxglove-studio
 
 1. Open Foxglove Studio and press "Open Connection".
 2. In the "Open Connection" settings, choose "Foxglove WebSocket" and use the default configuration ws://localhost:8765, then press "Open".
-
 
 ## WSL 2
 
