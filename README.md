@@ -13,6 +13,8 @@ We are happy to present you our integration of the Unitree Go2 with ROS2 over Wi
 
 This repo will empower your Unitree GO2 AIR/PRO/EDU robots with ROS2 capabilities, using both WebRTC (Wi-Fi) and CycloneDDS (Ethernet) protocols.
 
+If you are using WebRTC (Wi-Fi) protocol, close the connection with a mobile app before connecting to the robot.
+
 ## Project RoadMap:
 
 1. URDF :white_check_mark: 
@@ -28,9 +30,9 @@ This repo will empower your Unitree GO2 AIR/PRO/EDU robots with ROS2 capabilitie
 12. Multi robot support :white_check_mark:
 13. WebRTC and CycloneDDS support :white_check_mark:
 14. Creating a PointCloud map and store it :white_check_mark:
-15. SLAM (slam_toolbox) (in the current version is not working, need to fix params)
-16. Navigation (nav2) (in the current version is not working, need to fix params)
-17. Object detection :white_check_mark:
+15. SLAM (slam_toolbox) :white_check_mark:
+16. Navigation (nav2) :white_check_mark:
+17. Object detection
 18. AutoPilot
 
 ## Your feedback and support mean the world to us. 
@@ -80,8 +82,8 @@ cd ros2_ws/src
 git clone --recurse-submodules https://github.com/abizovnuralem/go2_ros2_sdk.git
 cp -a go2_ros2_sdk/. .
 rm -r -f go2_ros2_sdk
-sudo apt install ros-humble-image-tools
-sudo apt install ros-humble-vision-msgs
+sudo apt install ros-$ROS_DISTRO-image-tools
+sudo apt install ros-$ROS_DISTRO-vision-msgs
 sudo apt install python3-pip clang
 pip install -r requirements.txt
 cd ..
@@ -89,11 +91,18 @@ cd ..
 
 NOTE 1: check for any error messages, and do not disregard them. If `pip install` does not complete cleanly, various features will not work. For example, `open3d` does not yet support `python3.12` and therefore you will need to set up a 3.11 `venv` first etc.
 
-NOTE 2: for real time object detection and tracking, please install [PyTorch](https://pytorch.org/).
 
 Install `rust` language support in your system: [instructions](https://www.rust-lang.org/tools/install) 
 
-`cargo` should work in terminal
+After, you need to install 1.79 version of the cargo
+
+```
+rustup install 1.79.0
+rustup default 1.79.0
+```
+
+
+`cargo` should work in terminal 1.79 version
 ```shell
 cargo --version
 ```
@@ -117,9 +126,6 @@ ros2 launch go2_robot_sdk robot.launch.py
 
 ## Real time image detection and tracking
 
-<p align="center">
-<img width="300" src="https://github.com/abizovnuralem/go2_ros2_sdk/doc_images/go2_air_giraffe.png" alt='Giraffe Detection and Tracking'>
-</p>
 
 This capability is directly based on [J. Francis's work](https://github.com/jfrancis71/ros2_coco_detector). Once you have launched the sdk, the color image data will be available at `go2_camera/color/image`. In another terminal enter:
 
