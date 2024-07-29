@@ -92,22 +92,18 @@ cd ..
 NOTE 1: check for any error messages, and do not disregard them. If `pip install` does not complete cleanly, various features will not work. For example, `open3d` does not yet support `python3.12` and therefore you will need to set up a 3.11 `venv` first etc.
 
 
-Install `rust` language support in your system: [instructions](https://www.rust-lang.org/tools/install) 
-
-After, you need to install 1.79 version of the cargo
-
-```
+Install `rust` language support following these [instructions](https://www.rust-lang.org/tools/install). Then, install version 1.79 of `cargo`, the `rust` package manager.
+```shell
 rustup install 1.79.0
 rustup default 1.79.0
 ```
 
-
-`cargo` should work in terminal 1.79 version
+`cargo` should now be availible in the terminal:
 ```shell
 cargo --version
 ```
 
-Build `go2_ros_sdk`. You need to have `ros2` and `rosdep` installed. If you do not: [instructions](https://docs.ros.org/en/humble/Installation.html). Then:
+Build `go2_ros_sdk`. You need to have `ros2` and `rosdep` installed. If you do not, follow these [instructions](https://docs.ros.org/en/humble/Installation.html). Then:
 ```shell
 source /opt/ros/$ROS_DISTRO/setup.bash
 rosdep install --from-paths src --ignore-src -r -y
@@ -115,7 +111,8 @@ colcon build
 ```
 
 ## Usage
-Don't forget to set up your Go2 robot in Wifi-mode and obtain the IP. You can use the mobile app to get it, go to Device -> Data -> Automatic Machine Inspection and look for STA Network: wlan0.
+
+Don't forget to set up your Go2 robot in Wifi-mode and obtain the IP. You can use the mobile app to get it. Go to Device -> Data -> Automatic Machine Inspection and look for STA Network: wlan0.
 
 ```shell
 source install/setup.bash
@@ -126,15 +123,14 @@ ros2 launch go2_robot_sdk robot.launch.py
 
 ## Real time image detection and tracking
 
-
-This capability is directly based on [J. Francis's work](https://github.com/jfrancis71/ros2_coco_detector). Once you have launched the sdk, the color image data will be available at `go2_camera/color/image`. In another terminal enter:
+This capability is directly based on [J. Francis's work](https://github.com/jfrancis71/ros2_coco_detector). Launch the `go2_ro2_sdk`. After a few seconds, the color image data will be available at `go2_camera/color/image`. On another terminal enter:
 
 ```bash
 source install/setup.bash
 ros2 run coco_detector coco_detector_node
 ```
 
-There will be a short delay the first time the node is run for PyTorch TorchVision to download the neural network. You should see a downloading progress bar. This network is then cached for subsequent runs.
+There will be a short delay the first time the node is run for PyTorch TorchVision to download the neural network. You should see a download progress bar. TorchVision cached for subsequent runs.
 
 On another terminal, to view the detection messages:
 ```shell
@@ -150,7 +146,6 @@ ros2 run image_tools showimage --ros-args -r /image:=/annotated_image
 ```
 
 Example Use:
-
 ```shell
 ros2 run coco_detector coco_detector_node --ros-args -p publish_annotated_image:=False -p device:=cuda -p detection_threshold:=0.7
 ```
