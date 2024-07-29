@@ -66,6 +66,7 @@ Together, let's push the boundaries of what's possible with the Unitree Go2 and 
 
 
 ## System requirements
+
 Tested systems and ROS2 distro
 |systems|ROS2 distro|Build status
 |--|--|--|
@@ -121,6 +122,23 @@ export CONN_TYPE="webrtc"
 ros2 launch go2_robot_sdk robot.launch.py
 ```
 
+The `robot.launch.py` code starts many services/nodes simultaneously, including 
+
+* robot_state_publisher
+* ros2_go2_video (front color camera)
+* pointcloud_to_laserscan_node
+* go2_robot_sdk/go2_driver_node
+* go2_robot_sdk/lidar_to_pointcloud
+* rviz2
+* `joy` (ROS2 Driver for Generic Joysticks and Game Controllers)
+* `teleop_twist_joy` (facility for tele-operating Twist-based ROS2 robots with a standard joystick. Converts joy messages to velocity commands)       
+* `twist_mux` (twist_multiplexer with source prioritization)        
+* foxglove_launch (launches the foxglove bridge)
+* slam_toolbox/online_async_launch.py
+* av2_bringup/navigation_launch.py
+
+When you run `robot.launch.py`, `rviz` will fire up, lidar data will begin to accumulate, the front color camera data will be displayed too (typically after 4 seconds), and your dog will be waiting for commands from your joystick (e.g. a X-box controller). You can then steer the dog through your house, e.g., and collect lidar mapping data.  
+
 ## Real time image detection and tracking
 
 This capability is directly based on [J. Francis's work](https://github.com/jfrancis71/ros2_coco_detector). Launch the `go2_ro2_sdk`. After a few seconds, the color image data will be available at `go2_camera/color/image`. On another terminal enter:
@@ -153,24 +171,26 @@ ros2 run coco_detector coco_detector_node --ros-args -p publish_annotated_image:
 This will run the coco detector without publishing the annotated image (it is True by default) using the default CUDA device (device=cpu by default). It sets the detection_threshold to 0.7 (it is 0.9 by default). The detection_threshold should be between 0.0 and 1.0; the higher this number the more detections will be rejected. If you have too many false detections try increasing this number. Thus only Detection2DArray messages are published on topic /detected_objects.
 
 ## 3D map generation
-To save the map, you need to:
+
+To save the map, `export` the following:
 
 ```shell
 export MAP_SAVE=True
 export MAP_NAME="3d_map"
 ```
 
-Every 10 seconds, the map will be save to root folder of the repo.
+Every 10 seconds, a map will be saved to the root folder of the repo.
 
 ## Multi robot support 
 If you want to connect several robots for collaboration:
 
-```
+```shell
 export ROBOT_IP="robot_ip_1, robot_ip_2, robot_ip_N"
 ```
 
 ## Switching between webrtc connection (Wi-Fi) to CycloneDDS (Ethernet)
-```
+
+```shell
 export CONN_TYPE="webrtc"
 ```
 or
