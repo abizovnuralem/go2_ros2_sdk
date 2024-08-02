@@ -99,7 +99,7 @@ rustup install 1.79.0
 rustup default 1.79.0
 ```
 
-`cargo` should now be availible in the terminal:
+`cargo` should now be available in the terminal:
 ```shell
 cargo --version
 ```
@@ -137,7 +137,11 @@ The `robot.launch.py` code starts many services/nodes simultaneously, including
 * slam_toolbox/online_async_launch.py
 * av2_bringup/navigation_launch.py
 
-When you run `robot.launch.py`, `rviz` will fire up, lidar data will begin to accumulate, the front color camera data will be displayed too (typically after 4 seconds), and your dog will be waiting for commands from your joystick (e.g. a X-box controller). You can then steer the dog through your house, e.g., and collect lidar mapping data.  
+When you run `robot.launch.py`, `rviz` will fire up, lidar data will begin to accumulate, the front color camera data will be displayed too (typically after 4 seconds), and your dog will be waiting for commands from your joystick (e.g. a X-box controller). You can then steer the dog through your house, e.g., and collect lidar mapping data. 
+
+### SLAM and Nav2
+
+The goal of `slam` is to create a map and publish it to `/map`. The `slam_toolbox` is a grid mapper - it thinks about the world in terms of a fixed grid that the dog operates in. The goal of `Nav2` is to navigate and perform other tasks in this map. 
 
 ## Real time image detection and tracking
 
@@ -179,7 +183,7 @@ export MAP_SAVE=True
 export MAP_NAME="3d_map"
 ```
 
-Every 10 seconds, a map will be saved to the root folder of the repo.
+Every 10 seconds, a pointcloud map will be saved to the root folder of the repo.
 
 ## Multi robot support 
 If you want to connect several robots for collaboration:

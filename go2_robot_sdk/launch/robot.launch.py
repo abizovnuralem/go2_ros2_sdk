@@ -84,7 +84,6 @@ def generate_launch_description():
         'foxglove_bridge_launch.xml',
     )
 
-    # TODO Need to fix Nav2
     slam_toolbox_config = os.path.join(
         get_package_share_directory('go2_robot_sdk'),
         'config',
@@ -122,7 +121,7 @@ def generate_launch_description():
             Node(
                 package='ros2_go2_video',
                 executable='ros2_go2_video',
-                parameters=[{'robot_ip': robot_ip_lst[i],
+                parameters=[{'robot_ip': robot_ip_lst[0],
                              'robot_token': robot_token}],
             ),
         )
