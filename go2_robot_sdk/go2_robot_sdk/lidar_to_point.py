@@ -29,7 +29,6 @@ from sensor_msgs.msg import PointCloud2
 from sensor_msgs_py import point_cloud2
 import open3d as o3d
 
-
 class LidarToPointCloud(Node):
     def __init__(self):
         super().__init__('lidar_to_pointcloud')
@@ -54,12 +53,11 @@ class LidarToPointCloud(Node):
 
         self.conn_mode = "single" if len(self.robot_ip_lst) == 1 else "multi"
 
-        
         if self.conn_mode == 'single':
 
             self.subscription = self.create_subscription(
                 PointCloud2,
-                '/point_cloud2',
+                '/robot0/point_cloud2',
                 self.lidar_callback,
                 10
             )

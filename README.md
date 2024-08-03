@@ -74,24 +74,19 @@ Tested systems and ROS2 distro
 |Ubuntu 22.04|humble|![ROS2 CI](https://github.com/abizovnuralem/go2_ros2_sdk/actions/workflows/ros_build.yaml/badge.svg)
 |Ubuntu 22.04|rolling|![ROS2 CI](https://github.com/abizovnuralem/go2_ros2_sdk/actions/workflows/ros_build.yaml/badge.svg)
 
-
 ## Installation
 
 ```shell
-mkdir -p ros2_ws/src
-cd ros2_ws/src
-git clone --recurse-submodules https://github.com/abizovnuralem/go2_ros2_sdk.git
-cp -a go2_ros2_sdk/. .
-rm -r -f go2_ros2_sdk
+mkdir -p ros2_ws
+cd ros2_ws
+git clone --recurse-submodules https://github.com/abizovnuralem/go2_ros2_sdk.git src
 sudo apt install ros-$ROS_DISTRO-image-tools
 sudo apt install ros-$ROS_DISTRO-vision-msgs
 sudo apt install python3-pip clang
 pip install -r requirements.txt
 cd ..
 ```
-
-NOTE 1: check for any error messages, and do not disregard them. If `pip install` does not complete cleanly, various features will not work. For example, `open3d` does not yet support `python3.12` and therefore you will need to set up a 3.11 `venv` first etc.
-
+Pay attention to any error messages. If `pip install` does not complete cleanly, various features will not work. For example, `open3d` does not yet support `python3.12` and therefore you will need to set up a 3.11 `venv` first etc.
 
 Install `rust` language support following these [instructions](https://www.rust-lang.org/tools/install). Then, install version 1.79 of `cargo`, the `rust` package manager.
 ```shell
@@ -99,7 +94,7 @@ rustup install 1.79.0
 rustup default 1.79.0
 ```
 
-`cargo` should now be availible in the terminal:
+`cargo` should now be available in the terminal:
 ```shell
 cargo --version
 ```
@@ -137,7 +132,26 @@ The `robot.launch.py` code starts many services/nodes simultaneously, including
 * slam_toolbox/online_async_launch.py
 * av2_bringup/navigation_launch.py
 
-When you run `robot.launch.py`, `rviz` will fire up, lidar data will begin to accumulate, the front color camera data will be displayed too (typically after 4 seconds), and your dog will be waiting for commands from your joystick (e.g. a X-box controller). You can then steer the dog through your house, e.g., and collect lidar mapping data.  
+When you run `robot.launch.py`, `rviz` will fire up, lidar data will begin to accumulate, the front color camera data will be displayed too (typically after 4 seconds), and your dog will be waiting for commands from your joystick (e.g. a X-box controller). You can then steer the dog through your house, e.g., and collect LIDAR mapping data. 
+
+### SLAM and Nav2
+
+![Initial Rviz Display](doc_images/slam_nav_map.png)
+
+The goal of SLAM overall, and the `slam_toolbox` in particular, is to create a map. The `slam_toolbox` is a grid mapper - it thinks about the world in terms of a fixed grid that the dog operates in. When the dog initially moves through a new space, data accumulate and the developing map is and published it to the `/map` topic. The goal of `Nav2` is to navigate and perform other tasks in this map.
+
+The `rviz` settings that are used upon initial launch (triggered by `ros2 launch go2_robot_sdk robot.launch.py`) showcase various datastreams.  
+
+* `RobotModel` is the dimensionally correct model of the G02 
+* `PointCloud2` are the raw LIDAR data transformed into 3D objects/constraints 
+* `LaserScan` are lower level scan data before translation into an x,y,z frame
+* `Image` are the data from the front-facing color camera 
+* `Map` is the map being created by the `slam_toolbox`
+* `Odometry` is the history of directions/movements of the dog
+
+If there is too much going on in the initial screen, deselect the `map` topic to allow you to see more.
+
+![Simplified Rviz Display](doc_images/slam_nav.png)
 
 ## Real time image detection and tracking
 
@@ -179,7 +193,7 @@ export MAP_SAVE=True
 export MAP_NAME="3d_map"
 ```
 
-Every 10 seconds, a map will be saved to the root folder of the repo.
+Every 10 seconds, a pointcloud map will be saved to the root folder of the repo.
 
 ## Multi robot support 
 If you want to connect several robots for collaboration:
