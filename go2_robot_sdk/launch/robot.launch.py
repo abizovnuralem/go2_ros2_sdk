@@ -30,19 +30,22 @@ from launch_ros.actions import Node
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import FrontendLaunchDescriptionSource, PythonLaunchDescriptionSource
 
-
 def generate_launch_description():
 
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
     no_rviz2 = LaunchConfiguration('no_rviz2', default='false')
 
-    robot_token = os.getenv('ROBOT_TOKEN', '')
+    robot_token = os.getenv('ROBOT_TOKEN', '') # how does this work for multiple robots?
     robot_ip = os.getenv('ROBOT_IP', '')
     robot_ip_lst = robot_ip.replace(" ", "").split(",")
+    print("IP list:", robot_ip_lst)
+
     conn_mode = "single" if len(robot_ip_lst) == 1 else "multi"
 
+    # these are debug only
     map_name = os.getenv('MAP_NAME', '3d_map')
-    save_map = os.getenv('MAP_SAVE', "true")
+    save_map = os.getenv('MAP_SAVE', 'true')
+
     conn_type = os.getenv('CONN_TYPE', 'webrtc')
 
     if conn_mode == 'single':
@@ -64,8 +67,7 @@ def generate_launch_description():
     robot_desc_modified_lst = []
 
     for i in range(len(robot_ip_lst)):
-        robot_desc_modified_lst.append(
-            robot_desc.format(robot_num=f"robot{i}"))
+        robot_desc_modified_lst.append(robot_desc.format(robot_num=f"robot{i}"))
 
     urdf_launch_nodes = []
 
@@ -125,7 +127,6 @@ def generate_launch_description():
                              'robot_token': robot_token}],
             ),
         )
-
         urdf_launch_nodes.append(
             Node(
                 package='pointcloud_to_laserscan',
@@ -166,7 +167,6 @@ def generate_launch_description():
                                  'robot_token': robot_token}],
                 ),
             )
-
             urdf_launch_nodes.append(
                 Node(
                     package='pointcloud_to_laserscan',
@@ -190,14 +190,12 @@ def generate_launch_description():
         Node(
             package='go2_robot_sdk',
             executable='go2_driver_node',
-            parameters=[{'robot_ip': robot_ip,
-                         'token': robot_token, "conn_type": conn_type}],
+            parameters=[{'robot_ip': robot_ip, 'token': robot_token, "conn_type": conn_type}],
         ),
         Node(
             package='go2_robot_sdk',
             executable='lidar_to_pointcloud',
-            parameters=[{'robot_ip_lst': robot_ip_lst,
-                         'map_name': map_name, 'map_save': save_map}],
+            parameters=[{'robot_ip_lst': robot_ip_lst, 'map_name': map_name, 'map_save': save_map}],
         ),
         Node(
             package='rviz2',
@@ -205,23 +203,19 @@ def generate_launch_description():
             executable='rviz2',
             condition=UnlessCondition(no_rviz2),
             name='rviz2',
-            arguments=[
-                '-d' + os.path.join(get_package_share_directory('go2_robot_sdk'), 'config', rviz_config)]
+            arguments=['-d' + os.path.join(get_package_share_directory('go2_robot_sdk'), 'config', rviz_config)]
         ),
-
         Node(
             package='joy',
             executable='joy_node',
             parameters=[joy_params]
         ),
-
         Node(
             package='teleop_twist_joy',
             executable='teleop_node',
             name='teleop_node',
             parameters=[default_config_topics],
         ),
-
         Node(
             package='twist_mux',
             executable='twist_mux',

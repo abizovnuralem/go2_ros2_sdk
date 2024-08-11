@@ -112,7 +112,7 @@ Don't forget to set up your Go2 robot in Wifi-mode and obtain the IP. You can us
 
 ```shell
 source install/setup.bash
-export ROBOT_IP="robot_ip"
+export ROBOT_IP="robot_ip" #for muliple robots, just split by ,
 export CONN_TYPE="webrtc"
 ros2 launch go2_robot_sdk robot.launch.py
 ```
@@ -153,6 +153,41 @@ If there is too much going on in the initial screen, deselect the `map` topic to
 
 ![Simplified Rviz Display](doc_images/slam_nav.png)
 
+### Mapping - creating your first map
+
+Use painter's tape to mark a 'dock' rectangle (or use a real dock) to create a defined starting point for your dog on your floor. In the `rviz` `SlamToolboxPlugin`, on the left side of the your `rviz` screen, select "Start At Dock". Then, use your controller to manually explore a space, such as a series of rooms. You will see the map data accumulating in `rviz`. In this map, white, black and grey pixels represent the free, occupied, and unknown space, respectively. When you are done mapping, enter a file name into the "Save Map" field and click "Save Map". Then enter a file name into "Serialize Map" field and click "Serialize Map". Now, you should have 2 new files in `/ros2_ws`:
+
+```shell
+map_1.yaml: the metadata for the map as well as the path to the .pgm image file.
+map_1.pgm: the image file with white, black and grey pixels representing the free, occupied, and unknown space.
+map_1.data: 
+map_1.posegraph: 
+```
+
+The next time you start the system, the map can be loaded and is ready for you to complete/extend by mapping more spaces. Upon restart and loading a map, the dog does not know where it is relative to the map you created earlier. Assuming you rebooted the dog in its marked rectangle, or in an actual dock, it will have a high quality initial position and angle.  
+
+### Autonomous Navigation - navigating in your new map
+
+As shown in the `rviz` `Navigation 2` plugin, the system will come up in:
+
+```shell
+Navigation: active
+Localization: inactive
+Feedback: unknown
+```
+
+Then, load your map via the `SlamToolboxPlugin` (enter your map's filename (without any extension) in the 'Deserialize Map' field and then click 'Deserialize Map'). 
+
+**WARNING**: please make sure that (1) the dog is correctly oriented WRT to the map and (2) the map itself is sane and corresponds to your house. Especially if you have long corridors, the overall map can be distorted relative to reality, and this means that the route planner will try to route your dog through walls, leaving long scratches in your walls. 
+
+You can now give the dog its first target, via 'Nav2 Goal' in the `rviz` menu. Use the mouse cursor to provide a target to navigate to.
+
+**NOTE**: the `Nav2 Goal` cursor sets both the target position and the final angle of the dog, that you wish the dog to adopt upon reaching the target (need to double check). The long green arrow that is revealed when you click an point and keep moving your mouse cursor is the angle setter. 
+
+Until you have some experience, we suggest following your dog and picking it up when it is about to do something silly.
+
+**NOTE**: Virtually all fault behaviors - spinning in circles, running into walls, trying to walk through walls, etc reflect (1) a map that is incorrect, (2) incorrect initial position/angle of the dog relative to that map, or (3) inability to compute solutions/paths based on overloaded control loops. To prevent #3, which results in no motion or continuous spinning, the key loop rates (`controller_frequency`: 3.0 and `expected_planner_frequency`: 1.0 have been set to very conservative rates). 
+
 ## Real time image detection and tracking
 
 This capability is directly based on [J. Francis's work](https://github.com/jfrancis71/ros2_coco_detector). Launch the `go2_ro2_sdk`. After a few seconds, the color image data will be available at `go2_camera/color/image`. On another terminal enter:
@@ -184,16 +219,16 @@ ros2 run coco_detector coco_detector_node --ros-args -p publish_annotated_image:
 
 This will run the coco detector without publishing the annotated image (it is True by default) using the default CUDA device (device=cpu by default). It sets the detection_threshold to 0.7 (it is 0.9 by default). The detection_threshold should be between 0.0 and 1.0; the higher this number the more detections will be rejected. If you have too many false detections try increasing this number. Thus only Detection2DArray messages are published on topic /detected_objects.
 
-## 3D map generation
+## 3D raw pointcloud dump
 
-To save the map, `export` the following:
+To save raw LIDAR data, `export` the following:
 
 ```shell
 export MAP_SAVE=True
 export MAP_NAME="3d_map"
 ```
 
-Every 10 seconds, a pointcloud map will be saved to the root folder of the repo.
+Every 10 seconds, pointcloud data (in `.ply` format) will be saved to the root folder of the repo. **NOTE**: This is _not_ a Nav2 map but a raw data dump of LIDAR data useful for low-level debugging. 
 
 ## Multi robot support 
 If you want to connect several robots for collaboration:
