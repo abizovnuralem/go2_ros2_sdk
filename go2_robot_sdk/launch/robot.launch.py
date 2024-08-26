@@ -236,7 +236,7 @@ def generate_launch_description():
                     'slam_toolbox'), 'launch', 'online_async_launch.py')
             ]),
             launch_arguments={
-                'params_file': slam_toolbox_config,
+                'slam_params_file': slam_toolbox_config,
                 'use_sim_time': use_sim_time,
             }.items(),
         ),
