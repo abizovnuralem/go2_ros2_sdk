@@ -178,12 +178,12 @@ class RobotBaseNode(Node):
             self.publish_lidar_webrtc()
 
     def cmd_vel_cb(self, msg, robot_num):
-
         x = msg.linear.x
         y = msg.linear.y
         z = msg.angular.z
 
-        if x > 0.0 or y > 0.0 or z != 0.0:
+        # Allow omni-directional movement
+        if x != 0.0 or y != 0.0 or z != 0.0:
             self.robot_cmd_vel[robot_num] = gen_mov_command(
                 round(x, 2), round(y, 2), round(z, 2))
 
