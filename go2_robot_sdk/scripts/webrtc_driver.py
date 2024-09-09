@@ -266,7 +266,7 @@ class Go2Connection():
         offer = await self.generate_offer()
 
         # Try the old method first
-        logging.info("Trying to send SDP using the old method...")
+        logging.info("Trying to send SDP using an OLD method...")
 
         url = f"http://{self.robot_ip}:8081/offer"
         headers = {"Content-Type": "application/json"}
@@ -296,6 +296,8 @@ class Go2Connection():
                         attempts += 1
 
         # Now try the new method after the old method has failed
+
+        logging.info("Trying to send SDP using a NEW method...")
 
         sdp_offer = self.pc.localDescription
 
