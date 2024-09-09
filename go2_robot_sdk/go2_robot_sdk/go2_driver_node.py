@@ -481,6 +481,7 @@ class RobotBaseNode(Node):
 
         if self.conn_type == 'webrtc':
             await self.conn[robot_num].connect()
+            await self.conn.data_channel.disableTrafficSaving(True)
 
         while True:
             self.joy_cmd(robot_num)

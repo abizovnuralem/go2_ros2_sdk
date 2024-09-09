@@ -263,40 +263,7 @@ class Go2Connection():
             pass
 
     async def connect(self):
-        offer = await self.generate_offer()
-
-        # Try the old method first
-        logging.info("Trying to send SDP using an OLD method...")
-
-        url = f"http://{self.robot_ip}:8081/offer"
-        headers = {"Content-Type": "application/json"}
-        data = {
-            "sdp": offer,
-            "id": "STA_localNetwork",
-            "type": "offer",
-            "token": "",
-        }
-
-        connected = False
-        attempts = 0
-        while not connected and attempts < 5:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(url, json=data, headers=headers) as resp:
-                    if resp.status == 200:
-                        answer_data = await resp.json()
-                        answer_sdp = answer_data.get("sdp")
-                        await self.set_answer(answer_sdp)
-                        connected = True
-                        return
-                    else:
-                        logger.info(
-                            f"Failed to get answer from server: Reason: {resp}")
-                        logger.info("Try to reconnect...")
-                        time.sleep(1)
-                        attempts += 1
-
-        # Now try the new method after the old method has failed
-
+        
         logging.info("Trying to send SDP using a NEW method...")
 
         sdp_offer = self.pc.localDescription
