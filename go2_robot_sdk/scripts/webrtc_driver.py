@@ -266,6 +266,9 @@ class Go2Connection():
         
         logging.info("Trying to send SDP using a NEW method...")
 
+        offer = await self.pc.createOffer()
+        await self.pc.setLocalDescription(offer)
+
         sdp_offer = self.pc.localDescription
 
         sdp_offer_json = {
