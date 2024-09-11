@@ -9,9 +9,6 @@
 ![ROS2 Build](https://github.com/abizovnuralem/go2_ros2_sdk/actions/workflows/ros_build.yaml/badge.svg)
 [![License](https://img.shields.io/badge/license-BSD--2-yellow.svg)](https://opensource.org/licenses/BSD-2-Clause)
 
-> [!IMPORTANT]  
-> The new firmware update, that comes from September 2024, has a different connection method with the app. Refer to https://github.com/abizovnuralem/go2_ros2_sdk/issues/74, Currenly this SDK only supports CycloneDDS. In order to use WebRTC you need to roll back to the previous 1.0.25 firmware.
-
 
 We are happy to present you our integration of the Unitree Go2 with ROS2 over Wi-Fi, that was designed by the talented [@tfoldi](https://github.com/tfoldi). You can explore his groundbreaking work at [go2-webrtc](https://github.com/tfoldi/go2-webrtc).
 
@@ -28,7 +25,7 @@ If you are using WebRTC (Wi-Fi) protocol, close the connection with a mobile app
 6. Go2 topics info in real time :white_check_mark: 
 7. Foot force sensors info in real time :white_check_mark: 
 8. Lidar stream (added pointCloud2) :white_check_mark: 
-9. Camera stream :white_check_mark:
+9. Camera stream (Currently is not working with a new Firmware update)
 10. Foxglove bridge :white_check_mark:
 11. Laser Scan :white_check_mark:
 12. Multi robot support :white_check_mark:
@@ -309,7 +306,15 @@ If you are running ROS2 under WSL2 - you may need to configure Joystick\Gamepad 
 
 ## Thanks
 
-Special thanks to @tfoldi, @legion1581, @budavariam, @alex.lin and TheRoboVerse community!
+Special thanks to:
+1. @tfoldi (Tamas) for his idea and talent to create a webrtc connection method between python and unitree GO2;
+2. @budavariam for helping with lidar issues;
+3. @legion1581 for a new webrtc method, that is working with 1.1.1 firmware update;
+4. @alex.lin for his passion in ros1 ingration;
+5. @alansrobotlab for his passion in robotics and helping me to debug new webrtc method;
+6. Gianluca Galvagn for helping me debug new issues with webrtc;
+7. Many many other open source contributors! and TheRoboVerse community!
+
 
 ## License
 
