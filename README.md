@@ -312,7 +312,7 @@ Special thanks to:
 3. @legion1581 for a new webrtc method, that is working with 1.1.1 firmware update;
 4. @alex.lin for his passion in ros1 ingration;
 5. @alansrobotlab for his passion in robotics and helping me to debug new webrtc method;
-6. Gianluca Galvagn for helping me debug new issues with webrtc;
+6. @giangalv (Gianluca Galvagn) for helping me debug new issues with webrtc;
 7. Many many other open source contributors! and TheRoboVerse community!
 
 
