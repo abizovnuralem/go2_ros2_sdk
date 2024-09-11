@@ -83,7 +83,9 @@ cd ros2_ws
 git clone --recurse-submodules https://github.com/abizovnuralem/go2_ros2_sdk.git src
 sudo apt install ros-$ROS_DISTRO-image-tools
 sudo apt install ros-$ROS_DISTRO-vision-msgs
+
 sudo apt install python3-pip clang portaudio19-dev
+cd src
 pip install -r requirements.txt
 cd ..
 ```
