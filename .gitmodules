@@ -1,3 +1,0 @@
-[submodule "go2_video"]
-	path = go2_video
-	url = https://github.com/tfoldi/ros2_go2_video
