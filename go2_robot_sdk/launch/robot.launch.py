@@ -24,7 +24,7 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.conditions import UnlessCondition
+from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch.actions import IncludeLaunchDescription
@@ -33,7 +33,12 @@ from launch.launch_description_sources import FrontendLaunchDescriptionSource, P
 def generate_launch_description():
 
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
-    no_rviz2 = LaunchConfiguration('no_rviz2', default='false')
+    with_rviz2 = LaunchConfiguration('rviz2', default='true')
+    with_nav2 = LaunchConfiguration('nav2', default='true')
+    with_slam = LaunchConfiguration('slam', default='true')
+    with_foxglove = LaunchConfiguration('foxglove', default='true')
+    with_joystick = LaunchConfiguration('joystick', default='true')
+    with_teleop = LaunchConfiguration('teleop', default='true')
 
     robot_token = os.getenv('ROBOT_TOKEN', '') # how does this work for multiple robots?
     robot_ip = os.getenv('ROBOT_IP', '')
@@ -119,14 +124,6 @@ def generate_launch_description():
                 arguments=[urdf]
             ),
         )
-        # urdf_launch_nodes.append(
-        #     Node(
-        #         package='ros2_go2_video',
-        #         executable='ros2_go2_video',
-        #         parameters=[{'robot_ip': robot_ip_lst[0],
-        #                      'robot_token': robot_token}],
-        #     ),
-        # )
         urdf_launch_nodes.append(
             Node(
                 package='pointcloud_to_laserscan',
@@ -159,14 +156,6 @@ def generate_launch_description():
                     arguments=[urdf]
                 ),
             )
-            # urdf_launch_nodes.append(
-            #     Node(
-            #         package='ros2_go2_video',
-            #         executable='ros2_go2_video',
-            #         parameters=[{'robot_ip': robot_ip_lst[i],
-            #                      'robot_token': robot_token}],
-            #     ),
-            # )
             urdf_launch_nodes.append(
                 Node(
                     package='pointcloud_to_laserscan',
@@ -201,25 +190,28 @@ def generate_launch_description():
             package='rviz2',
             namespace='',
             executable='rviz2',
-            condition=UnlessCondition(no_rviz2),
+            condition=IfCondition(with_rviz2),
             name='rviz2',
             arguments=['-d' + os.path.join(get_package_share_directory('go2_robot_sdk'), 'config', rviz_config)]
         ),
         Node(
             package='joy',
             executable='joy_node',
+            condition=IfCondition(with_joystick),
             parameters=[joy_params]
         ),
         Node(
             package='teleop_twist_joy',
             executable='teleop_node',
             name='teleop_node',
+            condition=IfCondition(with_joystick),
             parameters=[default_config_topics],
         ),
         Node(
             package='twist_mux',
             executable='twist_mux',
             output='screen',
+            condition=IfCondition(with_teleop),
             parameters=[
                 {'use_sim_time': use_sim_time},
                 default_config_topics
@@ -227,7 +219,8 @@ def generate_launch_description():
         ),
 
         IncludeLaunchDescription(
-            FrontendLaunchDescriptionSource(foxglove_launch)
+            FrontendLaunchDescriptionSource(foxglove_launch),
+            condition=IfCondition(with_foxglove),
         ),
 
         IncludeLaunchDescription(
@@ -235,6 +228,7 @@ def generate_launch_description():
                 os.path.join(get_package_share_directory(
                     'slam_toolbox'), 'launch', 'online_async_launch.py')
             ]),
+            condition=IfCondition(with_slam),
             launch_arguments={
                 'slam_params_file': slam_toolbox_config,
                 'use_sim_time': use_sim_time,
@@ -246,6 +240,7 @@ def generate_launch_description():
                 os.path.join(get_package_share_directory(
                     'nav2_bringup'), 'launch', 'navigation_launch.py')
             ]),
+            condition=IfCondition(with_nav2),
             launch_arguments={
                 'params_file': nav2_config,
                 'use_sim_time': use_sim_time,
