@@ -26,9 +26,7 @@
 
 
 import binascii
-import time
 import uuid
-import aiohttp
 import base64
 import hashlib
 import json
@@ -39,7 +37,6 @@ from Crypto.Cipher import AES
 from Crypto.Cipher import PKCS1_v1_5
 import requests
 from aiortc import RTCPeerConnection, RTCSessionDescription
-from aiortc.contrib.media import MediaBlackhole
 
 
 from scripts.go2_lidar_decoder import LidarDecoder
@@ -193,7 +190,8 @@ class Go2Connection():
             token="",
             on_validated=None,
             on_message=None,
-            on_open=None
+            on_open=None,
+            on_video_frame=None,
     ):
 
         self.pc = RTCPeerConnection()
@@ -205,8 +203,7 @@ class Go2Connection():
         self.on_message = on_message
         self.on_open = on_open
 
-        self.audio_track = MediaBlackhole()
-        self.video_track = MediaBlackhole()
+        self.on_video_frame = on_video_frame
 
         self.data_channel = self.pc.createDataChannel("data", id=0)
         self.data_channel.on("open", self.on_data_channel_open)
@@ -215,19 +212,22 @@ class Go2Connection():
         self.pc.on("track", self.on_track)
         self.pc.on("connectionstatechange", self.on_connection_state_change)
 
+        self.pc.addTransceiver("video", direction="recvonly")
+
     def on_connection_state_change(self):
         logger.info(f"Connection state is {self.pc.connectionState}")
 
-    def on_track(self, track):
+    async def on_track(self, track):
         logger.info(f"Receiving {track.kind}")
         if track.kind == "audio":
             pass
         elif track.kind == "video":
-            pass
+            frame = await track.recv()
+            logger.info(f"Received frame {frame}")
+            if self.on_video_frame:
+                await self.on_video_frame(track, int(self.robot_num))
 
     async def generate_offer(self):
-        await self.audio_track.start()
-        await self.video_track.start()
         offer = await self.pc.createOffer()
         await self.pc.setLocalDescription(offer)
         return offer.sdp
@@ -336,6 +336,14 @@ class Go2Connection():
 
     def validate_robot_conn(self, message):
         if message.get("data") == "Validation Ok.":
+
+            # turn on video
+            self.publish(
+                "",
+                "on",
+                "vid",
+            )
+
             self.validation_result = "SUCCESS"
             if self.on_validated:
                 self.on_validated(self.robot_num)

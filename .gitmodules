@@ -1,3 +1,4 @@
-[submodule "go2_video"]
-	path = go2_video
-	url = https://github.com/tfoldi/ros2_go2_video
+[submodule "go2_robot_sdk/external_lib/aioice"]
+	path = go2_robot_sdk/external_lib/aioice
+	url = https://github.com/legion1581/aioice.git
+	branch = go2

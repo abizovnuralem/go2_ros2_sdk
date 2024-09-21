@@ -28,6 +28,10 @@ import os
 import threading
 import asyncio
 
+from aiortc import MediaStreamTrack
+from cv_bridge import CvBridge
+
+
 from scripts.go2_constants import ROBOT_CMD, RTC_TOPIC
 from scripts.go2_func import gen_command, gen_mov_command
 from scripts.go2_lidar_decoder import update_meshes_for_cloud2
@@ -46,6 +50,7 @@ from sensor_msgs.msg import PointCloud2, PointField, JointState, Joy
 from sensor_msgs_py import point_cloud2
 from std_msgs.msg import Header
 from nav_msgs.msg import Odometry
+from sensor_msgs.msg import Image
 
 
 logging.basicConfig(level=logging.WARN)
@@ -88,6 +93,7 @@ class RobotBaseNode(Node):
         self.go2_lidar_pub = []
         self.go2_odometry_pub = []
         self.imu_pub = []
+        self.img_pub = []
 
         if self.conn_mode == 'single':
             self.joint_pub.append(self.create_publisher(
@@ -99,6 +105,7 @@ class RobotBaseNode(Node):
             self.go2_odometry_pub.append(
                 self.create_publisher(Odometry, 'odom', qos_profile))
             self.imu_pub.append(self.create_publisher(IMU, 'imu', qos_profile))
+            self.img_pub.append(self.create_publisher(Image, 'camera/image_raw', qos_profile))
 
         else:
             for i in range(len(self.robot_ip_lst)):
@@ -112,8 +119,12 @@ class RobotBaseNode(Node):
                     Odometry, f'robot{i}/odom', qos_profile))
                 self.imu_pub.append(self.create_publisher(
                     IMU, f'robot{i}/imu', qos_profile))
+                self.img_pub.append(self.create_publisher(
+                    Image, f'robot{i}/camera/image_raw', qos_profile))
 
         self.broadcaster = TransformBroadcaster(self, qos=qos_profile)
+
+        self.bridge = CvBridge()
 
         self.robot_cmd_vel = {}
         self.robot_odom = {}
@@ -253,6 +264,21 @@ class RobotBaseNode(Node):
             for topic in RTC_TOPIC.values():
                 self.conn[robot_num].data_channel.send(
                     json.dumps({"type": "subscribe", "topic": topic}))
+
+    async def on_video_frame(self, track: MediaStreamTrack, robot_num):
+        logger.info(f"Video frame received for robot {robot_num}")
+
+        while True:
+            frame = await track.recv()
+            img = frame.to_ndarray(format="bgr24")
+
+            logger.debug(f"Shape: {img.shape}, Dimensions: {img.ndim}, Type: {img.dtype}, Size: {img.size}")
+
+            # Convert the OpenCV image to ROS Image message
+            ros_image = self.bridge.cv2_to_imgmsg(img, encoding="bgr8")
+
+            # Publish the image
+            self.img_pub[robot_num].publish(ros_image)
 
     def on_data_channel_message(self, _, msg, robot_num):
 
@@ -524,6 +550,7 @@ async def start_node():
             token=base_node.token,
             on_validated=base_node.on_validated,
             on_message=base_node.on_data_channel_message,
+            on_video_frame=base_node.on_video_frame,
         )
 
         sleep_task_lst.append(asyncio.get_event_loop(

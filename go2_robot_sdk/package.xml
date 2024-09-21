@@ -9,6 +9,7 @@
 
   <depend>rclpy</depend>
   <depend>go2_interfaces</depend>
+  <depend>unitree_go</depend>
 
   <exec_depend>twist_mux</exec_depend>
   <exec_depend>joy</exec_depend>
@@ -23,6 +24,8 @@
   <exec_depend>slam_toolbox</exec_depend>
 
   <exec_depend>foxglove_bridge</exec_depend>
+
+  <exec_depend>cv_bridge</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
