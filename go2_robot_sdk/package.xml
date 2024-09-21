@@ -9,6 +9,7 @@
 
   <depend>rclpy</depend>
   <depend>go2_interfaces</depend>
+  <depend>unitree_go</depend>
 
   <exec_depend>twist_mux</exec_depend>
   <exec_depend>joy</exec_depend>
