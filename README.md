@@ -25,7 +25,7 @@ If you are using WebRTC (Wi-Fi) protocol, close the connection with a mobile app
 6. Go2 topics info in real time :white_check_mark: 
 7. Foot force sensors info in real time :white_check_mark: 
 8. Lidar stream (added pointCloud2) :white_check_mark: 
-9. Camera stream (Currently is not working with a new Firmware update)
+9. Camera stream :white_check_mark:
 10. Foxglove bridge :white_check_mark:
 11. Laser Scan :white_check_mark:
 12. Multi robot support :white_check_mark:
