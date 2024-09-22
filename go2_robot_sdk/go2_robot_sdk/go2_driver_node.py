@@ -36,6 +36,7 @@ from scripts.go2_constants import ROBOT_CMD, RTC_TOPIC
 from scripts.go2_func import gen_command, gen_mov_command
 from scripts.go2_lidar_decoder import update_meshes_for_cloud2
 from scripts.go2_math import get_robot_joints
+from scripts.go2_camerainfo import load_camera_info
 from scripts.webrtc_driver import Go2Connection
 
 import rclpy
@@ -50,7 +51,7 @@ from sensor_msgs.msg import PointCloud2, PointField, JointState, Joy
 from sensor_msgs_py import point_cloud2
 from std_msgs.msg import Header
 from nav_msgs.msg import Odometry
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import Image, CameraInfo
 
 
 logging.basicConfig(level=logging.WARN)
@@ -94,6 +95,7 @@ class RobotBaseNode(Node):
         self.go2_odometry_pub = []
         self.imu_pub = []
         self.img_pub = []
+        self.camera_info_pub = []
 
         if self.conn_mode == 'single':
             self.joint_pub.append(self.create_publisher(
@@ -106,6 +108,7 @@ class RobotBaseNode(Node):
                 self.create_publisher(Odometry, 'odom', qos_profile))
             self.imu_pub.append(self.create_publisher(IMU, 'imu', qos_profile))
             self.img_pub.append(self.create_publisher(Image, 'camera/image_raw', qos_profile))
+            self.camera_info_pub.append(self.create_publisher(CameraInfo, 'camera/camera_info', qos_profile))
 
         else:
             for i in range(len(self.robot_ip_lst)):
@@ -121,10 +124,13 @@ class RobotBaseNode(Node):
                     IMU, f'robot{i}/imu', qos_profile))
                 self.img_pub.append(self.create_publisher(
                     Image, f'robot{i}/camera/image_raw', qos_profile))
+                self.camera_info_pub.append(self.create_publisher(
+                    CameraInfo, f'robot{i}/camera/camera_info', qos_profile))
 
         self.broadcaster = TransformBroadcaster(self, qos=qos_profile)
 
         self.bridge = CvBridge()
+        self.camera_info = load_camera_info()
 
         self.robot_cmd_vel = {}
         self.robot_odom = {}
@@ -276,9 +282,24 @@ class RobotBaseNode(Node):
 
             # Convert the OpenCV image to ROS Image message
             ros_image = self.bridge.cv2_to_imgmsg(img, encoding="bgr8")
+            ros_image.header.stamp = self.get_clock().now().to_msg()
 
-            # Publish the image
+
+            # Set the timestamp for both image and camera info
+            camera_info = self.camera_info
+            camera_info.header.stamp = ros_image.header.stamp
+            
+            if self.conn_mode == 'single':
+                camera_info.header.frame_id = 'front_camera'
+                ros_image.header.frame_id = 'front_camera'
+            else:
+                camera_info.header.frame_id = f'robot{str(robot_num)}/front_camera'
+                ros_image.header.frame_id = f'robot{str(robot_num)}/front_camera'
+
+            # Publish image and camera info
             self.img_pub[robot_num].publish(ros_image)
+            self.camera_info_pub[robot_num].publish(camera_info)
+            asyncio.sleep(0)
 
     def on_data_channel_message(self, _, msg, robot_num):
 

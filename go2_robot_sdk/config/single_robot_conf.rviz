@@ -319,7 +319,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /go2_camera/color/image
+        Value: /camera/image_raw
       Value: true
     - Alpha: 0.699999988079071
       Class: rviz_default_plugins/Map
