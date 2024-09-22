@@ -278,7 +278,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /go2_camera/color/image
+        Value: /robot0/camera/image_raw
       Value: true
   Enabled: true
   Global Options:
