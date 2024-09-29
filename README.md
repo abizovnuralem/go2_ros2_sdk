@@ -33,7 +33,7 @@ If you are using WebRTC (Wi-Fi) protocol, close the connection with a mobile app
 14. Creating a PointCloud map and store it :white_check_mark:
 15. SLAM (slam_toolbox) :white_check_mark:
 16. Navigation (nav2) :white_check_mark:
-17. Object detection
+17. Object detection (coco) :white_check_mark:
 18. AutoPilot
 
 ## Your feedback and support mean the world to us. 
@@ -90,17 +90,6 @@ pip install -r requirements.txt
 cd ..
 ```
 Pay attention to any error messages. If `pip install` does not complete cleanly, various features will not work. For example, `open3d` does not yet support `python3.12` and therefore you will need to set up a 3.11 `venv` first etc.
-
-Install `rust` language support following these [instructions](https://www.rust-lang.org/tools/install). Then, install version 1.79 of `cargo`, the `rust` package manager.
-```shell
-rustup install 1.79.0
-rustup default 1.79.0
-```
-
-`cargo` should now be available in the terminal:
-```shell
-cargo --version
-```
 
 Build `go2_ros_sdk`. You need to have `ros2` and `rosdep` installed. If you do not, follow these [instructions](https://docs.ros.org/en/humble/Installation.html). Then:
 ```shell
