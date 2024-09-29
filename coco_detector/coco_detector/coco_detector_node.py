@@ -38,7 +38,7 @@ class CocoDetectorNode(Node):
             self.get_parameter('detection_threshold').get_parameter_value().double_value
         self.subscription = self.create_subscription(
             Image,
-            "/go2_camera/color/image",
+            "/camera/image_raw",
             self.listener_callback,
             10)
         self.detected_objects_publisher = \
