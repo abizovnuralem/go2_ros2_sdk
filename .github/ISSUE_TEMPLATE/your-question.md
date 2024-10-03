@@ -1,5 +1,5 @@
 ---
-name: "[Bug Report] Bug title"
+name: Your question
 about: Create a report to help us improve
 title: ''
 labels: ''
