@@ -36,8 +36,8 @@ from aiortc import MediaStreamTrack
 from cv_bridge import CvBridge
 
 
-from scripts.go2_constants import ROBOT_CMD, RTC_TOPIC
-from scripts.webrtc_driver import Go2Connection
+from scripts_go2.go2_constants import ROBOT_CMD, RTC_TOPIC
+from scripts_go2.webrtc_driver import Go2Connection
 
 import rclpy
 from rclpy.node import Node
@@ -99,9 +99,9 @@ class RobotBaseNode(Node):
             await self.conn[robot_num].connect()
             # await self.conn[robot_num].data_channel.disableTrafficSaving(True)
 
-        # while True:
+        while True:
         #     self.joy_cmd(robot_num)
-        #     await asyncio.sleep(0.1)
+            await asyncio.sleep(0.1)
 
 
 
