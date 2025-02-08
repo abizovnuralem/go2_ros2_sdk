@@ -213,7 +213,8 @@ class Go2Connection():
         self.pc.on("track", self.on_track)
         self.pc.on("connectionstatechange", self.on_connection_state_change)
 
-        self.pc.addTransceiver("video", direction="recvonly")
+        if self.on_video_frame:
+            self.pc.addTransceiver("video", direction="recvonly")
 
     def on_connection_state_change(self):
         logger.info(f"Connection state is {self.pc.connectionState}")
@@ -223,10 +224,12 @@ class Go2Connection():
         if track.kind == "audio":
             pass
         elif track.kind == "video":
-            frame = await track.recv()
-            logger.info(f"Received frame {frame}")
             if self.on_video_frame:
+                frame = await track.recv()
+                logger.info(f"Received frame {frame}")
                 await self.on_video_frame(track, int(self.robot_num))
+            else:
+                pass
 
     async def generate_offer(self):
         offer = await self.pc.createOffer()
