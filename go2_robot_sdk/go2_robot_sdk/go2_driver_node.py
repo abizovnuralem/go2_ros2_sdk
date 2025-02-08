@@ -41,7 +41,7 @@ from scripts.webrtc_driver import Go2Connection
 
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import QoSProfile
+from rclpy.qos import QoSProfile, QoSHistoryPolicy, QoSReliabilityPolicy
 
 from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import Twist, TransformStamped, PoseStamped
@@ -99,6 +99,11 @@ class RobotBaseNode(Node):
 
         self.conn = {}
         qos_profile = QoSProfile(depth=10)
+        best_effort_qos = QoSProfile(
+            reliability=QoSReliabilityPolicy.BEST_EFFORT,
+            history=QoSHistoryPolicy.KEEP_LAST,
+            depth=1
+        )
 
         self.joint_pub = []
         self.go2_state_pub = []
@@ -114,13 +119,13 @@ class RobotBaseNode(Node):
             self.go2_state_pub.append(self.create_publisher(
                 Go2State, 'go2_states', qos_profile))
             self.go2_lidar_pub.append(self.create_publisher(
-                PointCloud2, 'point_cloud2', qos_profile))
+                PointCloud2, 'point_cloud2', best_effort_qos))
             self.go2_odometry_pub.append(
                 self.create_publisher(Odometry, 'odom', qos_profile))
             self.imu_pub.append(self.create_publisher(IMU, 'imu', qos_profile))
-            self.img_pub.append(self.create_publisher(Image, 'camera/image_raw', qos_profile))
+            self.img_pub.append(self.create_publisher(Image, 'camera/image_raw', best_effort_qos))
             self.camera_info_pub.append(self.create_publisher(
-                CameraInfo, 'camera/camera_info', qos_profile))
+                CameraInfo, 'camera/camera_info', best_effort_qos))
 
         else:
             for i in range(len(self.robot_ip_lst)):
@@ -129,15 +134,15 @@ class RobotBaseNode(Node):
                 self.go2_state_pub.append(self.create_publisher(
                     Go2State, f'robot{i}/go2_states', qos_profile))
                 self.go2_lidar_pub.append(self.create_publisher(
-                    PointCloud2, f'robot{i}/point_cloud2', qos_profile))
+                    PointCloud2, f'robot{i}/point_cloud2', best_effort_qos))
                 self.go2_odometry_pub.append(self.create_publisher(
                     Odometry, f'robot{i}/odom', qos_profile))
                 self.imu_pub.append(self.create_publisher(
                     IMU, f'robot{i}/imu', qos_profile))
                 self.img_pub.append(self.create_publisher(
-                    Image, f'robot{i}/camera/image_raw', qos_profile))
+                    Image, f'robot{i}/camera/image_raw', best_effort_qos))
                 self.camera_info_pub.append(self.create_publisher(
-                    CameraInfo, f'robot{i}/camera/camera_info', qos_profile))
+                    CameraInfo, f'robot{i}/camera/camera_info', best_effort_qos))
 
         self.broadcaster = TransformBroadcaster(self, qos=qos_profile)
 
@@ -585,7 +590,7 @@ async def start_node():
             token=base_node.token,
             on_validated=base_node.on_validated,
             on_message=base_node.on_data_channel_message,
-            on_video_frame=base_node.on_video_frame,
+            on_video_frame=base_node.on_video_frame if base_node.enable_video else None,
         )
 
         sleep_task_lst.append(asyncio.get_event_loop(
