@@ -37,6 +37,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 "msg/TimeSpec.msg"
 "msg/UwbState.msg"
 "msg/UwbSwitch.msg"
+"msg/VoxelMapCompressed.msg"
+"msg/VoxelHeightMapState.msg"
 "msg/WirelessController.msg"
 
   DEPENDENCIES geometry_msgs # Add packages that above messages depend on, in this case geometry_msgs for Sphere.msg
