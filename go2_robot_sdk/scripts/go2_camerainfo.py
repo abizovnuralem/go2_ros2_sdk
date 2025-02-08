@@ -29,6 +29,7 @@ from ament_index_python.packages import get_package_share_directory
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
+
 def load_camera_info():
     yaml_file = get_package_share_directory('go2_robot_sdk') + "/calibration/front_camera.yaml"
 
@@ -37,10 +38,10 @@ def load_camera_info():
     # Load the camera info from the YAML file
     with open(yaml_file, "r") as file_handle:
         camera_info_data = yaml.safe_load(file_handle)
-    
+
     # Create a CameraInfo message
     camera_info_msg = CameraInfo()
-    
+
     # Fill in the CameraInfo fields from the YAML data
     camera_info_msg.width = camera_info_data["image_width"]
     camera_info_msg.height = camera_info_data["image_height"]
@@ -49,5 +50,5 @@ def load_camera_info():
     camera_info_msg.r = camera_info_data["rectification_matrix"]["data"]
     camera_info_msg.p = camera_info_data["projection_matrix"]["data"]
     camera_info_msg.distortion_model = camera_info_data["distortion_model"]
-    
+
     return camera_info_msg

@@ -21,7 +21,8 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# WEB_RTC_CON WAS ORIGINALY FORKED from https://github.com/tfoldi/go2-webrtc/tree/master and https://github.com/legion1581/go2_webrtc_connect
+# WEB_RTC_CON WAS ORIGINALY FORKED from https://github.com/tfoldi/go2-webrtc/tree/master
+# and https://github.com/legion1581/go2_webrtc_connect
 # Big thanks for your passion! @tfoldi (Földi Tamás) and @legion1581 (The RoboVerse Discord Group)
 
 
@@ -263,7 +264,7 @@ class Go2Connection():
             pass
 
     async def connect(self):
-        
+
         logging.info("Trying to send SDP using a NEW method...")
 
         offer = await self.pc.createOffer()

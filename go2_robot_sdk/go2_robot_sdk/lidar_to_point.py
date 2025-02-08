@@ -22,12 +22,12 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-import numpy as np
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import PointCloud2
 from sensor_msgs_py import point_cloud2
 import open3d as o3d
+
 
 class LidarToPointCloud(Node):
     def __init__(self):
@@ -48,7 +48,7 @@ class LidarToPointCloud(Node):
         self.map_full_name = f'{self.map_name}.ply'
 
         if self.save_map.lower() == "true":
-            self.get_logger().info(f"Map will be saved")
+            self.get_logger().info("Map will be saved")
             self.get_logger().info(f"Map name is {self.map_full_name}")
 
         self.conn_mode = "single" if len(self.robot_ip_lst) == 1 else "multi"

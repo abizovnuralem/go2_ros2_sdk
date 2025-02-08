@@ -57,7 +57,7 @@ def update_meshes_for_cloud2(positions, uvs, res, origin, intense_limiter):
     positions_with_uvs = np.unique(positions_with_uvs, axis=0)
     return positions_with_uvs
 
-    
+
 class LidarDecoder:
     def __init__(self) -> None:
 
@@ -70,7 +70,7 @@ class LidarDecoder:
             get_package_share_directory('go2_robot_sdk'),
             "external_lib",
             'libvoxel.wasm')
-        
+
         self.module = Module.from_file(self.store.engine, libvoxel_path)
 
         self.a_callback_type = FuncType([ValType.i32()], [ValType.i32()])
@@ -121,7 +121,7 @@ class LidarDecoder:
         for i in range(len(sublist)):
             if target + i < len(self.HEAPU8):
                 self.HEAPU8[target + i] = sublist[i]
-    
+
     def copy_memory_region(self, t, n, a):
         self.copy_within(t, n, n + a)
 
@@ -142,7 +142,7 @@ class LidarDecoder:
             return self.HEAPU32[t >> 2]
         else:
             raise ValueError(f"invalid type for getValue: {n}")
-        
+
     def add_value_arr(self, start, value):
         if start + len(value) <= len(self.HEAPU8):
             for i, byte in enumerate(value):
@@ -161,12 +161,12 @@ class LidarDecoder:
             len(compressed_data),
             self.decompressBufferSize,
             self.decompressBuffer,
-            self.decompressedSize, 
+            self.decompressedSize,
             self.positions,
             self.uvs,
-            self.indices,          
+            self.indices,
             self.faceCount,
-            self.pointCount,        
+            self.pointCount,
             some_v
         )
 

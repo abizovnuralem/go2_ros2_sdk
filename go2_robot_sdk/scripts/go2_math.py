@@ -46,13 +46,13 @@ class Quaternion:
         self.z = n.z * c
         self.w = math.cos(s)
         return self.x, self.y, self.z, self.w
-    
+
     def invert(self):
         self.x *= -1
         self.y *= -1
         self.z *= -1
         return self.x, self.y, self.z, self.w
-      
+
 
 class Vector3:
     def __init__(self, x, y, z):
@@ -65,17 +65,17 @@ class Vector3:
         self.y += n.y
         self.z += n.z
         return self.x, self.y, self.z
-    
+
     def clone(self):
         new_vector = Vector3(self.x, self.y, self.z)
         return new_vector
-      
+
     def apply_quaternion(self, quaternion):
         o = self.x
         s = self.y
         c = self.z
         u = quaternion.x
-        l = quaternion.y
+        l = quaternion.y  # noqa: E741
         f = quaternion.z
         _ = quaternion.w
         g = _ * o + l * c - f * s
@@ -87,22 +87,22 @@ class Vector3:
         self.y = v * _ + E * -l + T * -u - g * -f
         self.z = T * _ + E * -f + g * -l - v * -u
         return self.x, self.y, self.z
-    
-    def negate(self): 
+
+    def negate(self):
         self.x = -self.x
         self.y = -self.y
         self.z = -self.z
         return self.x, self.y, self.z
-    
+
     def distance_to(self, n):
         return math.sqrt(self.distance_to_squared(n))
-      
+
     def distance_to_squared(self, n):
         o = self.x - n.x
         s = self.y - n.y
         c = self.z - n.z
         return o * o + s * s + c * c
-      
+
     def apply_axis_angle(self, n, o):
         quaternion = Quaternion(0, 0, 0, 1)
         return self.apply_quaternion(quaternion.set_from_axis_angle(n, o))
@@ -116,13 +116,14 @@ def get_robot_joints(footPositionValue, foot_num):
         base_tf_offset_hip_joint.x = -base_tf_offset_hip_joint.x
     if foot_num % 2 == 1:
         base_tf_offset_hip_joint.y = -base_tf_offset_hip_joint.y
-    
+
     foot_position_distance = foot_position.distance_to(base_tf_offset_hip_joint)
 
     # cos theory
     E = np.sqrt(foot_position_distance ** 2 - HIP_LENGTH ** 2)
     y = np.arccos((E ** 2 + THIGH_LENGTH ** 2 - CALF_LENGTH ** 2) / (2 * E * THIGH_LENGTH))
-    S = np.arccos((CALF_LENGTH ** 2 + THIGH_LENGTH ** 2 - E ** 2) / (2 * CALF_LENGTH * THIGH_LENGTH)) - np.pi
+    S = np.arccos((CALF_LENGTH ** 2 + THIGH_LENGTH ** 2 - E ** 2) /
+                  (2 * CALF_LENGTH * THIGH_LENGTH)) - np.pi
     C = foot_position.x - base_tf_offset_hip_joint.x
     R = foot_position.y - base_tf_offset_hip_joint.y
 
@@ -131,7 +132,7 @@ def get_robot_joints(footPositionValue, foot_num):
     else:
         A = -np.pi + np.arcsin(C / E) + y
 
-    O = np.sqrt(foot_position_distance ** 2 - C ** 2)
+    O = np.sqrt(foot_position_distance ** 2 - C ** 2)  # noqa: E741
     L = np.arcsin(R / O)
 
     if foot_position.z > 0:
@@ -143,10 +144,9 @@ def get_robot_joints(footPositionValue, foot_num):
         J = P * (L - np.arcsin(HIP_LENGTH / O))
 
     else:
-        J = P * (L + np.arcsin(HIP_LENGTH / O)) 
+        J = P * (L + np.arcsin(HIP_LENGTH / O))
 
     if math.isnan(J + A + S):
         return 0, 0, 0
 
     return J, A, S
-

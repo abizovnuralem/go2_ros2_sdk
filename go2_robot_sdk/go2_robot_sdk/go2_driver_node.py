@@ -43,7 +43,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile
 
-from tf2_ros import TransformBroadcaster, TransformStamped
+from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import Twist, TransformStamped, PoseStamped
 from go2_interfaces.msg import Go2State, IMU
 from unitree_go.msg import LowState
@@ -70,6 +70,9 @@ class RobotBaseNode(Node):
             'ROBOT_TOKEN', os.getenv('GO2_TOKEN', '')))
         self.declare_parameter('conn_type', os.getenv(
             'CONN_TYPE', os.getenv('CONN_TYPE', '')))
+        self.declare_parameter('enable_video', True)
+        self.declare_parameter('decode_lidar', True)
+        self.declare_parameter('publish_raw_voxel', False)
 
         self.robot_ip = self.get_parameter(
             'robot_ip').get_parameter_value().string_value
@@ -78,13 +81,21 @@ class RobotBaseNode(Node):
         self.robot_ip_lst = self.robot_ip.replace(" ", "").split(",")
         self.conn_type = self.get_parameter(
             'conn_type').get_parameter_value().string_value
+        self.enable_video = self.get_parameter(
+            'enable_video').get_parameter_value().bool_value
+        self.decode_lidar = self.get_parameter(
+            'decode_lidar').get_parameter_value().bool_value
+        self.publish_raw_voxel = self.get_parameter(
+            'publish_raw_voxel').get_parameter_value().bool_value
 
         self.conn_mode = "single" if len(self.robot_ip_lst) == 1 else "multi"
 
         self.get_logger().info(f"Received ip list: {self.robot_ip_lst}")
         self.get_logger().info(f"Connection type is {self.conn_type}")
-
         self.get_logger().info(f"Connection mode is {self.conn_mode}")
+        self.get_logger().info(f"Enable video is {self.enable_video}")
+        self.get_logger().info(f"Decode lidar is {self.decode_lidar}")
+        self.get_logger().info(f"Publish raw voxel is {self.publish_raw_voxel}")
 
         self.conn = {}
         qos_profile = QoSProfile(depth=10)
@@ -108,7 +119,8 @@ class RobotBaseNode(Node):
                 self.create_publisher(Odometry, 'odom', qos_profile))
             self.imu_pub.append(self.create_publisher(IMU, 'imu', qos_profile))
             self.img_pub.append(self.create_publisher(Image, 'camera/image_raw', qos_profile))
-            self.camera_info_pub.append(self.create_publisher(CameraInfo, 'camera/camera_info', qos_profile))
+            self.camera_info_pub.append(self.create_publisher(
+                CameraInfo, 'camera/camera_info', qos_profile))
 
         else:
             for i in range(len(self.robot_ip_lst)):
@@ -204,7 +216,6 @@ class RobotBaseNode(Node):
             self.robot_cmd_vel[robot_num] = gen_mov_command(
                 round(x, 2), round(y, 2), round(z, 2))
 
-
     def joy_cb(self, msg):
         self.joy_state = msg
 
@@ -212,7 +223,7 @@ class RobotBaseNode(Node):
         odom_trans = TransformStamped()
         odom_trans.header.stamp = self.get_clock().now().to_msg()
         odom_trans.header.frame_id = 'odom'
-        odom_trans.child_frame_id = f"robot0/base_link"
+        odom_trans.child_frame_id = "robot0/base_link"
         odom_trans.transform.translation.x = msg.pose.position.x
         odom_trans.transform.translation.y = msg.pose.position.y
         odom_trans.transform.translation.z = msg.pose.position.z + 0.07
@@ -226,10 +237,10 @@ class RobotBaseNode(Node):
         joint_state = JointState()
         joint_state.header.stamp = self.get_clock().now().to_msg()
         joint_state.name = [
-            f'robot0/FL_hip_joint', f'robot0/FL_thigh_joint', f'robot0/FL_calf_joint',
-            f'robot0/FR_hip_joint', f'robot0/FR_thigh_joint', f'robot0/FR_calf_joint',
-            f'robot0/RL_hip_joint', f'robot0/RL_thigh_joint', f'robot0/RL_calf_joint',
-            f'robot0/RR_hip_joint', f'robot0/RR_thigh_joint', f'robot0/RR_calf_joint',
+            'robot0/FL_hip_joint', 'robot0/FL_thigh_joint', 'robot0/FL_calf_joint',
+            'robot0/FR_hip_joint', 'robot0/FR_thigh_joint', 'robot0/FR_calf_joint',
+            'robot0/RL_hip_joint', 'robot0/RL_thigh_joint', 'robot0/RL_calf_joint',
+            'robot0/RR_hip_joint', 'robot0/RR_thigh_joint', 'robot0/RR_calf_joint',
         ]
         joint_state.position = [
             msg.motor_state[3].q, msg.motor_state[4].q, msg.motor_state[5].q,
@@ -247,7 +258,8 @@ class RobotBaseNode(Node):
     def joy_cmd(self, robot_num):
 
         if self.conn_type == 'webrtc':
-            if robot_num in self.conn and robot_num in self.robot_cmd_vel and self.robot_cmd_vel[robot_num] != None:
+            if robot_num in self.conn and robot_num in self.robot_cmd_vel and self.robot_cmd_vel[
+                    robot_num] is not None:
                 self.get_logger().info("Move")
                 self.conn[robot_num].data_channel.send(
                     self.robot_cmd_vel[robot_num])
@@ -278,17 +290,17 @@ class RobotBaseNode(Node):
             frame = await track.recv()
             img = frame.to_ndarray(format="bgr24")
 
-            logger.debug(f"Shape: {img.shape}, Dimensions: {img.ndim}, Type: {img.dtype}, Size: {img.size}")
+            logger.debug(
+                f"Shape: {img.shape}, Dimensions: {img.ndim}, Type: {img.dtype}, Size: {img.size}")
 
             # Convert the OpenCV image to ROS Image message
             ros_image = self.bridge.cv2_to_imgmsg(img, encoding="bgr8")
             ros_image.header.stamp = self.get_clock().now().to_msg()
 
-
             # Set the timestamp for both image and camera info
             camera_info = self.camera_info
             camera_info.header.stamp = ros_image.header.stamp
-            
+
             if self.conn_mode == 'single':
                 camera_info.header.frame_id = 'front_camera'
                 ros_image.header.frame_id = 'front_camera'
@@ -471,11 +483,12 @@ class RobotBaseNode(Node):
                     ]
                 else:
                     joint_state.name = [
-                        f'robot{str(i)}/FL_hip_joint', f'robot{str(i)}/FL_thigh_joint', f'robot{str(i)}/FL_calf_joint',
-                        f'robot{str(i)}/FR_hip_joint', f'robot{str(i)}/FR_thigh_joint', f'robot{str(i)}/FR_calf_joint',
-                        f'robot{str(i)}/RL_hip_joint', f'robot{str(i)}/RL_thigh_joint', f'robot{str(i)}/RL_calf_joint',
-                        f'robot{str(i)}/RR_hip_joint', f'robot{str(i)}/RR_thigh_joint', f'robot{str(i)}/RR_calf_joint',
-                    ]
+                        f'robot{str(i)}/FL_hip_joint', f'robot{str(i)}/FL_thigh_joint',
+                        f'robot{str(i)}/FL_calf_joint', f'robot{str(i)}/FR_hip_joint',
+                        f'robot{str(i)}/FR_thigh_joint', f'robot{str(i)}/FR_calf_joint',
+                        f'robot{str(i)}/RL_hip_joint', f'robot{str(i)}/RL_thigh_joint',
+                        f'robot{str(i)}/RL_calf_joint', f'robot{str(i)}/RR_hip_joint',
+                        f'robot{str(i)}/RR_thigh_joint', f'robot{str(i)}/RR_calf_joint']
 
                 joint_state.position = [
                     FL_hip_joint, FL_thigh_joint, FL_calf_joint,
@@ -514,7 +527,8 @@ class RobotBaseNode(Node):
                 imu.quaternion = list(
                     map(float, self.robot_sport_state[str(i)]["data"]["imu_state"]["quaternion"]))
                 imu.accelerometer = list(
-                    map(float, self.robot_sport_state[str(i)]["data"]["imu_state"]["accelerometer"]))
+                    map(float, self.robot_sport_state[str(i)]["data"]["imu_state"]["accelerometer"]
+                        ))
                 imu.gyroscope = list(
                     map(float, self.robot_sport_state[str(i)]["data"]["imu_state"]["gyroscope"]))
                 imu.rpy = list(
