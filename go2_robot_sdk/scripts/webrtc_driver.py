@@ -405,5 +405,7 @@ class Go2Connection():
             if perform_decode:
                 decoded_data = decoder.decode(compressed_data, obj['data'])
                 obj["decoded_data"] = decoded_data
+            else:
+                obj["compressed_data"] = compressed_data
             return obj
         return None
