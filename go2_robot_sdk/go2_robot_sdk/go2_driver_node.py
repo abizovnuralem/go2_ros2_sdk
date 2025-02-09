@@ -124,12 +124,15 @@ class RobotBaseNode(Node):
             self.go2_odometry_pub.append(
                 self.create_publisher(Odometry, 'odom', qos_profile))
             self.imu_pub.append(self.create_publisher(IMU, 'imu', qos_profile))
-            self.img_pub.append(self.create_publisher(Image, 'camera/image_raw', best_effort_qos))
-            self.camera_info_pub.append(self.create_publisher(
-                CameraInfo, 'camera/camera_info', best_effort_qos))
-            self.voxel_pub.append(self.create_publisher(VoxelMapCompressed,
-                                                        '/utlidar/voxel_map_compressed',
-                                                        best_effort_qos))
+            if self.enable_video:
+                self.img_pub.append(self.create_publisher(
+                    Image, 'camera/image_raw', best_effort_qos))
+                self.camera_info_pub.append(self.create_publisher(
+                    CameraInfo, 'camera/camera_info', best_effort_qos))
+            if self.publish_raw_voxel:
+                self.voxel_pub.append(self.create_publisher(VoxelMapCompressed,
+                                                            '/utlidar/voxel_map_compressed',
+                                                            best_effort_qos))
 
         else:
             for i in range(len(self.robot_ip_lst)):
@@ -143,14 +146,16 @@ class RobotBaseNode(Node):
                     Odometry, f'robot{i}/odom', qos_profile))
                 self.imu_pub.append(self.create_publisher(
                     IMU, f'robot{i}/imu', qos_profile))
-                self.img_pub.append(self.create_publisher(
-                    Image, f'robot{i}/camera/image_raw', best_effort_qos))
-                self.camera_info_pub.append(self.create_publisher(
-                    CameraInfo, f'robot{i}/camera/camera_info', best_effort_qos))
-                self.voxel_pub.append(
-                    self.create_publisher(
-                        VoxelMapCompressed, f'robot{i}/utlidar/voxel_map_compressed',
-                        best_effort_qos))
+                if self.enable_video:
+                    self.img_pub.append(self.create_publisher(
+                        Image, f'robot{i}/camera/image_raw', best_effort_qos))
+                    self.camera_info_pub.append(self.create_publisher(
+                        CameraInfo, f'robot{i}/camera/camera_info', best_effort_qos))
+                if self.publish_raw_voxel:
+                    self.voxel_pub.append(
+                        self.create_publisher(
+                            VoxelMapCompressed, f'robot{i}/utlidar/voxel_map_compressed',
+                            best_effort_qos))
 
         self.broadcaster = TransformBroadcaster(self, qos=qos_profile)
 
