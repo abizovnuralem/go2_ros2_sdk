@@ -42,6 +42,7 @@ from scripts.webrtc_driver import Go2Connection
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSHistoryPolicy, QoSReliabilityPolicy
+from rclpy.qos_overriding_options import QoSOverridingOptions
 
 from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import Twist, TransformStamped, PoseStamped
@@ -126,9 +127,15 @@ class RobotBaseNode(Node):
             self.imu_pub.append(self.create_publisher(IMU, 'imu', qos_profile))
             if self.enable_video:
                 self.img_pub.append(self.create_publisher(
-                    Image, 'camera/image_raw', best_effort_qos))
+                    Image,
+                    'camera/image_raw',
+                    best_effort_qos,
+                    qos_overriding_options=QoSOverridingOptions.with_default_policies()))
                 self.camera_info_pub.append(self.create_publisher(
-                    CameraInfo, 'camera/camera_info', best_effort_qos))
+                    CameraInfo,
+                    'camera/camera_info',
+                    best_effort_qos,
+                    qos_overriding_options=QoSOverridingOptions.with_default_policies()))
             if self.publish_raw_voxel:
                 self.voxel_pub.append(self.create_publisher(VoxelMapCompressed,
                                                             '/utlidar/voxel_map_compressed',
@@ -148,9 +155,16 @@ class RobotBaseNode(Node):
                     IMU, f'robot{i}/imu', qos_profile))
                 if self.enable_video:
                     self.img_pub.append(self.create_publisher(
-                        Image, f'robot{i}/camera/image_raw', best_effort_qos))
-                    self.camera_info_pub.append(self.create_publisher(
-                        CameraInfo, f'robot{i}/camera/camera_info', best_effort_qos))
+                        Image,
+                        f'robot{i}/camera/image_raw',
+                        best_effort_qos,
+                        qos_overriding_options=QoSOverridingOptions.with_default_policies()))
+                    self.camera_info_pub.append(
+                        self.create_publisher(
+                            CameraInfo,
+                            f'robot{i}/camera/camera_info',
+                            best_effort_qos,
+                            qos_overriding_options=QoSOverridingOptions.with_default_policies()))
                 if self.publish_raw_voxel:
                     self.voxel_pub.append(
                         self.create_publisher(
@@ -437,8 +451,8 @@ class RobotBaseNode(Node):
         for i in range(len(self.robot_lidar)):
             if self.robot_lidar[str(i)]:
                 voxel_msg = VoxelMapCompressed()
-                voxel_msg.header.stamp = self.get_clock().now().to_msg()
-                voxel_msg.header.frame_id = 'odom'
+                voxel_msg.stamp = self.robot_lidar[str(i)]['data']['stamp']
+                voxel_msg.frame_id = 'odom'
 
                 # Example data: {"type":"msg","topic":"rt/utlidar/voxel_map_compressed",
                 # "data":{"stamp":1.709106e+09,"frame_id":"odom","resolution":0.050000,
@@ -447,7 +461,7 @@ class RobotBaseNode(Node):
                 voxel_msg.origin = self.robot_lidar[str(i)]['data']['origin']
                 voxel_msg.width = self.robot_lidar[str(i)]['data']['width']
                 voxel_msg.src_size = self.robot_lidar[str(i)]['data']['src_size']
-                voxel_msg.data = self.robot_lidar[str(i)]['data']['data']
+                voxel_msg.data = self.robot_lidar[str(i)]['compressed_data']
 
                 self.voxel_pub[i].publish(voxel_msg)
 
