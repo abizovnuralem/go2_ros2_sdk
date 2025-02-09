@@ -46,7 +46,7 @@ from rclpy.qos import QoSProfile, QoSHistoryPolicy, QoSReliabilityPolicy
 from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import Twist, TransformStamped, PoseStamped
 from go2_interfaces.msg import Go2State, IMU
-from unitree_go.msg import LowState
+from unitree_go.msg import LowState, VoxelMapCompressed
 from sensor_msgs.msg import PointCloud2, PointField, JointState, Joy
 from sensor_msgs_py import point_cloud2
 from std_msgs.msg import Header
@@ -112,6 +112,7 @@ class RobotBaseNode(Node):
         self.imu_pub = []
         self.img_pub = []
         self.camera_info_pub = []
+        self.voxel_pub = []
 
         if self.conn_mode == 'single':
             self.joint_pub.append(self.create_publisher(
@@ -126,6 +127,9 @@ class RobotBaseNode(Node):
             self.img_pub.append(self.create_publisher(Image, 'camera/image_raw', best_effort_qos))
             self.camera_info_pub.append(self.create_publisher(
                 CameraInfo, 'camera/camera_info', best_effort_qos))
+            self.voxel_pub.append(self.create_publisher(VoxelMapCompressed,
+                                                        '/utlidar/voxel_map_compressed',
+                                                        best_effort_qos))
 
         else:
             for i in range(len(self.robot_ip_lst)):
@@ -143,6 +147,10 @@ class RobotBaseNode(Node):
                     Image, f'robot{i}/camera/image_raw', best_effort_qos))
                 self.camera_info_pub.append(self.create_publisher(
                     CameraInfo, f'robot{i}/camera/camera_info', best_effort_qos))
+                self.voxel_pub.append(
+                    self.create_publisher(
+                        VoxelMapCompressed, f'robot{i}/utlidar/voxel_map_compressed',
+                        best_effort_qos))
 
         self.broadcaster = TransformBroadcaster(self, qos=qos_profile)
 
@@ -208,8 +216,12 @@ class RobotBaseNode(Node):
             self.publish_joint_state_webrtc()
 
     def timer_callback_lidar(self):
-        if self.conn_type == 'webrtc':
+        if self.conn_type == 'webrtc' and self.decode_lidar:
             self.publish_lidar_webrtc()
+
+        # Publish raw voxel data
+        if self.conn_type == 'webrtc' and self.publish_raw_voxel:
+            self.publish_voxel_webrtc()
 
     def cmd_vel_cb(self, msg, robot_num):
         x = msg.linear.x
@@ -416,6 +428,24 @@ class RobotBaseNode(Node):
                     point_cloud.header, fields, points)
                 self.go2_lidar_pub[i].publish(point_cloud)
 
+    def publish_voxel_webrtc(self):
+        for i in range(len(self.robot_lidar)):
+            if self.robot_lidar[str(i)]:
+                voxel_msg = VoxelMapCompressed()
+                voxel_msg.header.stamp = self.get_clock().now().to_msg()
+                voxel_msg.header.frame_id = 'odom'
+
+                # Example data: {"type":"msg","topic":"rt/utlidar/voxel_map_compressed",
+                # "data":{"stamp":1.709106e+09,"frame_id":"odom","resolution":0.050000,
+                # "src_size":77824,"origin":[1.675000,5.325000,-0.575000],"width":[128,128,38]}}
+                voxel_msg.resolution = self.robot_lidar[str(i)]['data']['resolution']
+                voxel_msg.origin = self.robot_lidar[str(i)]['data']['origin']
+                voxel_msg.width = self.robot_lidar[str(i)]['data']['width']
+                voxel_msg.src_size = self.robot_lidar[str(i)]['data']['src_size']
+                voxel_msg.data = self.robot_lidar[str(i)]['data']['data']
+
+                self.voxel_pub[i].publish(voxel_msg)
+
     def publish_joint_state_webrtc(self):
 
         for i in range(len(self.robot_sport_state)):
@@ -591,6 +621,7 @@ async def start_node():
             on_validated=base_node.on_validated,
             on_message=base_node.on_data_channel_message,
             on_video_frame=base_node.on_video_frame if base_node.enable_video else None,
+            decode_lidar=base_node.decode_lidar,
         )
 
         sleep_task_lst.append(asyncio.get_event_loop(

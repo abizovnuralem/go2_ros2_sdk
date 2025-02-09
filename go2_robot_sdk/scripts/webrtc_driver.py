@@ -193,6 +193,7 @@ class Go2Connection():
             on_message=None,
             on_open=None,
             on_video_frame=None,
+            decode_lidar=True,
     ):
 
         self.pc = RTCPeerConnection()
@@ -203,8 +204,8 @@ class Go2Connection():
         self.on_validated = on_validated
         self.on_message = on_message
         self.on_open = on_open
-
         self.on_video_frame = on_video_frame
+        self.decode_lidar = decode_lidar
 
         self.data_channel = self.pc.createDataChannel("data", id=0)
         self.data_channel.on("open", self.on_data_channel_open)
@@ -258,7 +259,7 @@ class Go2Connection():
                 if msgobj.get("type") == "validation":
                     self.validate_robot_conn(msgobj)
             elif isinstance(msg, bytes):
-                msgobj = Go2Connection.deal_array_buffer(msg)
+                msgobj = Go2Connection.deal_array_buffer(msg, perform_decode=self.decode_lidar)
 
             if self.on_message:
                 self.on_message(msg, msgobj, self.robot_num)
@@ -393,15 +394,16 @@ class Go2Connection():
         return hash_obj.hexdigest()
 
     @staticmethod
-    def deal_array_buffer(n):
+    def deal_array_buffer(buffer, perform_decode=True):
 
-        if isinstance(n, bytes):
-            length = struct.unpack("H", n[:2])[0]
-            json_segment = n[4: 4 + length]
-            compressed_data = n[4 + length:]
+        if isinstance(buffer, bytes):
+            length = struct.unpack("H", buffer[:2])[0]
+            json_segment = buffer[4: 4 + length]
+            compressed_data = buffer[4 + length:]
             json_str = json_segment.decode("utf-8")
             obj = json.loads(json_str)
-            decoded_data = decoder.decode(compressed_data, obj['data'])
-            obj["decoded_data"] = decoded_data
+            if perform_decode:
+                decoded_data = decoder.decode(compressed_data, obj['data'])
+                obj["decoded_data"] = decoded_data
             return obj
         return None
