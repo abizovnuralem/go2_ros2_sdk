@@ -40,7 +40,7 @@ def generate_launch_description():
     urdf_path = os.path.join(pkg_dir, 'urdf')
 
     # Read URDF content before LaunchDescription
-    default_urdf_path = os.path.join(urdf_path, urdf_file_name)
+    default_urdf_path = os.path.join(urdf_path, 'go2.urdf')
     with open(default_urdf_path, 'r') as infp:
         robot_desc = infp.read()
 
@@ -84,6 +84,17 @@ def generate_launch_description():
                 'enable_video': enable_video,
                 'decode_lidar': False,
                 'publish_raw_voxel': True
+            },
+                {
+                "qos_overrides": {
+                    "/camera/image_raw": {
+                        "publisher": {
+                            "reliability": "reliable",
+                            "history": "keep_last",
+                            "depth": 1,
+                        }
+                    }
+                }
             }],
         ),
 
@@ -94,7 +105,7 @@ def generate_launch_description():
             name='image_republisher',
             arguments=['raw', 'compressed'],
             remappings=[
-                ('in/image', 'camera/image_raw'),
+                ('in', 'camera/image_raw'),
                 ('out/compressed', 'camera/compressed'),
             ],
         ),
