@@ -98,6 +98,15 @@ rosdep install --from-paths src --ignore-src -r -y
 colcon build
 ```
 
+## Running via Docker
+Can set environment variables beforehand, hardcoded in docker/docker-compose.yaml, or as shown below. 
+
+Run:
+```shell
+cd docker
+ROBOT_IP=<ROBOT_IP> CONN_TYPE=<webrtc/cyclonedds> docker-compose up --build
+```
+
 ## Usage
 
 Don't forget to set up your Go2 robot in Wifi-mode and obtain the IP. You can use the mobile app to get it. Go to Device -> Data -> Automatic Machine Inspection and look for STA Network: wlan0.
@@ -125,13 +134,6 @@ The `robot.launch.py` code starts many services/nodes simultaneously, including
 * av2_bringup/navigation_launch.py
 
 When you run `robot.launch.py`, `rviz` will fire up, lidar data will begin to accumulate, the front color camera data will be displayed too (typically after 4 seconds), and your dog will be waiting for commands from your joystick (e.g. a X-box controller). You can then steer the dog through your house, e.g., and collect LIDAR mapping data. 
-
-### Running via Docker
-Can set environment variables beforehand, hardcoded in docker/docker-compose.yaml, or as shown below. 
-```shell
-cd docker
-ROBOT_IP=<ROBOT_IP> CONN_TYPE=<webrtc/cyclonedds> docker-compose up --build
-```
 
 ### SLAM and Nav2
 
