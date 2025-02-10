@@ -96,6 +96,9 @@ def generate_launch_description():
                     }
                 }
             }],
+            remappings=[
+                ('cmd_vel_out', 'cmd_vel'),
+            ],
         ),
 
         # Image compression node
