@@ -114,7 +114,6 @@ class RobotBaseNode(Node):
         self.img_pub = []
         self.camera_info_pub = []
         self.voxel_pub = []
-        self.webrtc_msgs = asyncio.Queue()
 
         if self.conn_mode == 'single':
             self.joint_pub.append(self.create_publisher(
@@ -189,6 +188,7 @@ class RobotBaseNode(Node):
         self.robot_low_cmd = {}
         self.robot_sport_state = {}
         self.robot_lidar = {}
+        self.webrtc_msgs = asyncio.Queue()
 
         self.joy_state = Joy()
 
