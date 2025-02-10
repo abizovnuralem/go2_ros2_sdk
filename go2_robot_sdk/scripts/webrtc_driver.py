@@ -21,7 +21,8 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# WEB_RTC_CON WAS ORIGINALY FORKED from https://github.com/tfoldi/go2-webrtc/tree/master and https://github.com/legion1581/go2_webrtc_connect
+# WEB_RTC_CON WAS ORIGINALY FORKED from https://github.com/tfoldi/go2-webrtc/tree/master
+# and https://github.com/legion1581/go2_webrtc_connect
 # Big thanks for your passion! @tfoldi (Földi Tamás) and @legion1581 (The RoboVerse Discord Group)
 
 
@@ -192,6 +193,7 @@ class Go2Connection():
             on_message=None,
             on_open=None,
             on_video_frame=None,
+            decode_lidar=True,
     ):
 
         self.pc = RTCPeerConnection()
@@ -202,8 +204,8 @@ class Go2Connection():
         self.on_validated = on_validated
         self.on_message = on_message
         self.on_open = on_open
-
         self.on_video_frame = on_video_frame
+        self.decode_lidar = decode_lidar
 
         self.data_channel = self.pc.createDataChannel("data", id=0)
         self.data_channel.on("open", self.on_data_channel_open)
@@ -212,7 +214,8 @@ class Go2Connection():
         self.pc.on("track", self.on_track)
         self.pc.on("connectionstatechange", self.on_connection_state_change)
 
-        self.pc.addTransceiver("video", direction="recvonly")
+        if self.on_video_frame:
+            self.pc.addTransceiver("video", direction="recvonly")
 
     def on_connection_state_change(self):
         logger.info(f"Connection state is {self.pc.connectionState}")
@@ -222,10 +225,12 @@ class Go2Connection():
         if track.kind == "audio":
             pass
         elif track.kind == "video":
-            frame = await track.recv()
-            logger.info(f"Received frame {frame}")
             if self.on_video_frame:
+                frame = await track.recv()
+                logger.info(f"Received frame {frame}")
                 await self.on_video_frame(track, int(self.robot_num))
+            else:
+                pass
 
     async def generate_offer(self):
         offer = await self.pc.createOffer()
@@ -254,7 +259,7 @@ class Go2Connection():
                 if msgobj.get("type") == "validation":
                     self.validate_robot_conn(msgobj)
             elif isinstance(msg, bytes):
-                msgobj = Go2Connection.deal_array_buffer(msg)
+                msgobj = Go2Connection.deal_array_buffer(msg, perform_decode=self.decode_lidar)
 
             if self.on_message:
                 self.on_message(msg, msgobj, self.robot_num)
@@ -263,7 +268,7 @@ class Go2Connection():
             pass
 
     async def connect(self):
-        
+
         logging.info("Trying to send SDP using a NEW method...")
 
         offer = await self.pc.createOffer()
@@ -389,15 +394,18 @@ class Go2Connection():
         return hash_obj.hexdigest()
 
     @staticmethod
-    def deal_array_buffer(n):
+    def deal_array_buffer(buffer, perform_decode=True):
 
-        if isinstance(n, bytes):
-            length = struct.unpack("H", n[:2])[0]
-            json_segment = n[4: 4 + length]
-            compressed_data = n[4 + length:]
+        if isinstance(buffer, bytes):
+            length = struct.unpack("H", buffer[:2])[0]
+            json_segment = buffer[4: 4 + length]
+            compressed_data = buffer[4 + length:]
             json_str = json_segment.decode("utf-8")
             obj = json.loads(json_str)
-            decoded_data = decoder.decode(compressed_data, obj['data'])
-            obj["decoded_data"] = decoded_data
+            if perform_decode:
+                decoded_data = decoder.decode(compressed_data, obj['data'])
+                obj["decoded_data"] = decoded_data
+            else:
+                obj["compressed_data"] = compressed_data
             return obj
         return None

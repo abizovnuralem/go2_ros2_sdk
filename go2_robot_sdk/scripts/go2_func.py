@@ -32,20 +32,20 @@ def generate_id():
 
 def gen_command(cmd: int):
     command = {
-                "type": "msg", 
-                "topic": "rt/api/sport/request", 
+        "type": "msg",
+                "topic": "rt/api/sport/request",
                 "data": {
                     "header":
                         {
                             "identity":
                                 {
-                                    "id": generate_id(), 
+                                    "id": generate_id(),
                                     "api_id": cmd
                                 }
                         },
-                    "parameter": json.dumps(cmd)          
-                    }
+                    "parameter": json.dumps(cmd)
                 }
+    }
     command = json.dumps(command)
     return command
 
@@ -53,25 +53,25 @@ def gen_command(cmd: int):
 def gen_mov_command(x: float, y: float, z: float):
 
     command = {
-        "type": "msg", 
-        "topic": "rt/api/sport/request", 
+        "type": "msg",
+        "topic": "rt/api/sport/request",
         "data": {
             "header":
                 {
                     "identity":
                         {
-                            "id": generate_id(), 
+                            "id": generate_id(),
                             "api_id": 1008
                         }
                 },
             "parameter": json.dumps(
                 {
-                    "x": x, 
-                    "y": y, 
+                    "x": x,
+                    "y": y,
                     "z": z
                 })
-                
-            }
+
         }
+    }
     command = json.dumps(command)
     return command
