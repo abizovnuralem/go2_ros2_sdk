@@ -47,7 +47,7 @@ from rclpy.qos_overriding_options import QoSOverridingOptions
 from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import Twist, TransformStamped, PoseStamped
 from go2_interfaces.msg import Go2State, IMU
-from unitree_go.msg import LowState, VoxelMapCompressed
+from unitree_go.msg import LowState, VoxelMapCompressed, WebRtcReq
 from sensor_msgs.msg import PointCloud2, PointField, JointState, Joy
 from sensor_msgs_py import point_cloud2
 from std_msgs.msg import Header
@@ -114,6 +114,7 @@ class RobotBaseNode(Node):
         self.img_pub = []
         self.camera_info_pub = []
         self.voxel_pub = []
+        self.webrtc_msgs = asyncio.Queue()
 
         if self.conn_mode == 'single':
             self.joint_pub.append(self.create_publisher(
@@ -197,12 +198,22 @@ class RobotBaseNode(Node):
                 'cmd_vel_out',
                 lambda msg: self.cmd_vel_cb(msg, "0"),
                 qos_profile)
+            self.create_subscription(
+                WebRtcReq,
+                'webrtc_req',
+                lambda msg: self.webrtc_req_cb(msg, "0"),
+                qos_profile)
         else:
             for i in range(len(self.robot_ip_lst)):
                 self.create_subscription(
                     Twist,
                     f'robot{str(i)}/cmd_vel_out',
                     lambda msg: self.cmd_vel_cb(msg, str(i)),
+                    qos_profile)
+                self.create_subscription(
+                    WebRtcReq,
+                    f'robot{str(i)}/webrtc_req',
+                    lambda msg: self.webrtc_req_cb(msg, str(i)),
                     qos_profile)
 
         self.create_subscription(
@@ -259,6 +270,10 @@ class RobotBaseNode(Node):
             self.robot_cmd_vel[robot_num] = gen_mov_command(
                 round(x, 2), round(y, 2), round(z, 2))
 
+    def webrtc_req_cb(self, msg, robot_num):
+        payload = gen_command(msg.api_id, msg.parameter, msg.topic)
+        self.webrtc_msgs.put_nowait(payload)
+
     def joy_cb(self, msg):
         self.joy_state = msg
 
@@ -299,26 +314,24 @@ class RobotBaseNode(Node):
         self.go2_lidar_pub[0].publish(msg)
 
     def joy_cmd(self, robot_num):
+        if robot_num in self.conn and robot_num in self.robot_cmd_vel and self.robot_cmd_vel[
+                robot_num] is not None:
+            self.get_logger().info("Move")
+            self.conn[robot_num].data_channel.send(
+                self.robot_cmd_vel[robot_num])
+            self.robot_cmd_vel[robot_num] = None
 
-        if self.conn_type == 'webrtc':
-            if robot_num in self.conn and robot_num in self.robot_cmd_vel and self.robot_cmd_vel[
-                    robot_num] is not None:
-                self.get_logger().info("Move")
-                self.conn[robot_num].data_channel.send(
-                    self.robot_cmd_vel[robot_num])
-                self.robot_cmd_vel[robot_num] = None
+        if robot_num in self.conn and self.joy_state.buttons and self.joy_state.buttons[1]:
+            self.get_logger().info("Stand down")
+            stand_down_cmd = gen_command(ROBOT_CMD["StandDown"])
+            self.conn[robot_num].data_channel.send(stand_down_cmd)
 
-            if robot_num in self.conn and self.joy_state.buttons and self.joy_state.buttons[1]:
-                self.get_logger().info("Stand down")
-                stand_down_cmd = gen_command(ROBOT_CMD["StandDown"])
-                self.conn[robot_num].data_channel.send(stand_down_cmd)
-
-            if robot_num in self.conn and self.joy_state.buttons and self.joy_state.buttons[0]:
-                self.get_logger().info("Stand up")
-                stand_up_cmd = gen_command(ROBOT_CMD["StandUp"])
-                self.conn[robot_num].data_channel.send(stand_up_cmd)
-                move_cmd = gen_command(ROBOT_CMD['BalanceStand'])
-                self.conn[robot_num].data_channel.send(move_cmd)
+        if robot_num in self.conn and self.joy_state.buttons and self.joy_state.buttons[0]:
+            self.get_logger().info("Stand up")
+            stand_up_cmd = gen_command(ROBOT_CMD["StandUp"])
+            self.conn[robot_num].data_channel.send(stand_up_cmd)
+            move_cmd = gen_command(ROBOT_CMD['BalanceStand'])
+            self.conn[robot_num].data_channel.send(move_cmd)
 
     def on_validated(self, robot_num):
         if robot_num in self.conn:
@@ -559,6 +572,17 @@ class RobotBaseNode(Node):
                 ]
                 self.joint_pub[i].publish(joint_state)
 
+    def publish_webrtc_commands(self, robot_num):
+        while True:
+            try:
+                message = self.webrtc_msgs.get_nowait()
+                try:
+                    self.conn[robot_num].data_channel.send(message)
+                finally:
+                    self.webrtc_msgs.task_done()
+            except asyncio.QueueEmpty:
+                break
+
     def publish_robot_state_webrtc(self):
         for i in range(len(self.robot_sport_state)):
             if self.robot_sport_state[str(i)]:
@@ -606,7 +630,9 @@ class RobotBaseNode(Node):
             # await self.conn[robot_num].data_channel.disableTrafficSaving(True)
 
         while True:
-            self.joy_cmd(robot_num)
+            if self.conn_type == 'webrtc':
+                self.joy_cmd(robot_num)
+                self.publish_webrtc_commands(robot_num)
             await asyncio.sleep(0.1)
 
 
