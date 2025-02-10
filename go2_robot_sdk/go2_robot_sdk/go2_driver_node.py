@@ -121,7 +121,10 @@ class RobotBaseNode(Node):
             self.go2_state_pub.append(self.create_publisher(
                 Go2State, 'go2_states', qos_profile))
             self.go2_lidar_pub.append(self.create_publisher(
-                PointCloud2, 'point_cloud2', best_effort_qos))
+                PointCloud2,
+                'point_cloud2',
+                best_effort_qos,
+                qos_overriding_options=QoSOverridingOptions.with_default_policies()))
             self.go2_odometry_pub.append(
                 self.create_publisher(Odometry, 'odom', qos_profile))
             self.imu_pub.append(self.create_publisher(IMU, 'imu', qos_profile))
@@ -147,8 +150,12 @@ class RobotBaseNode(Node):
                     JointState, f'robot{i}/joint_states', qos_profile))
                 self.go2_state_pub.append(self.create_publisher(
                     Go2State, f'robot{i}/go2_states', qos_profile))
-                self.go2_lidar_pub.append(self.create_publisher(
-                    PointCloud2, f'robot{i}/point_cloud2', best_effort_qos))
+                self.go2_lidar_pub.append(
+                    self.create_publisher(
+                        PointCloud2,
+                        f'robot{i}/point_cloud2',
+                        best_effort_qos,
+                        qos_overriding_options=QoSOverridingOptions.with_default_policies()))
                 self.go2_odometry_pub.append(self.create_publisher(
                     Odometry, f'robot{i}/odom', qos_profile))
                 self.imu_pub.append(self.create_publisher(
