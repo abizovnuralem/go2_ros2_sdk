@@ -272,6 +272,7 @@ class RobotBaseNode(Node):
 
     def webrtc_req_cb(self, msg, robot_num):
         payload = gen_command(msg.api_id, msg.parameter, msg.topic)
+        self.get_logger().debug(f"Received WebRTC request: {payload}")
         self.webrtc_msgs.put_nowait(payload)
 
     def joy_cb(self, msg):
