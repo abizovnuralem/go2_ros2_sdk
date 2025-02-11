@@ -62,6 +62,15 @@ ROBOT_CMD = {
     "GetState": 1034,
     "EconomicGait": 1035,
     "FingerHeart": 1036,
+    "Bound": 1304,
+    "MoonWalk": 1305,
+    "OnesidedStep": 1303,
+    "CrossStep": 1302,
+    "Handstand": 1301,
+    "StandOut": 1039,
+    "FreeWalk": 1045,
+    "Standup": 1050,
+    "CrossWalk": 1051
 }
 
 RTC_TOPIC = {
