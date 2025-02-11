@@ -98,6 +98,15 @@ rosdep install --from-paths src --ignore-src -r -y
 colcon build
 ```
 
+## Running via Docker
+Can set environment variables beforehand, hardcoded in docker/docker-compose.yaml, or as shown below. 
+
+Run:
+```shell
+cd docker
+ROBOT_IP=<ROBOT_IP> CONN_TYPE=<webrtc/cyclonedds> docker-compose up --build
+```
+
 ## Usage
 
 Don't forget to set up your Go2 robot in Wifi-mode and obtain the IP. You can use the mobile app to get it. Go to Device -> Data -> Automatic Machine Inspection and look for STA Network: wlan0.
