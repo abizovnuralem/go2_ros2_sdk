@@ -7,7 +7,6 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(geometry_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
@@ -39,9 +38,9 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 "msg/UwbSwitch.msg"
 "msg/VoxelMapCompressed.msg"
 "msg/VoxelHeightMapState.msg"
+"msg/WebRtcReq.msg"
 "msg/WirelessController.msg"
 
-  DEPENDENCIES geometry_msgs # Add packages that above messages depend on, in this case geometry_msgs for Sphere.msg
 )
 
 
