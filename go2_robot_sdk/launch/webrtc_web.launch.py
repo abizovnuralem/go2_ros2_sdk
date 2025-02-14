@@ -35,6 +35,7 @@ def generate_launch_description():
         'ROBOT_IP', os.getenv('GO2_IP', '')))
     enable_video = LaunchConfiguration('enable_video', default='true')
     urdf_file_name = LaunchConfiguration('urdf_file_name', default='go2.urdf')
+    send_buffer_limit = LaunchConfiguration('send_buffer_limit', default='100000000')
 
     pkg_dir = get_package_share_directory('go2_robot_sdk')
     urdf_path = os.path.join(pkg_dir, 'urdf')
@@ -111,5 +112,14 @@ def generate_launch_description():
                 ('in', 'camera/image_raw'),
                 ('out/compressed', 'camera/compressed'),
             ],
+        ),
+
+        # Foxglove Bridge node
+        Node(
+            package='foxglove_bridge',
+            executable='foxglove_bridge',
+            parameters=[{
+                'send_buffer_limit': send_buffer_limit
+            }],
         ),
     ])
