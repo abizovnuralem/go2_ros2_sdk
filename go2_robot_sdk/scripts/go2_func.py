@@ -24,54 +24,46 @@
 import datetime
 import json
 import random
+from typing import Any, Dict, Optional
+
+SPORT_MODE_TOPIC = "rt/api/sport/request"
 
 
-def generate_id():
+def generate_id() -> int:
     return int(datetime.datetime.now().timestamp() * 1000 % 2147483648) + random.randint(0, 999)
 
 
-def gen_command(cmd: int):
-    command = {
-                "type": "msg", 
-                "topic": "rt/api/sport/request", 
-                "data": {
-                    "header":
-                        {
-                            "identity":
-                                {
-                                    "id": generate_id(), 
-                                    "api_id": cmd
-                                }
-                        },
-                    "parameter": json.dumps(cmd)          
-                    }
-                }
-    command = json.dumps(command)
-    return command
-
-
-def gen_mov_command(x: float, y: float, z: float):
-
-    command = {
-        "type": "msg", 
-        "topic": "rt/api/sport/request", 
+def create_command_structure(api_id: int, parameter: Any, topic: str = SPORT_MODE_TOPIC) -> Dict:
+    return {
+        "type": "msg",
+        "topic": topic,
         "data": {
-            "header":
-                {
-                    "identity":
-                        {
-                            "id": generate_id(), 
-                            "api_id": 1008
-                        }
-                },
-            "parameter": json.dumps(
-                {
-                    "x": x, 
-                    "y": y, 
-                    "z": z
-                })
-                
-            }
+            "header": {
+                "identity": {
+                    "id": generate_id(),
+                    "api_id": api_id
+                }
+            },
+            "parameter": json.dumps(parameter)
         }
-    command = json.dumps(command)
-    return command
+    }
+
+
+def gen_command(cmd: int, parameters: Optional[Any] = None, topic: Optional[str] = None) -> str:
+    parameter = parameters if parameters is not None else cmd
+    command = create_command_structure(
+        api_id=cmd,
+        parameter=parameter,
+        topic=topic or SPORT_MODE_TOPIC
+    )
+    return json.dumps(command)
+
+
+def gen_mov_command(x: float, y: float, z: float) -> str:
+    parameters = {"x": x, "y": y, "z": z}
+    command = create_command_structure(
+        api_id=1008,
+        parameter=parameters,
+        topic=SPORT_MODE_TOPIC
+    )
+    return json.dumps(command)

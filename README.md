@@ -98,6 +98,15 @@ rosdep install --from-paths src --ignore-src -r -y
 colcon build
 ```
 
+## Running via Docker
+Can set environment variables beforehand, hardcoded in docker/docker-compose.yaml, or as shown below. 
+
+Run:
+```shell
+cd docker
+ROBOT_IP=<ROBOT_IP> CONN_TYPE=<webrtc/cyclonedds> docker-compose up --build
+```
+
 ## Usage
 
 Don't forget to set up your Go2 robot in Wifi-mode and obtain the IP. You can use the mobile app to get it. Go to Device -> Data -> Automatic Machine Inspection and look for STA Network: wlan0.
@@ -252,6 +261,20 @@ sudo snap install foxglove-studio
 
 1. Open Foxglove Studio and press "Open Connection".
 2. In the "Open Connection" settings, choose "Foxglove WebSocket" and use the default configuration ws://localhost:8765, then press "Open".
+
+## WebRTC Topic Interface
+
+The SDK provides a WebRTC topic interface that allows sending various commands to the robot. This is particularly useful for non-movement actions such as turning on headlights, playing sounds, and other robot control functions.
+
+To send commands via the WebRTC topic:
+
+```bash
+# Basic command structure
+ros2 topic pub /webrtc_req unitree_go/msg/WebRtcReq "{api_id: <API_ID>, parameter: '<PARAMETER>', topic: '<TOPIC>', priority: <0|1>}" --once
+
+# Example: Send a handshake command
+ros2 topic pub /webrtc_req unitree_go/msg/WebRtcReq "{api_id: 1016, topic: 'rt/api/sport/request'}" --once
+```
 
 ## WSL 2
 
