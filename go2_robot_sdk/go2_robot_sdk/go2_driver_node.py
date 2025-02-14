@@ -79,7 +79,7 @@ class RobotBaseNode(Node):
         self.conn_type = self.get_parameter(
             'conn_type').get_parameter_value().string_value
 
-        self.conn_mode = "single" if len(self.robot_ip_lst) == 1 else "multi"
+        self.conn_mode = "single" if (len(self.robot_ip_lst) == 1 and self.conn_type != "cyclonedds") else "multi"
 
         self.get_logger().info(f"Received ip list: {self.robot_ip_lst}")
         self.get_logger().info(f"Connection type is {self.conn_type}")
