@@ -44,7 +44,7 @@ def create_command_structure(api_id: int, parameter: Any, topic: str = SPORT_MOD
                     "api_id": api_id
                 }
             },
-            "parameter": json.dumps(parameter)
+            "parameter": parameter
         }
     }
 
@@ -63,7 +63,7 @@ def gen_mov_command(x: float, y: float, z: float) -> str:
     parameters = {"x": x, "y": y, "z": z}
     command = create_command_structure(
         api_id=1008,
-        parameter=parameters,
+        parameter=json.dumps(parameters),
         topic=SPORT_MODE_TOPIC
     )
     return json.dumps(command)
