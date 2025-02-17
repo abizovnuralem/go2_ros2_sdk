@@ -16,18 +16,18 @@ jobs:
       matrix:
         ros_distribution:
           - humble
-          - iron 
+          - jazzy 
           - rolling
         include:
           # Humble Hawksbill (May 2022 - May 2027)
           - docker_image: rostooling/setup-ros-docker:ubuntu-jammy-ros-humble-ros-base-latest
             ros_distribution: humble
             ros_version: 2
-          - docker_image: rostooling/setup-ros-docker:ubuntu-jammy-ros-iron-ros-base-latest
-            ros_distribution: iron
+          - docker_image: rostooling/setup-ros-docker:ubuntu-noble-ros-jazzy-ros-base-latest
+            ros_distribution: jazzy
             ros_version: 2            
           # Rolling Ridley  (June 2020 - Present)
-          - docker_image: rostooling/setup-ros-docker:ubuntu-jammy-ros-rolling-ros-base-latest
+          - docker_image: rostooling/setup-ros-docker:ubuntu-noble-ros-rolling-ros-base-latest
             ros_distribution: rolling
             ros_version: 2
     container:
@@ -37,12 +37,6 @@ jobs:
         uses: actions/checkout@v2
         with:
           submodules: recursive
-      - name: Setup Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: 1.79.0
-          profile: minimal
-          override: true
       - name: build and test
         uses: ros-tooling/action-ros-ci@master
         with:
