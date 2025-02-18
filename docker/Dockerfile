@@ -20,8 +20,7 @@ RUN pip install 'numpy<2.0.0'
 WORKDIR /ros2_ws
 
 # Clone the repository with submodules
-#RUN git clone --recurse-submodules https://github.com/abizovnuralem/go2_ros2_sdk src
-ADD . /ros2_ws/src
+COPY . /ros2_ws/src
 
 # Install Python requirements (with numpy constraint)
 RUN cd src && pip install -r requirements.txt
