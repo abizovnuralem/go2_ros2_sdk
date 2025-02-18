@@ -29,7 +29,7 @@ from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 
 
-def generate_launch_description():
+def generate_launch_description(context=None):
     # Declare launch parameters
     robot_ip = LaunchConfiguration('robot_ip', default=os.getenv(
         'ROBOT_IP', os.getenv('GO2_IP', '')))
@@ -40,7 +40,7 @@ def generate_launch_description():
     urdf_path = os.path.join(pkg_dir, 'urdf')
 
     # Read URDF content before LaunchDescription
-    default_urdf_path = os.path.join(urdf_path, 'go2.urdf')
+    default_urdf_path = os.path.join(urdf_path, urdf_file_name.perform(context) if context else 'go2.urdf')
     with open(default_urdf_path, 'r') as infp:
         robot_desc = infp.read()
 
