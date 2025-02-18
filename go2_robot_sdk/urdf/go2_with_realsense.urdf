@@ -1312,7 +1312,7 @@ Stephen Brawner (brawner@gmail.com)
 </joint>
 
 <!-- RealSense D435i camera -->
-<link name="realsense_d435i_link">
+<link name="camera_link">
   <inertial>
     <origin xyz="0 0 0" rpy="0 0 0" />
     <mass value="0.072" />
@@ -1341,57 +1341,8 @@ Stephen Brawner (brawner@gmail.com)
 
 <!-- Camera to mount joint -->
 <joint name="realsense_d435i_joint" type="fixed">
-  <origin xyz="0 0 0.0425" rpy="0 0.3 0" />
+  <origin xyz="0 0 0.0425" rpy="0 0.05 0" />
   <parent link="camera_mount_link" />
-  <child link="realsense_d435i_link" />
+  <child link="camera_link" />
   <axis xyz="0 0 0" />
 </joint> 
-
-<!-- RealSense D435i color camera frame -->
-<link name="realsense_d435i_color_frame"/>
-<joint name="realsense_d435i_color_joint" type="fixed">
-  <origin xyz="0 0 0" rpy="0 0 0" />
-  <parent link="realsense_d435i_link" />
-  <child link="realsense_d435i_color_frame" />
-</joint>
-
-<!-- RealSense D435i color camera optical frame -->
-<link name="realsense_d435i_color_optical_frame"/>
-<joint name="realsense_d435i_color_optical_joint" type="fixed">
-  <origin xyz="0 0 0" rpy="-1.5708 0 -1.5708" />
-  <parent link="realsense_d435i_color_frame" />
-  <child link="realsense_d435i_color_optical_frame" />
-</joint>
-
-<!-- RealSense D435i depth camera frame -->
-<link name="realsense_d435i_depth_frame"/>
-<joint name="realsense_d435i_depth_joint" type="fixed">
-  <origin xyz="0 0 0" rpy="0 0 0" />
-  <parent link="realsense_d435i_link" />
-  <child link="realsense_d435i_depth_frame" />
-</joint>
-
-<!-- RealSense D435i depth camera optical frame -->
-<link name="realsense_d435i_depth_optical_frame"/>
-<joint name="realsense_d435i_depth_optical_joint" type="fixed">
-  <origin xyz="0 0 0" rpy="-1.5708 0 -1.5708" />
-  <parent link="realsense_d435i_depth_frame" />
-  <child link="realsense_d435i_depth_optical_frame" />
-</joint>
-
-<!-- RealSense D435i IMU frame -->
-<link name="realsense_d435i_imu_link"/>
-<joint name="realsense_d435i_imu_joint" type="fixed">
-  <origin xyz="0 0 0" rpy="0 0 0" />
-  <parent link="realsense_d435i_link" />
-  <child link="realsense_d435i_imu_link" />
-</joint>
-
-<!-- RealSense D435i IMU optical frame -->
-<link name="realsense_d435i_imu_optical_frame"/>
-<joint name="realsense_d435i_imu_optical_joint" type="fixed">
-  <origin xyz="0 0 0" rpy="-1.5708 0 -1.5708" />
-  <parent link="realsense_d435i_imu_link" />
-  <child link="realsense_d435i_imu_optical_frame" />
-</joint>
-</robot>
