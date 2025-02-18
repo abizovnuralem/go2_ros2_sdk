@@ -25,25 +25,45 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.substitutions import LaunchConfiguration, Command
+from launch_ros.parameter_descriptions import ParameterValue
 
 
-def generate_launch_description(context=None):
+def load_urdf(context, *args, **kwargs):
+    # Get the URDF file name from context
+    urdf_file_name = context.launch_configurations['urdf_file_name']
+
+    # Get package directory
+    pkg_dir = get_package_share_directory('go2_robot_sdk')
+
+    # Create full path to URDF
+    urdf_file_path = os.path.join(pkg_dir, 'urdf', urdf_file_name)
+
+    # Robot state publisher node
+    robot_state_publisher_node = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        name='robot_state_publisher',
+        output='screen',
+        parameters=[{
+            'robot_description': ParameterValue(
+                Command(['cat ', urdf_file_path]),
+                value_type=str
+            )
+        }],
+    )
+
+    return [robot_state_publisher_node]
+
+
+def generate_launch_description():
     # Declare launch parameters
     robot_ip = LaunchConfiguration('robot_ip', default=os.getenv(
         'ROBOT_IP', os.getenv('GO2_IP', '')))
     enable_video = LaunchConfiguration('enable_video', default='true')
     urdf_file_name = LaunchConfiguration('urdf_file_name', default='go2.urdf')
     send_buffer_limit = LaunchConfiguration('send_buffer_limit', default='100000000')
-
-    pkg_dir = get_package_share_directory('go2_robot_sdk')
-    urdf_path = os.path.join(pkg_dir, 'urdf')
-
-    # Read URDF content before LaunchDescription
-    default_urdf_path = os.path.join(urdf_path, urdf_file_name.perform(context) if context else 'go2.urdf')
-    with open(default_urdf_path, 'r') as infp:
-        robot_desc = infp.read()
 
     return LaunchDescription([
         # Declare launch arguments
@@ -61,17 +81,6 @@ def generate_launch_description(context=None):
             'urdf_file_name',
             default_value='go2.urdf',
             description='Name of the URDF file'
-        ),
-
-        # Robot state publisher for URDF
-        Node(
-            package='robot_state_publisher',
-            executable='robot_state_publisher',
-            name='robot_state_publisher',
-            output='screen',
-            parameters=[{
-                'robot_description': robot_desc
-            }],
         ),
 
         # Go2 driver node with minimal parameters
@@ -122,4 +131,6 @@ def generate_launch_description(context=None):
                 'send_buffer_limit': send_buffer_limit
             }],
         ),
+
+        OpaqueFunction(function=load_urdf),
     ])
