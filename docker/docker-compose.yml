@@ -18,4 +18,4 @@ services:
     privileged: true  # Required for hardware access
     devices:
       - /dev/input:/dev/input  # For joystick access
-    restart: unless-stopped 
+    restart: unless-stopped
