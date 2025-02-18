@@ -45,13 +45,14 @@ def generate_launch_description():
     robot_ip_lst = robot_ip.replace(" ", "").split(",")
     print("IP list:", robot_ip_lst)
 
-    conn_mode = "single" if len(robot_ip_lst) == 1 else "multi"
 
     # these are debug only
     map_name = os.getenv('MAP_NAME', '3d_map')
     save_map = os.getenv('MAP_SAVE', 'true')
 
     conn_type = os.getenv('CONN_TYPE', 'webrtc')
+
+    conn_mode = "single" if len(robot_ip_lst) == 1 and conn_type != "cyclonedds" else "multi"
 
     if conn_mode == 'single':
         rviz_config = "single_robot_conf.rviz"

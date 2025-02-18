@@ -89,7 +89,7 @@ class RobotBaseNode(Node):
         self.publish_raw_voxel = self.get_parameter(
             'publish_raw_voxel').get_parameter_value().bool_value
 
-        self.conn_mode = "single" if len(self.robot_ip_lst) == 1 else "multi"
+        self.conn_mode = "single" if (len(self.robot_ip_lst) == 1 and self.conn_type != "cyclonedds") else "multi"
 
         self.get_logger().info(f"Received ip list: {self.robot_ip_lst}")
         self.get_logger().info(f"Connection type is {self.conn_type}")
@@ -368,7 +368,7 @@ class RobotBaseNode(Node):
             # Publish image and camera info
             self.img_pub[robot_num].publish(ros_image)
             self.camera_info_pub[robot_num].publish(camera_info)
-            asyncio.sleep(0)
+            await asyncio.sleep(0)
 
     def on_data_channel_message(self, _, msg, robot_num):
 
@@ -472,7 +472,7 @@ class RobotBaseNode(Node):
         for i in range(len(self.robot_lidar)):
             if self.robot_lidar[str(i)]:
                 voxel_msg = VoxelMapCompressed()
-                voxel_msg.stamp = self.robot_lidar[str(i)]['data']['stamp']
+                voxel_msg.stamp = float(self.robot_lidar[str(i)]['data']['stamp'])
                 voxel_msg.frame_id = 'odom'
 
                 # Example data: {"type":"msg","topic":"rt/utlidar/voxel_map_compressed",
