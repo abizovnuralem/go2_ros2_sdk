@@ -1346,3 +1346,4 @@ Stephen Brawner (brawner@gmail.com)
   <child link="camera_link" />
   <axis xyz="0 0 0" />
 </joint> 
+</robot>
