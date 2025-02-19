@@ -22,7 +22,7 @@
   <exec_depend>nav2_util</exec_depend>
   <exec_depend>pointcloud_to_laserscan</exec_depend>
   <exec_depend>image_transport</exec_depend>
-  <exec_depend>image_transport_plugins</exec_depend>
+  <exec_depend>compressed_image_transport</exec_depend>
   
   <exec_depend>slam_toolbox</exec_depend>
 
