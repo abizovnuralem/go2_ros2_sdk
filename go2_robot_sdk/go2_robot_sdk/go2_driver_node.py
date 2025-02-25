@@ -89,7 +89,8 @@ class RobotBaseNode(Node):
         self.publish_raw_voxel = self.get_parameter(
             'publish_raw_voxel').get_parameter_value().bool_value
 
-        self.conn_mode = "single" if (len(self.robot_ip_lst) == 1 and self.conn_type != "cyclonedds") else "multi"
+        self.conn_mode = "single" if (len(self.robot_ip_lst) ==
+                                      1 and self.conn_type != "cyclonedds") else "multi"
 
         self.get_logger().info(f"Received ip list: {self.robot_ip_lst}")
         self.get_logger().info(f"Connection type is {self.conn_type}")
@@ -271,8 +272,9 @@ class RobotBaseNode(Node):
                 round(x, 2), round(y, 2), round(z, 2))
 
     def webrtc_req_cb(self, msg, robot_num):
-        payload = gen_command(msg.api_id, msg.parameter, msg.topic)
-        self.get_logger().debug(f"Received WebRTC request: {payload}")
+        parameter = json.loads(msg.parameter) if msg.parameter else ""
+        payload = gen_command(msg.api_id, parameter, msg.topic, msg.id)
+        self.get_logger().info(f"Received WebRTC request: {payload[:50]}")
         self.webrtc_msgs.put_nowait(payload)
 
     def joy_cb(self, msg):
