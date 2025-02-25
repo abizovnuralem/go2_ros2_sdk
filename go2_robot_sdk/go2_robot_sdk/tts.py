@@ -36,6 +36,7 @@ import io
 import json
 import os
 import time
+import hashlib
 
 from pydub import AudioSegment
 from pydub.playback import play
@@ -57,9 +58,13 @@ class TTSNode(Node):
         # Initialize parameters
         self.declare_parameter("elevenlabs_api_key", "")
         self.declare_parameter("local_playback", False)  # Default to robot playback
+        self.declare_parameter("voice_name", "XrExE9yKIg1WjnnlVkGX")
+        self.declare_parameter("use_cache", True)  # Enable caching by default
 
         self.api_key = self.get_parameter("elevenlabs_api_key").value
         self.local_playback = self.get_parameter("local_playback").value
+        self.voice_name = self.get_parameter("voice_name").value
+        self.use_cache = self.get_parameter("use_cache").value
 
         if not self.api_key:
             self.get_logger().error("ElevenLabs API key not provided!")
@@ -73,46 +78,68 @@ class TTSNode(Node):
         # Create publisher for robot audio hub requests
         self.audio_pub = self.create_publisher(WebRtcReq, "/webrtc_req", 10)
 
-        # Create output directory for wave files
-        self.output_dir = "tts_output"
-        os.makedirs(self.output_dir, exist_ok=True)
+        # Create cache directory
+        self.cache_dir = "tts_cache"
+        os.makedirs(self.cache_dir, exist_ok=True)
 
         self.get_logger().info(
-            f'TTS Node initialized ({"local" if self.local_playback else "robot"} playback)'
+            f'TTS Node initialized ({"local" if self.local_playback else "robot"} playback, cache {"enabled" if self.use_cache else "disabled"})'
         )
 
     def tts_callback(self, msg):
         """Handle incoming TTS requests."""
         try:
             self.get_logger().info(
-                f'Received TTS request: "{msg.data}" with voice: {msg}'
+                f'Received TTS request: "{msg.data}" with voice: {self.voice_name}'
             )
-            voice_name = 'XrExE9yKIg1WjnnlVkGX'
 
-            # Call ElevenLabs API
-            audio_data = self.generate_speech(msg.data, voice_name)
+            # Check cache first if enabled
+            audio_data = None
+            cache_hit = False
+            cache_path = None
+
+            if self.use_cache:
+                cache_path = self._get_cache_path(msg.data, self.voice_name)
+                if os.path.exists(cache_path):
+                    self.get_logger().info(f"Cache hit: {cache_path}")
+                    with open(cache_path, "rb") as f:
+                        audio_data = f.read()
+                    cache_hit = True
+
+            # If not in cache, generate speech
+            if not cache_hit:
+                audio_data = self.generate_speech(msg.data, self.voice_name)
+
+                # Save to cache if enabled
+                if audio_data and self.use_cache and cache_path:
+                    with open(cache_path, "wb") as f:
+                        f.write(audio_data)
+                    self.get_logger().info(f"Saved to cache: {cache_path}")
 
             if audio_data:
-                # Save to WAV file
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                filename = f"{self.output_dir}/tts_{timestamp}.wav"
-                wav_data = self.save_wav(audio_data, filename)
-
                 if self.local_playback:
                     # Play locally
                     self.play_audio(audio_data)
                 else:
+                    # Convert MP3 to WAV for robot playback (in memory)
+                    wav_data = self.convert_mp3_to_wav(audio_data)
                     # Send to robot
                     self.play_on_robot(wav_data)
 
                 self.get_logger().info(
-                    f"Successfully processed TTS request. Saved to {filename}"
+                    f"Successfully processed TTS request. {'Using cached audio' if cache_hit else 'Generated new audio'}"
                 )
             else:
                 self.get_logger().error("Failed to generate speech")
 
         except Exception as e:
             self.get_logger().error(f"Error processing TTS request: {str(e)}")
+
+    def _get_cache_path(self, text, voice_name):
+        """Generate a cache file path based on text and voice name."""
+        # Create a hash of the text and voice to use as the filename
+        text_hash = hashlib.md5(f"{text}_{voice_name}".encode()).hexdigest()
+        return os.path.join(self.cache_dir, f"{text_hash}.mp3")
 
     def generate_speech(self, text, voice_name):
         """Generate speech using ElevenLabs API."""
@@ -131,6 +158,7 @@ class TTSNode(Node):
         }
 
         try:
+            self.get_logger().info(f"Calling ElevenLabs API for voice: {voice_name}")
             response = requests.post(url, json=data, headers=headers)
             response.raise_for_status()
             return response.content
@@ -139,23 +167,17 @@ class TTSNode(Node):
             self.get_logger().error(f"API request failed: {str(e)}")
             return None
 
-    def save_wav(self, audio_data, filename):
-        """Save audio data to WAV file and return the WAV data."""
+    def convert_mp3_to_wav(self, audio_data):
+        """Convert MP3 audio data to WAV format in memory."""
         try:
-            # Convert MP3 to WAV
+            # Convert MP3 to WAV in memory
             audio = AudioSegment.from_mp3(io.BytesIO(audio_data))
-
-            # Export to file
-            audio.export(filename, format="wav")
-            self.get_logger().info(f"Saved WAV file: {filename}")
-
-            # Return WAV data
             wav_io = io.BytesIO()
             audio.export(wav_io, format="wav")
             return wav_io.getvalue()
 
         except Exception as e:
-            self.get_logger().error(f"Error saving WAV file: {str(e)}")
+            self.get_logger().error(f"Error converting MP3 to WAV: {str(e)}")
             return None
 
     def play_audio(self, audio_data):
