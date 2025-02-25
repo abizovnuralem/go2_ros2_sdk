@@ -45,8 +45,8 @@ setup(
         (os.path.join('share', package_name, 'calibration'), glob(os.path.join('calibration', '*'))),
         (os.path.join('share', package_name, 'external_lib'), ['external_lib/libvoxel.wasm']),
         (os.path.join('share', package_name, 'external_lib/aioice'), glob(os.path.join('external_lib/aioice/src/aioice', '*'))),
-        
-        
+
+
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -58,7 +58,8 @@ setup(
     entry_points={
         'console_scripts': [
             'go2_driver_node = go2_robot_sdk.go2_driver_node:main',
-            'lidar_to_pointcloud = go2_robot_sdk.lidar_to_point:main'
+            'lidar_to_pointcloud = go2_robot_sdk.lidar_to_point:main',
+            'tts_node = go2_robot_sdk.tts:main'
         ],
     },
 )
