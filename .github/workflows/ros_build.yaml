@@ -37,6 +37,8 @@ jobs:
         uses: actions/checkout@v2
         with:
           submodules: recursive
+      - name: Install libunwind (fix issues on humble)
+        run: sudo apt update && sudo apt install --no-install-recommends libunwind-dev -y
       - name: build and test
         uses: ros-tooling/action-ros-ci@master
         with:
