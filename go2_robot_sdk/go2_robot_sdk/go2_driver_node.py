@@ -629,8 +629,13 @@ class RobotBaseNode(Node):
         self.conn[robot_num] = conn
 
         if self.conn_type == 'webrtc':
-            await self.conn[robot_num].connect()
-            # await self.conn[robot_num].data_channel.disableTrafficSaving(True)
+            try:
+                await self.conn[robot_num].connect()
+                # await self.conn[robot_num].data_channel.disableTrafficSaving(True)
+            except Exception as e:
+                self.get_logger().error(
+                    f"Failed to connect to robot {robot_num} - exiting: {e}")
+                return
 
         while True:
             if self.conn_type == 'webrtc':
