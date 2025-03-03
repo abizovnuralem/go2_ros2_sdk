@@ -625,76 +625,188 @@ class RobotBaseNode(Node):
                     i)]["data"]["imu_state"]["temperature"]
                 self.imu_pub[i].publish(imu)
 
-    async def run(self, conn, robot_num):
-        self.conn[robot_num] = conn
 
-        if self.conn_type == 'webrtc':
-            try:
-                await self.conn[robot_num].connect()
-                # await self.conn[robot_num].data_channel.disableTrafficSaving(True)
-            except Exception as e:
-                self.get_logger().error(
-                    f"Failed to connect to robot {robot_num} - exiting: {e}")
-                return
+async def run(conn, robot_num, node):
+    """
+    Standalone run function to handle robot connection.
 
+    Args:
+        conn: The robot connection object
+        robot_num: The robot number as a string
+        node: The RobotBaseNode instance
+    """
+    node.conn[robot_num] = conn
+    if node.conn_type == 'webrtc':
+        try:
+            await node.conn[robot_num].connect()
+            # await node.conn[robot_num].data_channel.disableTrafficSaving(True)
+        except Exception as e:
+            node.get_logger().error(
+                f"Failed to connect to robot {robot_num} - exiting: {e}")
+            # Signal that a critical error occurred by raising an exception
+            raise RuntimeError(f"Failed to connect to robot {robot_num}: {e}")
+
+    try:
         while True:
-            if self.conn_type == 'webrtc':
-                self.joy_cmd(robot_num)
-                self.publish_webrtc_commands(robot_num)
+            if node.conn_type == 'webrtc':
+                node.joy_cmd(robot_num)
+                node.publish_webrtc_commands(robot_num)
             await asyncio.sleep(0.1)
+    except Exception as e:
+        node.get_logger().error(f"Error in run loop for robot {robot_num}: {e}")
+        # Raise the exception to signal task failure
+        raise
 
 
 async def spin(node: Node):
-    cancel = node.create_guard_condition(lambda: None)
-
-    def _spin(node: Node,
-              future: asyncio.Future,
-              event_loop: asyncio.AbstractEventLoop):
-        while not future.cancelled():
-            rclpy.spin_once(node)
-        if not future.cancelled():
-            event_loop.call_soon_threadsafe(future.set_result, None)
-    event_loop = asyncio.get_event_loop()
-    spin_task = event_loop.create_future()
-    spin_thread = threading.Thread(
-        target=_spin, args=(node, spin_task, event_loop))
+    """Spin the node in a separate thread with proper context management."""
+    executor = rclpy.executors.SingleThreadedExecutor()
+    executor.add_node(node)
+    spin_thread = threading.Thread(target=executor.spin, daemon=True)
     spin_thread.start()
+
+    # Create a future that will be completed when we want to stop spinning
+    event_loop = asyncio.get_event_loop()
+    stop_future = event_loop.create_future()
+
     try:
-        await spin_task
+        # Wait until the future is completed or cancelled
+        await stop_future
     except asyncio.CancelledError:
-        cancel.trigger()
-    spin_thread.join()
-    node.destroy_guard_condition(cancel)
+        # Handle cancellation
+        pass
+    finally:
+        # Shutdown the executor and join the thread
+        executor.shutdown()
+        spin_thread.join(timeout=1.0)  # Add timeout to avoid hanging
 
 
 async def start_node():
+    # Create the node
     base_node = RobotBaseNode()
-    spin_task = asyncio.get_event_loop().create_task(spin(base_node))
-    sleep_task_lst = []
 
-    for i in range(len(base_node.robot_ip_lst)):
+    # Setup node spinning in a separate thread
+    spin_task = asyncio.create_task(spin(base_node))
 
-        conn = Go2Connection(
-            robot_ip=base_node.robot_ip_lst[i],
-            robot_num=str(i),
-            token=base_node.token,
-            on_validated=base_node.on_validated,
-            on_message=base_node.on_data_channel_message,
-            on_video_frame=base_node.on_video_frame if base_node.enable_video else None,
-            decode_lidar=base_node.decode_lidar,
+    # Track all robot connection tasks
+    robot_tasks = []
+
+    # Function to handle errors in any task
+    def handle_error(e, task_name="unknown"):
+        base_node.get_logger().error(f"Error in {task_name}: {e}")
+        # Cancel the spin task to initiate shutdown
+        if not spin_task.done():
+            spin_task.cancel()
+        # Cancel all robot tasks
+        for task in robot_tasks:
+            if not task.done():
+                task.cancel()
+
+    # Start connections to robots
+    try:
+        for i in range(len(base_node.robot_ip_lst)):
+            conn = Go2Connection(
+                robot_ip=base_node.robot_ip_lst[i],
+                robot_num=str(i),
+                token=base_node.token,
+                on_validated=base_node.on_validated,
+                on_message=base_node.on_data_channel_message,
+                on_video_frame=base_node.on_video_frame if base_node.enable_video else None,
+                decode_lidar=base_node.decode_lidar,
+            )
+
+            # Start the robot connection and add to our list
+            # Use the standalone run function instead of a method on the node
+            run_task = asyncio.create_task(run(conn, str(i), base_node))
+            robot_tasks.append(run_task)
+
+            # Define a unique callback for each task that can reference the robot number
+            robot_num = str(i)
+
+            def create_callback(robot_id):
+                def callback(task):
+                    try:
+                        task.result()  # Will raise exception if one occurred
+                    except asyncio.CancelledError:
+                        # Normal during shutdown
+                        pass
+                    except Exception as e:
+                        handle_error(e, f"robot {robot_id}")
+                return callback
+
+            # Add the callback to the task
+            run_task.add_done_callback(create_callback(robot_num))
+
+        # Wait for any task to complete or fail
+        done, pending = await asyncio.wait(
+            [spin_task] + robot_tasks,
+            return_when=asyncio.FIRST_COMPLETED
         )
 
-        sleep_task_lst.append(asyncio.get_event_loop(
-        ).create_task(base_node.run(conn, str(i))))
+        # Check if any task completed with an exception
+        for task in done:
+            try:
+                task.result()
+            except asyncio.CancelledError:
+                # Normal during shutdown
+                pass
+            except Exception as e:
+                handle_error(e, "completed task")
 
-    await asyncio.wait([spin_task, *sleep_task_lst], return_when=asyncio.FIRST_COMPLETED)
+    except Exception as e:
+        handle_error(e, "setup phase")
+    finally:
+        # Ensure clean shutdown
+        if not spin_task.done():
+            spin_task.cancel()
+
+        for task in robot_tasks:
+            if not task.done():
+                task.cancel()
+
+        # Wait for all tasks to finish
+        try:
+            # Use a timeout to avoid hanging indefinitely
+            await asyncio.wait([spin_task] + robot_tasks, timeout=2.0)
+        except Exception:
+            # Ignore any errors during shutdown
+            pass
 
 
 def main():
+    """Main entry point with proper initialization and cleanup."""
+    # Initialize ROS
     rclpy.init()
-    asyncio.get_event_loop().run_until_complete(start_node())
-    asyncio.get_event_loop().close()
-    rclpy.shutdown()
+
+    try:
+        # Get the event loop
+        loop = asyncio.get_event_loop()
+
+        # Run the main coroutine
+        loop.run_until_complete(start_node())
+    except KeyboardInterrupt:
+        print("Node terminated by keyboard interrupt")
+    except Exception as e:
+        print(f"Fatal error in node execution: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        # Clean shutdown
+        try:
+            # Close remaining tasks
+            pending = asyncio.all_tasks(loop)
+            if pending:
+                print(f"Cancelling {len(pending)} pending tasks...")
+                for task in pending:
+                    task.cancel()
+                # Wait briefly for tasks to acknowledge cancellation
+                loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+        except Exception as e:
+            print(f"Error during cleanup: {e}")
+
+        # Finally, close the loop and shutdown ROS
+        loop.close()
+        rclpy.shutdown()
 
 
 if __name__ == '__main__':

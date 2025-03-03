@@ -269,10 +269,15 @@ def main(args=None):
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
-        pass
+        node.get_logger().info("Node stopped by keyboard interrupt")
+    except Exception as e:
+        node.get_logger().error(f"Node stopped with exception: {str(e)}")
     finally:
-        node.destroy_node()
-        rclpy.shutdown()
+        try:
+            node.destroy_node()
+            rclpy.shutdown()
+        except rclpy._rclpy_pybind11.RCLError:
+            pass
 
 
 if __name__ == "__main__":
