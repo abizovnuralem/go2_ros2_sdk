@@ -30,7 +30,8 @@ SPORT_MODE_TOPIC = "rt/api/sport/request"
 
 
 def generate_id() -> int:
-    return int(datetime.datetime.now().timestamp() * 1000 % 2147483648) + random.randint(0, 999)
+    return int(datetime.datetime.now().timestamp() * 1000 %
+               2147483648) + random.randint(0, 999)
 
 
 def create_command_structure(
@@ -55,8 +56,10 @@ def create_command_structure(
 
 
 def gen_command(
-        cmd: int, parameters: Optional[str] = None, topic: Optional[str] = None, id:
-        Optional[int] = None) -> str:
+        cmd: int,
+        parameters: Optional[str] = None,
+        topic: Optional[str] = None,
+        id: Optional[int] = None) -> str:
     parameter = parameters if parameters is not None else str(cmd)
     command = create_command_structure(
         api_id=cmd,
@@ -71,7 +74,7 @@ def gen_mov_command(x: float, y: float, z: float) -> str:
     parameters = {"x": x, "y": y, "z": z}
     command = create_command_structure(
         api_id=1008,
-        parameter=json.dumps(parameters),
+        parameter=parameters,
         topic=SPORT_MODE_TOPIC
     )
     return json.dumps(command)
