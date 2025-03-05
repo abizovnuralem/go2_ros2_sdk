@@ -89,15 +89,16 @@ class RobotBaseNode(Node):
         self.publish_raw_voxel = self.get_parameter(
             'publish_raw_voxel').get_parameter_value().bool_value
 
-        self.conn_mode = "single" if (len(self.robot_ip_lst) ==
-                                      1 and self.conn_type != "cyclonedds") else "multi"
+        self.conn_mode = "single" if (
+            len(self.robot_ip_lst) == 1 and self.conn_type != "cyclonedds") else "multi"
 
         self.get_logger().info(f"Received ip list: {self.robot_ip_lst}")
         self.get_logger().info(f"Connection type is {self.conn_type}")
         self.get_logger().info(f"Connection mode is {self.conn_mode}")
         self.get_logger().info(f"Enable video is {self.enable_video}")
         self.get_logger().info(f"Decode lidar is {self.decode_lidar}")
-        self.get_logger().info(f"Publish raw voxel is {self.publish_raw_voxel}")
+        self.get_logger().info(
+            f"Publish raw voxel is {self.publish_raw_voxel}")
 
         self.conn = {}
         qos_profile = QoSProfile(depth=10)
@@ -121,29 +122,34 @@ class RobotBaseNode(Node):
                 JointState, 'joint_states', qos_profile))
             self.go2_state_pub.append(self.create_publisher(
                 Go2State, 'go2_states', qos_profile))
-            self.go2_lidar_pub.append(self.create_publisher(
-                PointCloud2,
-                'point_cloud2',
-                best_effort_qos,
-                qos_overriding_options=QoSOverridingOptions.with_default_policies()))
+            self.go2_lidar_pub.append(
+                self.create_publisher(
+                    PointCloud2,
+                    'point_cloud2',
+                    best_effort_qos,
+                    qos_overriding_options=QoSOverridingOptions.with_default_policies()))
             self.go2_odometry_pub.append(
                 self.create_publisher(Odometry, 'odom', qos_profile))
             self.imu_pub.append(self.create_publisher(IMU, 'imu', qos_profile))
             if self.enable_video:
-                self.img_pub.append(self.create_publisher(
-                    Image,
-                    'camera/image_raw',
-                    best_effort_qos,
-                    qos_overriding_options=QoSOverridingOptions.with_default_policies()))
-                self.camera_info_pub.append(self.create_publisher(
-                    CameraInfo,
-                    'camera/camera_info',
-                    best_effort_qos,
-                    qos_overriding_options=QoSOverridingOptions.with_default_policies()))
+                self.img_pub.append(
+                    self.create_publisher(
+                        Image,
+                        'camera/image_raw',
+                        best_effort_qos,
+                        qos_overriding_options=QoSOverridingOptions.with_default_policies()))
+                self.camera_info_pub.append(
+                    self.create_publisher(
+                        CameraInfo,
+                        'camera/camera_info',
+                        best_effort_qos,
+                        qos_overriding_options=QoSOverridingOptions.with_default_policies()))
             if self.publish_raw_voxel:
-                self.voxel_pub.append(self.create_publisher(VoxelMapCompressed,
-                                                            '/utlidar/voxel_map_compressed',
-                                                            best_effort_qos))
+                self.voxel_pub.append(
+                    self.create_publisher(
+                        VoxelMapCompressed,
+                        '/utlidar/voxel_map_compressed',
+                        best_effort_qos))
 
         else:
             for i in range(len(self.robot_ip_lst)):
@@ -162,11 +168,12 @@ class RobotBaseNode(Node):
                 self.imu_pub.append(self.create_publisher(
                     IMU, f'robot{i}/imu', qos_profile))
                 if self.enable_video:
-                    self.img_pub.append(self.create_publisher(
-                        Image,
-                        f'robot{i}/camera/image_raw',
-                        best_effort_qos,
-                        qos_overriding_options=QoSOverridingOptions.with_default_policies()))
+                    self.img_pub.append(
+                        self.create_publisher(
+                            Image,
+                            f'robot{i}/camera/image_raw',
+                            best_effort_qos,
+                            qos_overriding_options=QoSOverridingOptions.with_default_policies()))
                     self.camera_info_pub.append(
                         self.create_publisher(
                             CameraInfo,
@@ -176,7 +183,8 @@ class RobotBaseNode(Node):
                 if self.publish_raw_voxel:
                     self.voxel_pub.append(
                         self.create_publisher(
-                            VoxelMapCompressed, f'robot{i}/utlidar/voxel_map_compressed',
+                            VoxelMapCompressed,
+                            f'robot{i}/utlidar/voxel_map_compressed',
                             best_effort_qos))
 
         self.broadcaster = TransformBroadcaster(self, qos=qos_profile)
@@ -272,7 +280,12 @@ class RobotBaseNode(Node):
                 round(x, 2), round(y, 2), round(z, 2))
 
     def webrtc_req_cb(self, msg, robot_num):
-        parameter = json.loads(msg.parameter) if msg.parameter else ""
+        parameter_str = msg.parameter if msg.parameter else ""
+        try:
+            parameter = json.loads(parameter_str)
+        except ValueError as e:
+            self.get_logger().error(f"Invalid JSON in WebRTC request: {e}")
+            parameter = parameter_str
         payload = gen_command(msg.api_id, parameter, msg.topic, msg.id)
         self.get_logger().info(f"Received WebRTC request: {payload[:50]}")
         self.webrtc_msgs.put_nowait(payload)
@@ -298,10 +311,18 @@ class RobotBaseNode(Node):
         joint_state = JointState()
         joint_state.header.stamp = self.get_clock().now().to_msg()
         joint_state.name = [
-            'robot0/FL_hip_joint', 'robot0/FL_thigh_joint', 'robot0/FL_calf_joint',
-            'robot0/FR_hip_joint', 'robot0/FR_thigh_joint', 'robot0/FR_calf_joint',
-            'robot0/RL_hip_joint', 'robot0/RL_thigh_joint', 'robot0/RL_calf_joint',
-            'robot0/RR_hip_joint', 'robot0/RR_thigh_joint', 'robot0/RR_calf_joint',
+            'robot0/FL_hip_joint',
+            'robot0/FL_thigh_joint',
+            'robot0/FL_calf_joint',
+            'robot0/FR_hip_joint',
+            'robot0/FR_thigh_joint',
+            'robot0/FR_calf_joint',
+            'robot0/RL_hip_joint',
+            'robot0/RL_thigh_joint',
+            'robot0/RL_calf_joint',
+            'robot0/RR_hip_joint',
+            'robot0/RR_thigh_joint',
+            'robot0/RR_calf_joint',
         ]
         joint_state.position = [
             msg.motor_state[3].q, msg.motor_state[4].q, msg.motor_state[5].q,
@@ -474,16 +495,19 @@ class RobotBaseNode(Node):
         for i in range(len(self.robot_lidar)):
             if self.robot_lidar[str(i)]:
                 voxel_msg = VoxelMapCompressed()
-                voxel_msg.stamp = float(self.robot_lidar[str(i)]['data']['stamp'])
+                voxel_msg.stamp = float(
+                    self.robot_lidar[str(i)]['data']['stamp'])
                 voxel_msg.frame_id = 'odom'
 
                 # Example data: {"type":"msg","topic":"rt/utlidar/voxel_map_compressed",
                 # "data":{"stamp":1.709106e+09,"frame_id":"odom","resolution":0.050000,
                 # "src_size":77824,"origin":[1.675000,5.325000,-0.575000],"width":[128,128,38]}}
-                voxel_msg.resolution = self.robot_lidar[str(i)]['data']['resolution']
+                voxel_msg.resolution = self.robot_lidar[str(
+                    i)]['data']['resolution']
                 voxel_msg.origin = self.robot_lidar[str(i)]['data']['origin']
                 voxel_msg.width = self.robot_lidar[str(i)]['data']['width']
-                voxel_msg.src_size = self.robot_lidar[str(i)]['data']['src_size']
+                voxel_msg.src_size = self.robot_lidar[str(
+                    i)]['data']['src_size']
                 voxel_msg.data = self.robot_lidar[str(i)]['compressed_data']
 
                 self.voxel_pub[i].publish(voxel_msg)
@@ -560,12 +584,18 @@ class RobotBaseNode(Node):
                     ]
                 else:
                     joint_state.name = [
-                        f'robot{str(i)}/FL_hip_joint', f'robot{str(i)}/FL_thigh_joint',
-                        f'robot{str(i)}/FL_calf_joint', f'robot{str(i)}/FR_hip_joint',
-                        f'robot{str(i)}/FR_thigh_joint', f'robot{str(i)}/FR_calf_joint',
-                        f'robot{str(i)}/RL_hip_joint', f'robot{str(i)}/RL_thigh_joint',
-                        f'robot{str(i)}/RL_calf_joint', f'robot{str(i)}/RR_hip_joint',
-                        f'robot{str(i)}/RR_thigh_joint', f'robot{str(i)}/RR_calf_joint']
+                        f'robot{str(i)}/FL_hip_joint',
+                        f'robot{str(i)}/FL_thigh_joint',
+                        f'robot{str(i)}/FL_calf_joint',
+                        f'robot{str(i)}/FR_hip_joint',
+                        f'robot{str(i)}/FR_thigh_joint',
+                        f'robot{str(i)}/FR_calf_joint',
+                        f'robot{str(i)}/RL_hip_joint',
+                        f'robot{str(i)}/RL_thigh_joint',
+                        f'robot{str(i)}/RL_calf_joint',
+                        f'robot{str(i)}/RR_hip_joint',
+                        f'robot{str(i)}/RR_thigh_joint',
+                        f'robot{str(i)}/RR_calf_joint']
 
                 joint_state.position = [
                     FL_hip_joint, FL_thigh_joint, FL_calf_joint,
@@ -614,9 +644,8 @@ class RobotBaseNode(Node):
                 imu = IMU()
                 imu.quaternion = list(
                     map(float, self.robot_sport_state[str(i)]["data"]["imu_state"]["quaternion"]))
-                imu.accelerometer = list(
-                    map(float, self.robot_sport_state[str(i)]["data"]["imu_state"]["accelerometer"]
-                        ))
+                imu.accelerometer = list(map(
+                    float, self.robot_sport_state[str(i)]["data"]["imu_state"]["accelerometer"]))
                 imu.gyroscope = list(
                     map(float, self.robot_sport_state[str(i)]["data"]["imu_state"]["gyroscope"]))
                 imu.rpy = list(
@@ -639,12 +668,13 @@ async def run(conn, robot_num, node):
     if node.conn_type == 'webrtc':
         try:
             await node.conn[robot_num].connect()
-            # await node.conn[robot_num].data_channel.disableTrafficSaving(True)
+            # await
+            # node.conn[robot_num].data_channel.disableTrafficSaving(True)
         except Exception as e:
             node.get_logger().error(
                 f"Failed to connect to robot {robot_num} - exiting: {e}")
             # Signal that a critical error occurred by raising an exception
-            raise RuntimeError(f"Failed to connect to robot {robot_num}: {e}")
+            raise RuntimeError(f"Failed to connect to robot {robot_num}") from e
 
     try:
         while True:
@@ -653,7 +683,8 @@ async def run(conn, robot_num, node):
                 node.publish_webrtc_commands(robot_num)
             await asyncio.sleep(0.1)
     except Exception as e:
-        node.get_logger().error(f"Error in run loop for robot {robot_num}: {e}")
+        node.get_logger().error(
+            f"Error in run loop for robot {robot_num}: {e}")
         # Raise the exception to signal task failure
         raise
 
@@ -720,7 +751,8 @@ async def start_node():
             run_task = asyncio.create_task(run(conn, str(i), base_node))
             robot_tasks.append(run_task)
 
-            # Define a unique callback for each task that can reference the robot number
+            # Define a unique callback for each task that can reference the
+            # robot number
             robot_num = str(i)
 
             def create_callback(robot_id):
@@ -800,7 +832,8 @@ def main():
                 for task in pending:
                     task.cancel()
                 # Wait briefly for tasks to acknowledge cancellation
-                loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+                loop.run_until_complete(asyncio.gather(
+                    *pending, return_exceptions=True))
         except Exception as e:
             print(f"Error during cleanup: {e}")
 
