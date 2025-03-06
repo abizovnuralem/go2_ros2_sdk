@@ -30,31 +30,42 @@ SPORT_MODE_TOPIC = "rt/api/sport/request"
 
 
 def generate_id() -> int:
-    return int(datetime.datetime.now().timestamp() * 1000 % 2147483648) + random.randint(0, 999)
+    return int(datetime.datetime.now().timestamp() * 1000 %
+               2147483648) + random.randint(0, 999)
 
 
-def create_command_structure(api_id: int, parameter: str, topic: str = SPORT_MODE_TOPIC) -> Dict:
+def create_command_structure(
+        api_id: int, parameter: str,
+        topic: str = SPORT_MODE_TOPIC,
+        id: Optional[int] = None) -> Dict:
+    command_id = generate_id() if id is None or id == 0 else id
+
     return {
         "type": "msg",
         "topic": topic,
         "data": {
             "header": {
                 "identity": {
-                    "id": generate_id(),
+                    "id": command_id,
                     "api_id": api_id
                 }
             },
-            "parameter": parameter
+            "parameter": json.dumps(parameter)
         }
     }
 
 
-def gen_command(cmd: int, parameters: Optional[str] = None, topic: Optional[str] = None) -> str:
-    parameter = parameters if parameters is not None else cmd
+def gen_command(
+        cmd: int,
+        parameters: Optional[str] = None,
+        topic: Optional[str] = None,
+        id: Optional[int] = None) -> str:
+    parameter = parameters if parameters is not None else str(cmd)
     command = create_command_structure(
         api_id=cmd,
         parameter=parameter,
-        topic=topic or SPORT_MODE_TOPIC
+        topic=topic or SPORT_MODE_TOPIC,
+        id=id,
     )
     return json.dumps(command)
 
@@ -63,7 +74,7 @@ def gen_mov_command(x: float, y: float, z: float) -> str:
     parameters = {"x": x, "y": y, "z": z}
     command = create_command_structure(
         api_id=1008,
-        parameter=json.dumps(parameters),
+        parameter=parameters,
         topic=SPORT_MODE_TOPIC
     )
     return json.dumps(command)
