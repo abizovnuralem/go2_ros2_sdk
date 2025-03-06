@@ -43,6 +43,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSHistoryPolicy, QoSReliabilityPolicy
 from rclpy.qos_overriding_options import QoSOverridingOptions
+from rcl_interfaces.msg import SetParametersResult
 
 from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import Twist, TransformStamped, PoseStamped
@@ -65,15 +66,25 @@ class RobotBaseNode(Node):
     def __init__(self):
         super().__init__('go2_driver_node')
 
-        self.declare_parameter('robot_ip', os.getenv(
-            'ROBOT_IP', os.getenv('GO2_IP')))
-        self.declare_parameter('token', os.getenv(
-            'ROBOT_TOKEN', os.getenv('GO2_TOKEN', '')))
-        self.declare_parameter('conn_type', os.getenv(
-            'CONN_TYPE', os.getenv('CONN_TYPE', '')))
-        self.declare_parameter('enable_video', True)
-        self.declare_parameter('decode_lidar', True)
-        self.declare_parameter('publish_raw_voxel', False)
+        robot_ip = os.getenv('ROBOT_IP', os.getenv('GO2_IP', ''))
+        token = os.getenv('ROBOT_TOKEN', os.getenv('GO2_TOKEN', ''))
+        conn_type = os.getenv('CONN_TYPE', '')
+
+        # Declare all parameters at once
+        self.declare_parameters(
+            namespace='',
+            parameters=[
+                ('robot_ip', robot_ip),
+                ('token', token),
+                ('conn_type', conn_type),
+                ('enable_video', True),
+                ('decode_lidar', True),
+                ('publish_raw_voxel', False),
+                ('obstacle_avoidance', False),
+            ]
+        )
+
+        self.add_on_set_parameters_callback(self.cb_set_parameters)
 
         self.robot_ip = self.get_parameter(
             'robot_ip').get_parameter_value().string_value
@@ -88,6 +99,8 @@ class RobotBaseNode(Node):
             'decode_lidar').get_parameter_value().bool_value
         self.publish_raw_voxel = self.get_parameter(
             'publish_raw_voxel').get_parameter_value().bool_value
+        self.obstacle_avoidance = self.get_parameter(
+            'obstacle_avoidance').get_parameter_value().bool_value
 
         self.conn_mode = "single" if (
             len(self.robot_ip_lst) == 1 and self.conn_type != "cyclonedds") else "multi"
@@ -99,6 +112,7 @@ class RobotBaseNode(Node):
         self.get_logger().info(f"Decode lidar is {self.decode_lidar}")
         self.get_logger().info(
             f"Publish raw voxel is {self.publish_raw_voxel}")
+        self.get_logger().info(f"Obstacle avoidance is {self.obstacle_avoidance}")
 
         self.conn = {}
         qos_profile = QoSProfile(depth=10)
@@ -254,6 +268,21 @@ class RobotBaseNode(Node):
         self.timer = self.create_timer(0.1, self.timer_callback)
         self.timer_lidar = self.create_timer(0.5, self.timer_callback_lidar)
 
+    def cb_set_parameters(self, params):
+        result = SetParametersResult(successful=True)
+
+        for p in params:
+            if p.name == 'obstacle_avoidance':
+                self.get_logger().info(f'New obstacle_avoidance value: {p.value.bool_value}')
+                self.obstacle_avoidance = p.value.bool_value
+                self.set_is_remote_command_from_api()
+
+                result.successful = True
+                result.reason = 'Updated obstacle_avoidance'
+                break
+
+        return result
+
     def timer_callback(self):
         if self.conn_type == 'webrtc':
             self.publish_odom_webrtc()
@@ -275,14 +304,17 @@ class RobotBaseNode(Node):
         z = msg.angular.z
 
         # Allow omni-directional movement
-        if x != 0.0 or y != 0.0 or z != 0.0:
+        if True or x != 0.0 or y != 0.0 or z != 0.0:
             self.robot_cmd_vel[robot_num] = gen_mov_command(
-                round(x, 2), round(y, 2), round(z, 2))
+                round(x, 2), round(y, 2), round(z, 2), self.obstacle_avoidance)
+
+            self.get_logger().info(
+                f"Received cmd_vel: {self.robot_cmd_vel[robot_num]}")
 
     def webrtc_req_cb(self, msg, robot_num):
-        parameter_str = msg.parameter if msg.parameter else ""
+        parameter_str = msg.parameter
         try:
-            parameter = json.loads(parameter_str)
+            parameter = "" if parameter_str == "" else json.loads(parameter_str)
         except ValueError as e:
             self.get_logger().error(f"Invalid JSON in WebRTC request: {e}")
             parameter = parameter_str
@@ -292,6 +324,13 @@ class RobotBaseNode(Node):
 
     def joy_cb(self, msg):
         self.joy_state = msg
+
+    def set_is_remote_command_from_api(self):
+        payload = gen_command(
+            1004, {"is_remote_commands_from_api": self.obstacle_avoidance},
+            RTC_TOPIC['OBSTACLE_AVOIDANCE'])
+        self.get_logger().info(f"Chaning remote command from api: {payload[:50]}")
+        self.webrtc_msgs.put_nowait(payload)
 
     def publish_body_poss_cyclonedds(self, msg):
         odom_trans = TransformStamped()
