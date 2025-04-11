@@ -417,7 +417,7 @@ class RobotBaseNode(Node):
             ros_image.header.stamp = self.get_clock().now().to_msg()
 
             # Set the timestamp for both image and camera info
-            camera_info = self.camera_info
+            camera_info = self.camera_info[ros_image.height]
             camera_info.header.stamp = ros_image.header.stamp
 
             if self.conn_mode == 'single':
