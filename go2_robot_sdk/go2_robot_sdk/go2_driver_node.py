@@ -114,7 +114,7 @@ class RobotBaseNode(Node):
         self.get_logger().info(
             f"Publish raw voxel is {self.publish_raw_voxel}")
         self.get_logger().info(f"Obstacle avoidance is {self.obstacle_avoidance}")
-
+        
         self.conn = {}
         qos_profile = QoSProfile(depth=10)
         best_effort_qos = QoSProfile(
@@ -246,6 +246,7 @@ class RobotBaseNode(Node):
             self.joy_cb,
             qos_profile)
 
+
         # Support for CycloneDDS (EDU version via ethernet)
         if self.conn_type == 'cyclonedds':
             self.create_subscription(
@@ -329,7 +330,7 @@ class RobotBaseNode(Node):
     def set_is_remote_command_from_api(self):
         payload = gen_command(
             1004, {"is_remote_commands_from_api": self.obstacle_avoidance},
-            RTC_TOPIC['OBSTACLE_AVOIDANCE'])
+            RTC_TOPIC['OBSTACLES_AVOID'])
         self.get_logger().info(f"Chaning remote command from api: {payload[:50]}")
         self.webrtc_msgs.put_nowait(payload)
 
@@ -381,6 +382,9 @@ class RobotBaseNode(Node):
         if robot_num in self.conn and robot_num in self.robot_cmd_vel and self.robot_cmd_vel[
                 robot_num] is not None:
             self.get_logger().info("Move")
+            if self.obstacle_avoidance:
+                self.set_is_remote_command_from_api()
+                    
             self.conn[robot_num].data_channel.send(
                 self.robot_cmd_vel[robot_num])
             self.robot_cmd_vel[robot_num] = None
