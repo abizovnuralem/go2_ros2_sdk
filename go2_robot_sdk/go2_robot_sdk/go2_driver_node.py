@@ -24,6 +24,7 @@
 
 import json
 import logging
+import math
 import os
 import threading
 import asyncio
@@ -458,50 +459,77 @@ class RobotBaseNode(Node):
                 else:
                     odom_trans.child_frame_id = f"robot{str(i)}/base_link"
 
-                odom_trans.transform.translation.x = self.robot_odom[str(
-                    i)]['data']['pose']['position']['x']
-                odom_trans.transform.translation.y = self.robot_odom[str(
-                    i)]['data']['pose']['position']['y']
-                odom_trans.transform.translation.z = self.robot_odom[str(
-                    i)]['data']['pose']['position']['z'] + 0.07
-                odom_trans.transform.rotation.x = self.robot_odom[str(
-                    i)]['data']['pose']['orientation']['x']
-                odom_trans.transform.rotation.y = self.robot_odom[str(
-                    i)]['data']['pose']['orientation']['y']
-                odom_trans.transform.rotation.z = self.robot_odom[str(
-                    i)]['data']['pose']['orientation']['z']
-                odom_trans.transform.rotation.w = self.robot_odom[str(
-                    i)]['data']['pose']['orientation']['w']
-                self.broadcaster.sendTransform(odom_trans)
+                pose = self.robot_odom[str(i)]['data']['pose']
+                position = pose['position']
+                orientation = pose['orientation']
+
+                pos_vals = [position['x'], position['y'], position['z']]
+                rot_vals = [orientation['x'], orientation['y'], orientation['z'], orientation['w']]
+
+                # Check all are numbers and finite
+                if not all(
+                    isinstance(v, (int, float)) and math.isfinite(v)
+                    for v in pos_vals + rot_vals
+                ):
+                    continue
+                try:
+                    odom_trans.transform.translation.x = float(position['x'])
+                    odom_trans.transform.translation.y = float(position['y'])
+                    odom_trans.transform.translation.z = float(position['z']) + 0.07
+
+                    odom_trans.transform.rotation.x = float(orientation['x'])
+                    odom_trans.transform.rotation.y = float(orientation['y'])
+                    odom_trans.transform.rotation.z = float(orientation['z'])
+                    odom_trans.transform.rotation.w = float(orientation['w'])
+
+                    self.broadcaster.sendTransform(odom_trans)
+                except Exception as e:
+                    self.get_logger().error(
+                        f"Error in publish_odom_webrtc: {e} for robot {i}")
 
     def publish_odom_topic_webrtc(self):
         for i in range(len(self.robot_odom)):
-            if self.robot_odom[str(i)]:
+            if self.robot_odom.get(str(i)):
                 odom_msg = Odometry()
                 odom_msg.header.stamp = self.get_clock().now().to_msg()
                 odom_msg.header.frame_id = 'odom'
 
                 if self.conn_mode == 'single':
                     odom_msg.child_frame_id = "base_link"
-
                 else:
                     odom_msg.child_frame_id = f"robot{str(i)}/base_link"
 
-                odom_msg.pose.pose.position.x = self.robot_odom[str(
-                    i)]['data']['pose']['position']['x']
-                odom_msg.pose.pose.position.y = self.robot_odom[str(
-                    i)]['data']['pose']['position']['y']
-                odom_msg.pose.pose.position.z = self.robot_odom[str(
-                    i)]['data']['pose']['position']['z'] + 0.07
-                odom_msg.pose.pose.orientation.x = self.robot_odom[str(
-                    i)]['data']['pose']['orientation']['x']
-                odom_msg.pose.pose.orientation.y = self.robot_odom[str(
-                    i)]['data']['pose']['orientation']['y']
-                odom_msg.pose.pose.orientation.z = self.robot_odom[str(
-                    i)]['data']['pose']['orientation']['z']
-                odom_msg.pose.pose.orientation.w = self.robot_odom[str(
-                    i)]['data']['pose']['orientation']['w']
-                self.go2_odometry_pub[i].publish(odom_msg)
+                pose = self.robot_odom[str(i)]['data']['pose']
+                position = pose['position']
+                orientation = pose['orientation']
+
+                pos_vals = [position['x'], position['y'], position['z']]
+                rot_vals = [orientation['x'],
+                            orientation['y'],
+                            orientation['z'],
+                            orientation['w']]
+
+                if not all(
+                    isinstance(v, (int, float)) and math.isfinite(v)
+                    for v in pos_vals + rot_vals
+                ):
+                    continue
+
+                try:
+                    odom_msg.pose.pose.position.x = float(position['x'])
+                    odom_msg.pose.pose.position.y = float(position['y'])
+                    odom_msg.pose.pose.position.z = float(position['z']) + 0.07
+
+                    odom_msg.pose.pose.orientation.x = float(orientation['x'])
+                    odom_msg.pose.pose.orientation.y = float(orientation['y'])
+                    odom_msg.pose.pose.orientation.z = float(orientation['z'])
+                    odom_msg.pose.pose.orientation.w = float(orientation['w'])
+
+                    self.go2_odometry_pub[i].publish(odom_msg)
+
+                except Exception as e:
+                    self.get_logger().error(
+                        f"Error in publish_odom_topic_webrtc: {e} for robot {i}")
 
     def publish_lidar_webrtc(self):
         for i in range(len(self.robot_lidar)):
@@ -555,94 +583,74 @@ class RobotBaseNode(Node):
 
         for i in range(len(self.robot_sport_state)):
             if self.robot_sport_state[str(i)]:
-                joint_state = JointState()
-                joint_state.header.stamp = self.get_clock().now().to_msg()
+                try:
+                    joint_state = JointState()
+                    joint_state.header.stamp = self.get_clock().now().to_msg()
 
-                fl_foot_pos_array = [
-                    self.robot_sport_state[str(
-                        i)]["data"]["foot_position_body"][3],
-                    self.robot_sport_state[str(
-                        i)]["data"]["foot_position_body"][4],
-                    self.robot_sport_state[str(
-                        i)]["data"]["foot_position_body"][5]
-                ]
+                    foot_data = self.robot_sport_state[str(i)]["data"]["foot_position_body"]
+                    # Check if all foot data is float, if not skip
+                    if not all(isinstance(x, float) and math.isfinite(x) for x in foot_data):
+                        continue
+                    # Front Left
+                    fl_foot_pos_array = list(map(float, foot_data[3:6]))
+                    FL_hip_joint, FL_thigh_joint, FL_calf_joint = get_robot_joints(
+                        fl_foot_pos_array, 0
+                    )
 
-                FL_hip_joint, FL_thigh_joint, FL_calf_joint = get_robot_joints(
-                    fl_foot_pos_array,
-                    0
-                )
+                    # Front Right
+                    fr_foot_pos_array = list(map(float, foot_data[0:3]))
+                    FR_hip_joint, FR_thigh_joint, FR_calf_joint = get_robot_joints(
+                        fr_foot_pos_array, 1
+                    )
 
-                fr_foot_pos_array = [
-                    self.robot_sport_state[str(
-                        i)]["data"]["foot_position_body"][0],
-                    self.robot_sport_state[str(
-                        i)]["data"]["foot_position_body"][1],
-                    self.robot_sport_state[str(
-                        i)]["data"]["foot_position_body"][2]
-                ]
+                    # Rear Left
+                    rl_foot_pos_array = list(map(float, foot_data[9:12]))
+                    RL_hip_joint, RL_thigh_joint, RL_calf_joint = get_robot_joints(
+                        rl_foot_pos_array, 2
+                    )
 
-                FR_hip_joint, FR_thigh_joint, FR_calf_joint = get_robot_joints(
-                    fr_foot_pos_array,
-                    1
-                )
+                    # Rear Right
+                    rr_foot_pos_array = list(map(float, foot_data[6:9]))
+                    RR_hip_joint, RR_thigh_joint, RR_calf_joint = get_robot_joints(
+                        rr_foot_pos_array, 3
+                    )
+                    # Joint names
+                    if self.conn_mode == 'single':
+                        joint_state.name = [
+                            'FL_hip_joint', 'FL_thigh_joint', 'FL_calf_joint',
+                            'FR_hip_joint', 'FR_thigh_joint', 'FR_calf_joint',
+                            'RL_hip_joint', 'RL_thigh_joint', 'RL_calf_joint',
+                            'RR_hip_joint', 'RR_thigh_joint', 'RR_calf_joint',
+                        ]
+                    else:
+                        joint_state.name = [
+                            f'robot{i}/FL_hip_joint',
+                            f'robot{i}/FL_thigh_joint',
+                            f'robot{i}/FL_calf_joint',
+                            f'robot{i}/FR_hip_joint',
+                            f'robot{i}/FR_thigh_joint',
+                            f'robot{i}/FR_calf_joint',
+                            f'robot{i}/RL_hip_joint',
+                            f'robot{i}/RL_thigh_joint',
+                            f'robot{i}/RL_calf_joint',
+                            f'robot{i}/RR_hip_joint',
+                            f'robot{i}/RR_thigh_joint',
+                            f'robot{i}/RR_calf_joint'
+                        ]
 
-                rl_foot_pos_array = [
-                    self.robot_sport_state[str(
-                        i)]["data"]["foot_position_body"][9],
-                    self.robot_sport_state[str(
-                        i)]["data"]["foot_position_body"][10],
-                    self.robot_sport_state[str(
-                        i)]["data"]["foot_position_body"][11]
-                ]
-
-                RL_hip_joint, RL_thigh_joint, RL_calf_joint = get_robot_joints(
-                    rl_foot_pos_array,
-                    2
-                )
-
-                rr_foot_pos_array = [
-                    self.robot_sport_state[str(
-                        i)]["data"]["foot_position_body"][6],
-                    self.robot_sport_state[str(
-                        i)]["data"]["foot_position_body"][7],
-                    self.robot_sport_state[str(
-                        i)]["data"]["foot_position_body"][8]
-                ]
-
-                RR_hip_joint, RR_thigh_joint, RR_calf_joint = get_robot_joints(
-                    rr_foot_pos_array,
-                    3
-                )
-
-                if self.conn_mode == 'single':
-                    joint_state.name = [
-                        'FL_hip_joint', 'FL_thigh_joint', 'FL_calf_joint',
-                        'FR_hip_joint', 'FR_thigh_joint', 'FR_calf_joint',
-                        'RL_hip_joint', 'RL_thigh_joint', 'RL_calf_joint',
-                        'RR_hip_joint', 'RR_thigh_joint', 'RR_calf_joint',
+                    joint_state.position = [
+                        FL_hip_joint, FL_thigh_joint, FL_calf_joint,
+                        FR_hip_joint, FR_thigh_joint, FR_calf_joint,
+                        RL_hip_joint, RL_thigh_joint, RL_calf_joint,
+                        RR_hip_joint, RR_thigh_joint, RR_calf_joint,
                     ]
-                else:
-                    joint_state.name = [
-                        f'robot{str(i)}/FL_hip_joint',
-                        f'robot{str(i)}/FL_thigh_joint',
-                        f'robot{str(i)}/FL_calf_joint',
-                        f'robot{str(i)}/FR_hip_joint',
-                        f'robot{str(i)}/FR_thigh_joint',
-                        f'robot{str(i)}/FR_calf_joint',
-                        f'robot{str(i)}/RL_hip_joint',
-                        f'robot{str(i)}/RL_thigh_joint',
-                        f'robot{str(i)}/RL_calf_joint',
-                        f'robot{str(i)}/RR_hip_joint',
-                        f'robot{str(i)}/RR_thigh_joint',
-                        f'robot{str(i)}/RR_calf_joint']
 
-                joint_state.position = [
-                    FL_hip_joint, FL_thigh_joint, FL_calf_joint,
-                    FR_hip_joint, FR_thigh_joint, FR_calf_joint,
-                    RL_hip_joint, RL_thigh_joint, RL_calf_joint,
-                    RR_hip_joint, RR_thigh_joint, RR_calf_joint,
-                ]
-                self.joint_pub[i].publish(joint_state)
+                    self.joint_pub[i].publish(joint_state)
+
+                except Exception as e:
+                    self.get_logger().error(
+                        f"Error in publish_joint_state_webrtc: {e} for robot {i}"
+                    )
 
     def publish_webrtc_commands(self, robot_num):
         while True:
@@ -658,40 +666,82 @@ class RobotBaseNode(Node):
     def publish_robot_state_webrtc(self):
         for i in range(len(self.robot_sport_state)):
             if self.robot_sport_state[str(i)]:
-                go2_state = Go2State()
-                go2_state.mode = self.robot_sport_state[str(i)]["data"]["mode"]
-                go2_state.progress = self.robot_sport_state[str(
-                    i)]["data"]["progress"]
-                go2_state.gait_type = self.robot_sport_state[str(
-                    i)]["data"]["gait_type"]
-                go2_state.position = list(
-                    map(float, self.robot_sport_state[str(i)]["data"]["position"]))
-                go2_state.body_height = float(
-                    self.robot_sport_state[str(i)]["data"]["body_height"])
-                go2_state.velocity = self.robot_sport_state[str(
-                    i)]["data"]["velocity"]
-                go2_state.range_obstacle = list(
-                    map(float, self.robot_sport_state[str(i)]["data"]["range_obstacle"]))
-                go2_state.foot_force = self.robot_sport_state[str(
-                    i)]["data"]["foot_force"]
-                go2_state.foot_position_body = list(
-                    map(float, self.robot_sport_state[str(i)]["data"]["foot_position_body"]))
-                go2_state.foot_speed_body = list(
-                    map(float, self.robot_sport_state[str(i)]["data"]["foot_speed_body"]))
-                self.go2_state_pub[i].publish(go2_state)
+                try:
+                    data = self.robot_sport_state[str(i)]["data"]
 
-                imu = IMU()
-                imu.quaternion = list(
-                    map(float, self.robot_sport_state[str(i)]["data"]["imu_state"]["quaternion"]))
-                imu.accelerometer = list(map(
-                    float, self.robot_sport_state[str(i)]["data"]["imu_state"]["accelerometer"]))
-                imu.gyroscope = list(
-                    map(float, self.robot_sport_state[str(i)]["data"]["imu_state"]["gyroscope"]))
-                imu.rpy = list(
-                    map(float, self.robot_sport_state[str(i)]["data"]["imu_state"]["rpy"]))
-                imu.temperature = self.robot_sport_state[str(
-                    i)]["data"]["imu_state"]["temperature"]
-                self.imu_pub[i].publish(imu)
+                    # Check required lists for float validity
+                    if not all(
+                        isinstance(x, float) and math.isfinite(x)
+                        for x in data["position"]
+                    ):
+                        continue
+                    if not all(
+                        isinstance(x, float) and math.isfinite(x)
+                        for x in data["range_obstacle"]
+                    ):
+                        continue
+                    if not all(
+                        isinstance(x, float) and math.isfinite(x)
+                        for x in data["foot_position_body"]
+                    ):
+                        continue
+                    if not all(
+                        isinstance(x, float) and math.isfinite(x)
+                        for x in data["foot_speed_body"]
+                    ):
+                        continue
+                    if (
+                        not isinstance(data["body_height"], (int, float)) or
+                        not math.isfinite(data["body_height"])
+                    ):
+                        continue
+
+                    go2_state = Go2State()
+                    go2_state.mode = data["mode"]
+                    go2_state.progress = data["progress"]
+                    go2_state.gait_type = data["gait_type"]
+                    go2_state.position = list(map(float, data["position"]))
+                    go2_state.body_height = float(data["body_height"])
+                    go2_state.velocity = data["velocity"]
+                    go2_state.range_obstacle = list(map(float, data["range_obstacle"]))
+                    go2_state.foot_force = data["foot_force"]
+                    go2_state.foot_position_body = list(map(float, data["foot_position_body"]))
+                    go2_state.foot_speed_body = list(map(float, data["foot_speed_body"]))
+                    self.go2_state_pub[i].publish(go2_state)
+
+                    imu_data = data["imu_state"]
+                    # Check all IMU fields
+                    if not all(
+                        isinstance(x, float) and math.isfinite(x)
+                        for x in imu_data["quaternion"]
+                    ):
+                        continue
+                    if not all(
+                        isinstance(x, float) and math.isfinite(x)
+                        for x in imu_data["accelerometer"]
+                    ):
+                        continue
+                    if not all(
+                        isinstance(x, float) and math.isfinite(x)
+                        for x in imu_data["gyroscope"]
+                    ):
+                        continue
+                    if not all(
+                        isinstance(x, float) and math.isfinite(x)
+                        for x in imu_data["rpy"]
+                    ):
+                        continue
+
+                    imu = IMU()
+                    imu.quaternion = list(map(float, imu_data["quaternion"]))
+                    imu.accelerometer = list(map(float, imu_data["accelerometer"]))
+                    imu.gyroscope = list(map(float, imu_data["gyroscope"]))
+                    imu.rpy = list(map(float, imu_data["rpy"]))
+                    imu.temperature = imu_data["temperature"]
+                    self.imu_pub[i].publish(imu)
+                except Exception as e:
+                    self.get_logger().error(
+                        f"Error in publish_robot_state_webrtc: {e} for robot {i}")
 
 
 async def run(conn, robot_num, node):
