@@ -114,7 +114,7 @@ class RobotBaseNode(Node):
         self.get_logger().info(
             f"Publish raw voxel is {self.publish_raw_voxel}")
         self.get_logger().info(f"Obstacle avoidance is {self.obstacle_avoidance}")
-
+        
         self.conn = {}
         qos_profile = QoSProfile(depth=10)
         best_effort_qos = QoSProfile(
@@ -246,6 +246,7 @@ class RobotBaseNode(Node):
             self.joy_cb,
             qos_profile)
 
+
         # Support for CycloneDDS (EDU version via ethernet)
         if self.conn_type == 'cyclonedds':
             self.create_subscription(
@@ -272,16 +273,27 @@ class RobotBaseNode(Node):
     def cb_set_parameters(self, params):
         result = SetParametersResult(successful=True)
 
-        for p in params:
-            if p.name == 'obstacle_avoidance':
-                self.get_logger().info(f'New obstacle_avoidance value: {p.value.bool_value}')
-                self.obstacle_avoidance = p.value.bool_value
-                self.set_is_remote_command_from_api()
-
-                result.successful = True
-                result.reason = 'Updated obstacle_avoidance'
-                break
-
+        try:
+            for p in params:
+                if p.name == 'obstacle_avoidance':
+                    self.get_logger().info(f'New obstacle_avoidance value: {p.value}')
+                    self.obstacle_avoidance = p.value
+                    
+                    try:
+                        self.set_is_remote_command_from_api()
+                    except Exception as e:
+                        self.get_logger().error(f"Failed to call is_remote_commands_from_api:{e}")
+                        result.successful = False
+                        result.reason = str(e)
+                        break
+                    
+                    result.successful = True
+                    result.reason = 'Updated obstacle_avoidance'
+                    break    
+        except Exception as e:
+            self.get_logger().error(f"Error while setting parameters: {e}")
+            result.successful = False
+            result.reason = str(e)
         return result
 
     def timer_callback(self):
@@ -327,11 +339,17 @@ class RobotBaseNode(Node):
         self.joy_state = msg
 
     def set_is_remote_command_from_api(self):
-        payload = gen_command(
-            1004, {"is_remote_commands_from_api": self.obstacle_avoidance},
-            RTC_TOPIC['OBSTACLE_AVOIDANCE'])
-        self.get_logger().info(f"Chaning remote command from api: {payload[:50]}")
-        self.webrtc_msgs.put_nowait(payload)
+        if not hasattr(self, "webrtc_msgs") or self.webrtc_msgs is None:
+            self.get_logger().warn()("WebRTC message queue is not initialized.")
+            return
+        try:
+            payload = gen_command(
+                1004, {"is_remote_commands_from_api": self.obstacle_avoidance},
+                RTC_TOPIC['OBSTACLES_AVOID'])
+            self.get_logger().info(f"Chaning remote command from api: {payload[:50]}")
+            self.webrtc_msgs.put_nowait(payload)
+        except Exception as e:
+            self.get_logger().error(f"Failed to set remote command from API: {e}")
 
     def publish_body_poss_cyclonedds(self, msg):
         odom_trans = TransformStamped()
@@ -381,6 +399,9 @@ class RobotBaseNode(Node):
         if robot_num in self.conn and robot_num in self.robot_cmd_vel and self.robot_cmd_vel[
                 robot_num] is not None:
             self.get_logger().info("Move")
+            if self.obstacle_avoidance:
+                self.set_is_remote_command_from_api()
+                    
             self.conn[robot_num].data_channel.send(
                 self.robot_cmd_vel[robot_num])
             self.robot_cmd_vel[robot_num] = None
