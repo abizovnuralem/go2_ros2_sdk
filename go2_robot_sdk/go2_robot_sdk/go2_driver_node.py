@@ -603,6 +603,16 @@ class RobotBaseNode(Node):
                     RL_hip_joint, RL_thigh_joint, RL_calf_joint,
                     RR_hip_joint, RR_thigh_joint, RR_calf_joint,
                 ]
+                
+                if self.robot_low_cmd:
+                    motors = self.robot_low_cmd[str(i)]['data']['motor_state']
+                    joint_state.position = [
+                        motors[3]['q'], motors[4]['q'], motors[5]['q'],
+                        motors[0]['q'], motors[1]['q'], motors[2]['q'],
+                        motors[9]['q'], motors[10]['q'], motors[11]['q'],
+                        motors[6]['q'], motors[7]['q'], motors[8]['q'],
+                    ]
+
                 self.joint_pub[i].publish(joint_state)
 
     def publish_webrtc_commands(self, robot_num):
