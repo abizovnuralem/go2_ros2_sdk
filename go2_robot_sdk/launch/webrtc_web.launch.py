@@ -26,7 +26,7 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch_ros.actions import Node
 from launch.actions import DeclareLaunchArgument, OpaqueFunction, GroupAction
-from launch.substitutions import LaunchConfiguration, Command, EnvironmentVariable
+from launch.substitutions import LaunchConfiguration, Command, EnvironmentVariable, PythonExpression
 from launch_ros.parameter_descriptions import ParameterValue
 from launch.conditions import IfCondition
 
@@ -109,6 +109,13 @@ def generate_launch_description():
             default_value='false',
             description='Enable obstacle avoidance',
         ),
+        DeclareLaunchArgument(
+            'enable_foxglove_bridge',
+            default_value='true',
+            description='Enable Foxglove Bridge'
+        ),
+
+
 
         # Group all nodes to ensure they share the same on_exit behavior
         GroupAction([
@@ -163,6 +170,7 @@ def generate_launch_description():
                     'send_buffer_limit': send_buffer_limit
                 }],
                 on_exit=on_exit,
+                condition=IfCondition(LaunchConfiguration('enable_foxglove_bridge')),
             ),
 
             # TTS node
