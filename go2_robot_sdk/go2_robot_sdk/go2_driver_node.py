@@ -398,13 +398,13 @@ class RobotBaseNode(Node):
         if msg.get('topic') == RTC_TOPIC["ULIDAR_ARRAY"]:
             self.robot_lidar[robot_num] = msg
 
-        if msg.get('topic') == RTC_TOPIC['ROBOTODOM']:
+        elif msg.get('topic') == RTC_TOPIC['ROBOTODOM']:
             self.robot_odom[robot_num] = msg
 
-        if msg.get('topic') == RTC_TOPIC['LF_SPORT_MOD_STATE']:
+        elif msg.get('topic') == RTC_TOPIC['LF_SPORT_MOD_STATE']:
             self.robot_sport_state[robot_num] = msg
 
-        if msg.get('topic') == RTC_TOPIC['LOW_STATE']:
+        elif msg.get('topic') == RTC_TOPIC['LOW_STATE']:
             self.robot_low_cmd[robot_num] = msg
 
     def publish_odom_webrtc(self):
@@ -596,12 +596,12 @@ class RobotBaseNode(Node):
                         f'robot{str(i)}/RR_hip_joint',
                         f'robot{str(i)}/RR_thigh_joint',
                         f'robot{str(i)}/RR_calf_joint']
-
+                    
                 joint_state.position = [
-                    FL_hip_joint, FL_thigh_joint, FL_calf_joint,
-                    FR_hip_joint, FR_thigh_joint, FR_calf_joint,
-                    RL_hip_joint, RL_thigh_joint, RL_calf_joint,
-                    RR_hip_joint, RR_thigh_joint, RR_calf_joint,
+                    float(FL_hip_joint), float(FL_thigh_joint), float(FL_calf_joint),
+                    float(FR_hip_joint), float(FR_thigh_joint), float(FR_calf_joint),
+                    float(RL_hip_joint), float(RL_thigh_joint), float(RL_calf_joint),
+                    float(RR_hip_joint), float(RR_thigh_joint), float(RR_calf_joint),
                 ]
                 self.joint_pub[i].publish(joint_state)
 
