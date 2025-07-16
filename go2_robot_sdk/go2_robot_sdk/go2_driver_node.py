@@ -512,112 +512,19 @@ class RobotBaseNode(Node):
 
                 self.voxel_pub[i].publish(voxel_msg)
 
-    #def publish_joint_state_webrtc(self):
-
-        # for i in range(len(self.robot_sport_state)):
-        #     if self.robot_sport_state[str(i)]:
-        #         joint_state = JointState()
-        #         joint_state.header.stamp = self.get_clock().now().to_msg()
-
-        #         fl_foot_pos_array = [
-        #             self.robot_sport_state[str(
-        #                 i)]["data"]["foot_position_body"][3],
-        #             self.robot_sport_state[str(
-        #                 i)]["data"]["foot_position_body"][4],
-        #             self.robot_sport_state[str(
-        #                 i)]["data"]["foot_position_body"][5]
-        #         ]
-
-        #         FL_hip_joint, FL_thigh_joint, FL_calf_joint = get_robot_joints(
-        #             fl_foot_pos_array,
-        #             0
-        #         )
-
-        #         fr_foot_pos_array = [
-        #             self.robot_sport_state[str(
-        #                 i)]["data"]["foot_position_body"][0],
-        #             self.robot_sport_state[str(
-        #                 i)]["data"]["foot_position_body"][1],
-        #             self.robot_sport_state[str(
-        #                 i)]["data"]["foot_position_body"][2]
-        #         ]
-
-        #         FR_hip_joint, FR_thigh_joint, FR_calf_joint = get_robot_joints(
-        #             fr_foot_pos_array,
-        #             1
-        #         )
-
-        #         rl_foot_pos_array = [
-        #             self.robot_sport_state[str(
-        #                 i)]["data"]["foot_position_body"][9],
-        #             self.robot_sport_state[str(
-        #                 i)]["data"]["foot_position_body"][10],
-        #             self.robot_sport_state[str(
-        #                 i)]["data"]["foot_position_body"][11]
-        #         ]
-
-        #         RL_hip_joint, RL_thigh_joint, RL_calf_joint = get_robot_joints(
-        #             rl_foot_pos_array,
-        #             2
-        #         )
-
-        #         rr_foot_pos_array = [
-        #             self.robot_sport_state[str(
-        #                 i)]["data"]["foot_position_body"][6],
-        #             self.robot_sport_state[str(
-        #                 i)]["data"]["foot_position_body"][7],
-        #             self.robot_sport_state[str(
-        #                 i)]["data"]["foot_position_body"][8]
-        #         ]
-
-        #         RR_hip_joint, RR_thigh_joint, RR_calf_joint = get_robot_joints(
-        #             rr_foot_pos_array,
-        #             3
-        #         )
-
-        #         if self.conn_mode == 'single':
-        #             joint_state.name = [
-        #                 'FL_hip_joint', 'FL_thigh_joint', 'FL_calf_joint',
-        #                 'FR_hip_joint', 'FR_thigh_joint', 'FR_calf_joint',
-        #                 'RL_hip_joint', 'RL_thigh_joint', 'RL_calf_joint',
-        #                 'RR_hip_joint', 'RR_thigh_joint', 'RR_calf_joint',
-        #             ]
-        #         else:
-        #             joint_state.name = [
-        #                 f'robot{str(i)}/FL_hip_joint',
-        #                 f'robot{str(i)}/FL_thigh_joint',
-        #                 f'robot{str(i)}/FL_calf_joint',
-        #                 f'robot{str(i)}/FR_hip_joint',
-        #                 f'robot{str(i)}/FR_thigh_joint',
-        #                 f'robot{str(i)}/FR_calf_joint',
-        #                 f'robot{str(i)}/RL_hip_joint',
-        #                 f'robot{str(i)}/RL_thigh_joint',
-        #                 f'robot{str(i)}/RL_calf_joint',
-        #                 f'robot{str(i)}/RR_hip_joint',
-        #                 f'robot{str(i)}/RR_thigh_joint',
-        #                 f'robot{str(i)}/RR_calf_joint']
-
-        #         joint_state.position = [
-        #             FL_hip_joint, FL_thigh_joint, FL_calf_joint,
-        #             FR_hip_joint, FR_thigh_joint, FR_calf_joint,
-        #             RL_hip_joint, RL_thigh_joint, RL_calf_joint,
-        #             RR_hip_joint, RR_thigh_joint, RR_calf_joint,
-        #         ]
-        #         self.joint_pub[i].publish(joint_state)
-
     def publish_joint_state_webrtc(self):
-        # تم التعديل ليتم التكرار على self.robot_low_cmd بدلاً من self.robot_sport_state
+        # Modified to iterate over self.robot_low_cmd instead of self.robot_sport_state
         for i in range(len(self.robot_low_cmd)):
-            # التحقق من وجود بيانات للروبوت الحالي
+            # Check if data exists for the current robot.
             if str(i) in self.robot_low_cmd and self.robot_low_cmd[str(i)]:
                 
-                # استخلاص رسالة البيانات لسهولة القراءة
+                # Extract data message for easy reading.
                 low_state_data = self.robot_low_cmd[str(i)]['data']
 
                 joint_state = JointState()
                 joint_state.header.stamp = self.get_clock().now().to_msg()
 
-                # تحديد أسماء المفاصل بناءً على وضع الاتصال (فردي أو متعدد)
+                # Define joint names based on connection mode (single or multiple).
                 if self.conn_mode == 'single':
                     joint_state.name = [
                         'FL_hip_joint', 'FL_thigh_joint', 'FL_calf_joint',
@@ -633,8 +540,8 @@ class RobotBaseNode(Node):
                         f'robot{str(i)}/RR_hip_joint', f'robot{str(i)}/RR_thigh_joint', f'robot{str(i)}/RR_calf_joint'
                     ]
                 
-                # استخدام نفس منطق الوصول إلى بيانات المحركات (motor_state) من دالة cyclone_dds
-                # مع تعديل طريقة الوصول لتناسب بنية JSON القادمة من WebRTC
+                # Use the same logic to access motor data (motor_state) from the cyclone_dds function.
+                # Modify the access method to fit the JSON structure coming from WebRTC.
                 motor_state = low_state_data['motor_state']
                 joint_state.position = [
                     motor_state[3]['q'], motor_state[4]['q'], motor_state[5]['q'],  # FL leg
@@ -643,7 +550,7 @@ class RobotBaseNode(Node):
                     motor_state[6]['q'], motor_state[7]['q'], motor_state[8]['q'],  # RR leg
                 ]
 
-                # نشر بيانات المفاصل
+                # Publish joint data.
                 self.joint_pub[i].publish(joint_state)
 
     def publish_webrtc_commands(self, robot_num):
