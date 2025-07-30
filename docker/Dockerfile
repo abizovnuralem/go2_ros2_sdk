@@ -11,7 +11,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1-mesa-glx \
     libgl1-mesa-dri \
     ros-humble-rviz2 \
-    software-properties-common
+    software-properties-common \
+    ros-humble-rmw-cyclonedds-cpp \
+    ffmpeg
 
 # Install specific numpy version first
 RUN pip install 'numpy<2.0.0'
