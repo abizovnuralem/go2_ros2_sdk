@@ -27,6 +27,7 @@ import random
 from typing import Any, Dict, Optional
 
 SPORT_MODE_TOPIC = "rt/api/sport/request"
+OBSTACLE_AVOIDANCE_TOPIC = "rt/api/obstacles_avoid/request"
 
 
 def generate_id() -> int:
@@ -70,11 +71,25 @@ def gen_command(
     return json.dumps(command)
 
 
-def gen_mov_command(x: float, y: float, z: float) -> str:
-    parameters = {"x": x, "y": y, "z": z}
-    command = create_command_structure(
-        api_id=1008,
-        parameter=parameters,
-        topic=SPORT_MODE_TOPIC
-    )
+def gen_mov_command(
+        x: float,
+        y: float,
+        z: float,
+        obstacle_avoidance: Optional[bool] = False) -> str:
+
+    if obstacle_avoidance:
+        parameters = {"x": x, "y": y, "yaw": z, "mode": 0}
+        command = create_command_structure(
+            api_id=1003,   # obstacle avoidance move
+            parameter=parameters,
+            topic=OBSTACLE_AVOIDANCE_TOPIC,
+        )
+    else:
+        parameters = {"x": x, "y": y, "z": z}
+        command = create_command_structure(
+            api_id=1008,  # sport move
+            parameter=parameters,
+            topic=SPORT_MODE_TOPIC,
+        )
+
     return json.dumps(command)

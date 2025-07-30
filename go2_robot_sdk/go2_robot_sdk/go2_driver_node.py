@@ -24,6 +24,7 @@
 
 import json
 import logging
+import math
 import os
 import threading
 import asyncio
@@ -43,6 +44,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSHistoryPolicy, QoSReliabilityPolicy
 from rclpy.qos_overriding_options import QoSOverridingOptions
+from rcl_interfaces.msg import SetParametersResult
 
 from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import Twist, TransformStamped, PoseStamped
@@ -65,15 +67,25 @@ class RobotBaseNode(Node):
     def __init__(self):
         super().__init__('go2_driver_node')
 
-        self.declare_parameter('robot_ip', os.getenv(
-            'ROBOT_IP', os.getenv('GO2_IP')))
-        self.declare_parameter('token', os.getenv(
-            'ROBOT_TOKEN', os.getenv('GO2_TOKEN', '')))
-        self.declare_parameter('conn_type', os.getenv(
-            'CONN_TYPE', os.getenv('CONN_TYPE', '')))
-        self.declare_parameter('enable_video', True)
-        self.declare_parameter('decode_lidar', True)
-        self.declare_parameter('publish_raw_voxel', False)
+        robot_ip = os.getenv('ROBOT_IP', os.getenv('GO2_IP', ''))
+        token = os.getenv('ROBOT_TOKEN', os.getenv('GO2_TOKEN', ''))
+        conn_type = os.getenv('CONN_TYPE', '')
+
+        # Declare all parameters at once
+        self.declare_parameters(
+            namespace='',
+            parameters=[
+                ('robot_ip', robot_ip),
+                ('token', token),
+                ('conn_type', conn_type),
+                ('enable_video', True),
+                ('decode_lidar', True),
+                ('publish_raw_voxel', False),
+                ('obstacle_avoidance', False),
+            ]
+        )
+
+        self.add_on_set_parameters_callback(self.cb_set_parameters)
 
         self.robot_ip = self.get_parameter(
             'robot_ip').get_parameter_value().string_value
@@ -88,6 +100,8 @@ class RobotBaseNode(Node):
             'decode_lidar').get_parameter_value().bool_value
         self.publish_raw_voxel = self.get_parameter(
             'publish_raw_voxel').get_parameter_value().bool_value
+        self.obstacle_avoidance = self.get_parameter(
+            'obstacle_avoidance').get_parameter_value().bool_value
 
         self.conn_mode = "single" if (
             len(self.robot_ip_lst) == 1 and self.conn_type != "cyclonedds") else "multi"
@@ -99,7 +113,8 @@ class RobotBaseNode(Node):
         self.get_logger().info(f"Decode lidar is {self.decode_lidar}")
         self.get_logger().info(
             f"Publish raw voxel is {self.publish_raw_voxel}")
-
+        self.get_logger().info(f"Obstacle avoidance is {self.obstacle_avoidance}")
+        
         self.conn = {}
         qos_profile = QoSProfile(depth=10)
         best_effort_qos = QoSProfile(
@@ -231,6 +246,7 @@ class RobotBaseNode(Node):
             self.joy_cb,
             qos_profile)
 
+
         # Support for CycloneDDS (EDU version via ethernet)
         if self.conn_type == 'cyclonedds':
             self.create_subscription(
@@ -254,6 +270,32 @@ class RobotBaseNode(Node):
         self.timer = self.create_timer(0.1, self.timer_callback)
         self.timer_lidar = self.create_timer(0.5, self.timer_callback_lidar)
 
+    def cb_set_parameters(self, params):
+        result = SetParametersResult(successful=True)
+
+        try:
+            for p in params:
+                if p.name == 'obstacle_avoidance':
+                    self.get_logger().info(f'New obstacle_avoidance value: {p.value}')
+                    self.obstacle_avoidance = p.value
+                    
+                    try:
+                        self.set_is_remote_command_from_api()
+                    except Exception as e:
+                        self.get_logger().error(f"Failed to call is_remote_commands_from_api:{e}")
+                        result.successful = False
+                        result.reason = str(e)
+                        break
+                    
+                    result.successful = True
+                    result.reason = 'Updated obstacle_avoidance'
+                    break    
+        except Exception as e:
+            self.get_logger().error(f"Error while setting parameters: {e}")
+            result.successful = False
+            result.reason = str(e)
+        return result
+
     def timer_callback(self):
         if self.conn_type == 'webrtc':
             self.publish_odom_webrtc()
@@ -275,14 +317,17 @@ class RobotBaseNode(Node):
         z = msg.angular.z
 
         # Allow omni-directional movement
-        if x != 0.0 or y != 0.0 or z != 0.0:
+        if True or x != 0.0 or y != 0.0 or z != 0.0:
             self.robot_cmd_vel[robot_num] = gen_mov_command(
-                round(x, 2), round(y, 2), round(z, 2))
+                round(x, 2), round(y, 2), round(z, 2), self.obstacle_avoidance)
+
+            self.get_logger().info(
+                f"Received cmd_vel: {self.robot_cmd_vel[robot_num]}")
 
     def webrtc_req_cb(self, msg, robot_num):
-        parameter_str = msg.parameter if msg.parameter else ""
+        parameter_str = msg.parameter
         try:
-            parameter = json.loads(parameter_str)
+            parameter = "" if parameter_str == "" else json.loads(parameter_str)
         except ValueError as e:
             self.get_logger().error(f"Invalid JSON in WebRTC request: {e}")
             parameter = parameter_str
@@ -292,6 +337,19 @@ class RobotBaseNode(Node):
 
     def joy_cb(self, msg):
         self.joy_state = msg
+
+    def set_is_remote_command_from_api(self):
+        if not hasattr(self, "webrtc_msgs") or self.webrtc_msgs is None:
+            self.get_logger().warn()("WebRTC message queue is not initialized.")
+            return
+        try:
+            payload = gen_command(
+                1004, {"is_remote_commands_from_api": self.obstacle_avoidance},
+                RTC_TOPIC['OBSTACLES_AVOID'])
+            self.get_logger().info(f"Chaning remote command from api: {payload[:50]}")
+            self.webrtc_msgs.put_nowait(payload)
+        except Exception as e:
+            self.get_logger().error(f"Failed to set remote command from API: {e}")
 
     def publish_body_poss_cyclonedds(self, msg):
         odom_trans = TransformStamped()
@@ -341,6 +399,9 @@ class RobotBaseNode(Node):
         if robot_num in self.conn and robot_num in self.robot_cmd_vel and self.robot_cmd_vel[
                 robot_num] is not None:
             self.get_logger().info("Move")
+            if self.obstacle_avoidance:
+                self.set_is_remote_command_from_api()
+                    
             self.conn[robot_num].data_channel.send(
                 self.robot_cmd_vel[robot_num])
             self.robot_cmd_vel[robot_num] = None
@@ -378,7 +439,7 @@ class RobotBaseNode(Node):
             ros_image.header.stamp = self.get_clock().now().to_msg()
 
             # Set the timestamp for both image and camera info
-            camera_info = self.camera_info
+            camera_info = self.camera_info[ros_image.height]
             camera_info.header.stamp = ros_image.header.stamp
 
             if self.conn_mode == 'single':
@@ -419,50 +480,77 @@ class RobotBaseNode(Node):
                 else:
                     odom_trans.child_frame_id = f"robot{str(i)}/base_link"
 
-                odom_trans.transform.translation.x = self.robot_odom[str(
-                    i)]['data']['pose']['position']['x']
-                odom_trans.transform.translation.y = self.robot_odom[str(
-                    i)]['data']['pose']['position']['y']
-                odom_trans.transform.translation.z = self.robot_odom[str(
-                    i)]['data']['pose']['position']['z'] + 0.07
-                odom_trans.transform.rotation.x = self.robot_odom[str(
-                    i)]['data']['pose']['orientation']['x']
-                odom_trans.transform.rotation.y = self.robot_odom[str(
-                    i)]['data']['pose']['orientation']['y']
-                odom_trans.transform.rotation.z = self.robot_odom[str(
-                    i)]['data']['pose']['orientation']['z']
-                odom_trans.transform.rotation.w = self.robot_odom[str(
-                    i)]['data']['pose']['orientation']['w']
-                self.broadcaster.sendTransform(odom_trans)
+                pose = self.robot_odom[str(i)]['data']['pose']
+                position = pose['position']
+                orientation = pose['orientation']
+
+                pos_vals = [position['x'], position['y'], position['z']]
+                rot_vals = [orientation['x'], orientation['y'], orientation['z'], orientation['w']]
+
+                # Check all are numbers and finite
+                if not all(
+                    isinstance(v, (int, float)) and math.isfinite(v)
+                    for v in pos_vals + rot_vals
+                ):
+                    continue
+                try:
+                    odom_trans.transform.translation.x = float(position['x'])
+                    odom_trans.transform.translation.y = float(position['y'])
+                    odom_trans.transform.translation.z = float(position['z']) + 0.07
+
+                    odom_trans.transform.rotation.x = float(orientation['x'])
+                    odom_trans.transform.rotation.y = float(orientation['y'])
+                    odom_trans.transform.rotation.z = float(orientation['z'])
+                    odom_trans.transform.rotation.w = float(orientation['w'])
+
+                    self.broadcaster.sendTransform(odom_trans)
+                except Exception as e:
+                    self.get_logger().error(
+                        f"Error in publish_odom_webrtc: {e} for robot {i}")
 
     def publish_odom_topic_webrtc(self):
         for i in range(len(self.robot_odom)):
-            if self.robot_odom[str(i)]:
+            if self.robot_odom.get(str(i)):
                 odom_msg = Odometry()
                 odom_msg.header.stamp = self.get_clock().now().to_msg()
                 odom_msg.header.frame_id = 'odom'
 
                 if self.conn_mode == 'single':
                     odom_msg.child_frame_id = "base_link"
-
                 else:
                     odom_msg.child_frame_id = f"robot{str(i)}/base_link"
 
-                odom_msg.pose.pose.position.x = self.robot_odom[str(
-                    i)]['data']['pose']['position']['x']
-                odom_msg.pose.pose.position.y = self.robot_odom[str(
-                    i)]['data']['pose']['position']['y']
-                odom_msg.pose.pose.position.z = self.robot_odom[str(
-                    i)]['data']['pose']['position']['z'] + 0.07
-                odom_msg.pose.pose.orientation.x = self.robot_odom[str(
-                    i)]['data']['pose']['orientation']['x']
-                odom_msg.pose.pose.orientation.y = self.robot_odom[str(
-                    i)]['data']['pose']['orientation']['y']
-                odom_msg.pose.pose.orientation.z = self.robot_odom[str(
-                    i)]['data']['pose']['orientation']['z']
-                odom_msg.pose.pose.orientation.w = self.robot_odom[str(
-                    i)]['data']['pose']['orientation']['w']
-                self.go2_odometry_pub[i].publish(odom_msg)
+                pose = self.robot_odom[str(i)]['data']['pose']
+                position = pose['position']
+                orientation = pose['orientation']
+
+                pos_vals = [position['x'], position['y'], position['z']]
+                rot_vals = [orientation['x'],
+                            orientation['y'],
+                            orientation['z'],
+                            orientation['w']]
+
+                if not all(
+                    isinstance(v, (int, float)) and math.isfinite(v)
+                    for v in pos_vals + rot_vals
+                ):
+                    continue
+
+                try:
+                    odom_msg.pose.pose.position.x = float(position['x'])
+                    odom_msg.pose.pose.position.y = float(position['y'])
+                    odom_msg.pose.pose.position.z = float(position['z']) + 0.07
+
+                    odom_msg.pose.pose.orientation.x = float(orientation['x'])
+                    odom_msg.pose.pose.orientation.y = float(orientation['y'])
+                    odom_msg.pose.pose.orientation.z = float(orientation['z'])
+                    odom_msg.pose.pose.orientation.w = float(orientation['w'])
+
+                    self.go2_odometry_pub[i].publish(odom_msg)
+
+                except Exception as e:
+                    self.get_logger().error(
+                        f"Error in publish_odom_topic_webrtc: {e} for robot {i}")
 
     def publish_lidar_webrtc(self):
         for i in range(len(self.robot_lidar)):
@@ -513,68 +601,18 @@ class RobotBaseNode(Node):
                 self.voxel_pub[i].publish(voxel_msg)
 
     def publish_joint_state_webrtc(self):
+        # Modified to iterate over self.robot_low_cmd instead of self.robot_sport_state
+        for i in range(len(self.robot_low_cmd)):
+            # Check if data exists for the current robot.
+            if str(i) in self.robot_low_cmd and self.robot_low_cmd[str(i)]:
+                
+                # Extract data message for easy reading.
+                low_state_data = self.robot_low_cmd[str(i)]['data']
 
-        for i in range(len(self.robot_sport_state)):
-            if self.robot_sport_state[str(i)]:
                 joint_state = JointState()
                 joint_state.header.stamp = self.get_clock().now().to_msg()
 
-                fl_foot_pos_array = [
-                    self.robot_sport_state[str(
-                        i)]["data"]["foot_position_body"][3],
-                    self.robot_sport_state[str(
-                        i)]["data"]["foot_position_body"][4],
-                    self.robot_sport_state[str(
-                        i)]["data"]["foot_position_body"][5]
-                ]
-
-                FL_hip_joint, FL_thigh_joint, FL_calf_joint = get_robot_joints(
-                    fl_foot_pos_array,
-                    0
-                )
-
-                fr_foot_pos_array = [
-                    self.robot_sport_state[str(
-                        i)]["data"]["foot_position_body"][0],
-                    self.robot_sport_state[str(
-                        i)]["data"]["foot_position_body"][1],
-                    self.robot_sport_state[str(
-                        i)]["data"]["foot_position_body"][2]
-                ]
-
-                FR_hip_joint, FR_thigh_joint, FR_calf_joint = get_robot_joints(
-                    fr_foot_pos_array,
-                    1
-                )
-
-                rl_foot_pos_array = [
-                    self.robot_sport_state[str(
-                        i)]["data"]["foot_position_body"][9],
-                    self.robot_sport_state[str(
-                        i)]["data"]["foot_position_body"][10],
-                    self.robot_sport_state[str(
-                        i)]["data"]["foot_position_body"][11]
-                ]
-
-                RL_hip_joint, RL_thigh_joint, RL_calf_joint = get_robot_joints(
-                    rl_foot_pos_array,
-                    2
-                )
-
-                rr_foot_pos_array = [
-                    self.robot_sport_state[str(
-                        i)]["data"]["foot_position_body"][6],
-                    self.robot_sport_state[str(
-                        i)]["data"]["foot_position_body"][7],
-                    self.robot_sport_state[str(
-                        i)]["data"]["foot_position_body"][8]
-                ]
-
-                RR_hip_joint, RR_thigh_joint, RR_calf_joint = get_robot_joints(
-                    rr_foot_pos_array,
-                    3
-                )
-
+                # Define joint names based on connection mode (single or multiple).
                 if self.conn_mode == 'single':
                     joint_state.name = [
                         'FL_hip_joint', 'FL_thigh_joint', 'FL_calf_joint',
@@ -584,36 +622,29 @@ class RobotBaseNode(Node):
                     ]
                 else:
                     joint_state.name = [
-                        f'robot{str(i)}/FL_hip_joint',
-                        f'robot{str(i)}/FL_thigh_joint',
-                        f'robot{str(i)}/FL_calf_joint',
-                        f'robot{str(i)}/FR_hip_joint',
-                        f'robot{str(i)}/FR_thigh_joint',
-                        f'robot{str(i)}/FR_calf_joint',
-                        f'robot{str(i)}/RL_hip_joint',
-                        f'robot{str(i)}/RL_thigh_joint',
-                        f'robot{str(i)}/RL_calf_joint',
-                        f'robot{str(i)}/RR_hip_joint',
-                        f'robot{str(i)}/RR_thigh_joint',
-                        f'robot{str(i)}/RR_calf_joint']
-
-                joint_state.position = [
-                    FL_hip_joint, FL_thigh_joint, FL_calf_joint,
-                    FR_hip_joint, FR_thigh_joint, FR_calf_joint,
-                    RL_hip_joint, RL_thigh_joint, RL_calf_joint,
-                    RR_hip_joint, RR_thigh_joint, RR_calf_joint,
-                ]
-                
-                if self.robot_low_cmd:
-                    motors = self.robot_low_cmd[str(i)]['data']['motor_state']
-                    joint_state.position = [
-                        motors[3]['q'], motors[4]['q'], motors[5]['q'],
-                        motors[0]['q'], motors[1]['q'], motors[2]['q'],
-                        motors[9]['q'], motors[10]['q'], motors[11]['q'],
-                        motors[6]['q'], motors[7]['q'], motors[8]['q'],
+                        f'robot{str(i)}/FL_hip_joint', f'robot{str(i)}/FL_thigh_joint', f'robot{str(i)}/FL_calf_joint',
+                        f'robot{str(i)}/FR_hip_joint', f'robot{str(i)}/FR_thigh_joint', f'robot{str(i)}/FR_calf_joint',
+                        f'robot{str(i)}/RL_hip_joint', f'robot{str(i)}/RL_thigh_joint', f'robot{str(i)}/RL_calf_joint',
+                        f'robot{str(i)}/RR_hip_joint', f'robot{str(i)}/RR_thigh_joint', f'robot{str(i)}/RR_calf_joint'
                     ]
+                
+                # Use the same logic to access motor data (motor_state) from the cyclone_dds function.
+                # Modify the access method to fit the JSON structure coming from WebRTC.
+                motor_state = low_state_data['motor_state']
+                joint_state.position = [
+                    motor_state[3]['q'], motor_state[4]['q'], motor_state[5]['q'],  # FL leg
+                    motor_state[0]['q'], motor_state[1]['q'], motor_state[2]['q'],  # FR leg
+                    motor_state[9]['q'], motor_state[10]['q'], motor_state[11]['q'], # RL leg
+                    motor_state[6]['q'], motor_state[7]['q'], motor_state[8]['q'],  # RR leg
+                ]
 
-                self.joint_pub[i].publish(joint_state)
+                # Publish joint data.
+                try:
+                    self.joint_pub[i].publish(joint_state)
+                except Exception as e:
+                    self.get_logger().error(
+                        f"Error in publish_joint_state_webrtc: {e} for robot {i}"
+                    )
 
     def publish_webrtc_commands(self, robot_num):
         while True:
@@ -629,40 +660,82 @@ class RobotBaseNode(Node):
     def publish_robot_state_webrtc(self):
         for i in range(len(self.robot_sport_state)):
             if self.robot_sport_state[str(i)]:
-                go2_state = Go2State()
-                go2_state.mode = self.robot_sport_state[str(i)]["data"]["mode"]
-                go2_state.progress = self.robot_sport_state[str(
-                    i)]["data"]["progress"]
-                go2_state.gait_type = self.robot_sport_state[str(
-                    i)]["data"]["gait_type"]
-                go2_state.position = list(
-                    map(float, self.robot_sport_state[str(i)]["data"]["position"]))
-                go2_state.body_height = float(
-                    self.robot_sport_state[str(i)]["data"]["body_height"])
-                go2_state.velocity = self.robot_sport_state[str(
-                    i)]["data"]["velocity"]
-                go2_state.range_obstacle = list(
-                    map(float, self.robot_sport_state[str(i)]["data"]["range_obstacle"]))
-                go2_state.foot_force = self.robot_sport_state[str(
-                    i)]["data"]["foot_force"]
-                go2_state.foot_position_body = list(
-                    map(float, self.robot_sport_state[str(i)]["data"]["foot_position_body"]))
-                go2_state.foot_speed_body = list(
-                    map(float, self.robot_sport_state[str(i)]["data"]["foot_speed_body"]))
-                self.go2_state_pub[i].publish(go2_state)
+                try:
+                    data = self.robot_sport_state[str(i)]["data"]
 
-                imu = IMU()
-                imu.quaternion = list(
-                    map(float, self.robot_sport_state[str(i)]["data"]["imu_state"]["quaternion"]))
-                imu.accelerometer = list(map(
-                    float, self.robot_sport_state[str(i)]["data"]["imu_state"]["accelerometer"]))
-                imu.gyroscope = list(
-                    map(float, self.robot_sport_state[str(i)]["data"]["imu_state"]["gyroscope"]))
-                imu.rpy = list(
-                    map(float, self.robot_sport_state[str(i)]["data"]["imu_state"]["rpy"]))
-                imu.temperature = self.robot_sport_state[str(
-                    i)]["data"]["imu_state"]["temperature"]
-                self.imu_pub[i].publish(imu)
+                    # Check required lists for float validity
+                    if not all(
+                        isinstance(x, float) and math.isfinite(x)
+                        for x in data["position"]
+                    ):
+                        continue
+                    if not all(
+                        isinstance(x, float) and math.isfinite(x)
+                        for x in data["range_obstacle"]
+                    ):
+                        continue
+                    if not all(
+                        isinstance(x, float) and math.isfinite(x)
+                        for x in data["foot_position_body"]
+                    ):
+                        continue
+                    if not all(
+                        isinstance(x, float) and math.isfinite(x)
+                        for x in data["foot_speed_body"]
+                    ):
+                        continue
+                    if (
+                        not isinstance(data["body_height"], (int, float)) or
+                        not math.isfinite(data["body_height"])
+                    ):
+                        continue
+
+                    go2_state = Go2State()
+                    go2_state.mode = data["mode"]
+                    go2_state.progress = data["progress"]
+                    go2_state.gait_type = data["gait_type"]
+                    go2_state.position = list(map(float, data["position"]))
+                    go2_state.body_height = float(data["body_height"])
+                    go2_state.velocity = data["velocity"]
+                    go2_state.range_obstacle = list(map(float, data["range_obstacle"]))
+                    go2_state.foot_force = data["foot_force"]
+                    go2_state.foot_position_body = list(map(float, data["foot_position_body"]))
+                    go2_state.foot_speed_body = list(map(float, data["foot_speed_body"]))
+                    self.go2_state_pub[i].publish(go2_state)
+
+                    imu_data = data["imu_state"]
+                    # Check all IMU fields
+                    if not all(
+                        isinstance(x, float) and math.isfinite(x)
+                        for x in imu_data["quaternion"]
+                    ):
+                        continue
+                    if not all(
+                        isinstance(x, float) and math.isfinite(x)
+                        for x in imu_data["accelerometer"]
+                    ):
+                        continue
+                    if not all(
+                        isinstance(x, float) and math.isfinite(x)
+                        for x in imu_data["gyroscope"]
+                    ):
+                        continue
+                    if not all(
+                        isinstance(x, float) and math.isfinite(x)
+                        for x in imu_data["rpy"]
+                    ):
+                        continue
+
+                    imu = IMU()
+                    imu.quaternion = list(map(float, imu_data["quaternion"]))
+                    imu.accelerometer = list(map(float, imu_data["accelerometer"]))
+                    imu.gyroscope = list(map(float, imu_data["gyroscope"]))
+                    imu.rpy = list(map(float, imu_data["rpy"]))
+                    imu.temperature = imu_data["temperature"]
+                    self.imu_pub[i].publish(imu)
+                except Exception as e:
+                    self.get_logger().error(
+                        f"Error in publish_robot_state_webrtc: {e} for robot {i}")
 
 
 async def run(conn, robot_num, node):
