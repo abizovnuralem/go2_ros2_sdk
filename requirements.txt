@@ -8,3 +8,6 @@ torch
 torchvision
 pycryptodome
 opencv-python
+pydub
+numpy==1.26.4
+

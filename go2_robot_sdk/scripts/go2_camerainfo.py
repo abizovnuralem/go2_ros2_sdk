@@ -23,6 +23,10 @@
 
 import yaml
 import logging
+import glob
+import os
+import re
+from typing import Dict
 from sensor_msgs.msg import CameraInfo
 from ament_index_python.packages import get_package_share_directory
 
@@ -30,25 +34,32 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
-def load_camera_info():
-    yaml_file = get_package_share_directory('go2_robot_sdk') + "/calibration/front_camera.yaml"
 
-    logger.info("Loading camera info from file: {}".format(yaml_file))
+def load_camera_info() -> Dict[int, CameraInfo]:
+    supported_heights = [int(re.findall(r"\d+", os.path.basename(file))[0]) 
+                     for file in glob.glob(get_package_share_directory('go2_robot_sdk') + "/calibration/front_camera_*.yaml")]
+    logger.info(f"Loading camera info for heights: {supported_heights}")
+    camera_info = {}
+    for height in supported_heights:
+        yaml_file = get_package_share_directory('go2_robot_sdk') + f"/calibration/front_camera_{height}.yaml"
 
-    # Load the camera info from the YAML file
-    with open(yaml_file, "r") as file_handle:
-        camera_info_data = yaml.safe_load(file_handle)
+        logger.info("Loading camera info from file: {}".format(yaml_file))
 
-    # Create a CameraInfo message
-    camera_info_msg = CameraInfo()
+        # Load the camera info from the YAML file
+        with open(yaml_file, "r") as file_handle:
+            camera_info_data = yaml.safe_load(file_handle)
 
-    # Fill in the CameraInfo fields from the YAML data
-    camera_info_msg.width = camera_info_data["image_width"]
-    camera_info_msg.height = camera_info_data["image_height"]
-    camera_info_msg.k = camera_info_data["camera_matrix"]["data"]
-    camera_info_msg.d = camera_info_data["distortion_coefficients"]["data"]
-    camera_info_msg.r = camera_info_data["rectification_matrix"]["data"]
-    camera_info_msg.p = camera_info_data["projection_matrix"]["data"]
-    camera_info_msg.distortion_model = camera_info_data["distortion_model"]
+        # Create a CameraInfo message
+        camera_info_msg = CameraInfo()
 
-    return camera_info_msg
+        # Fill in the CameraInfo fields from the YAML data
+        camera_info_msg.width = camera_info_data["image_width"]
+        camera_info_msg.height = camera_info_data["image_height"]
+        camera_info_msg.k = camera_info_data["camera_matrix"]["data"]
+        camera_info_msg.d = camera_info_data["distortion_coefficients"]["data"]
+        camera_info_msg.r = camera_info_data["rectification_matrix"]["data"]
+        camera_info_msg.p = camera_info_data["projection_matrix"]["data"]
+        camera_info_msg.distortion_model = camera_info_data["distortion_model"]
+        camera_info[height] = camera_info_msg
+
+    return camera_info
