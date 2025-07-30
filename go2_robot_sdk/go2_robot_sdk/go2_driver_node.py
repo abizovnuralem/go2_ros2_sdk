@@ -252,7 +252,7 @@ class RobotBaseNode(Node):
                 qos_profile)
 
         self.timer = self.create_timer(0.1, self.timer_callback)
-        self.timer_lidar = self.create_timer(0.5, self.timer_callback_lidar)
+        self.timer_lidar = self.create_timer(0.01, self.timer_callback_lidar)
 
     def timer_callback(self):
         if self.conn_type == 'webrtc':
@@ -668,8 +668,14 @@ async def run(conn, robot_num, node):
     if node.conn_type == 'webrtc':
         try:
             await node.conn[robot_num].connect()
-            # await
-            # node.conn[robot_num].data_channel.disableTrafficSaving(True)
+            
+            # Disable traffic saving for better lidar data transmission
+            try:
+                await node.conn[robot_num].disableTrafficSaving(True)
+                node.get_logger().info(f"Traffic saving disabled for robot {robot_num}")
+            except Exception as e:
+                node.get_logger().warning(f"Failed to disable traffic saving for robot {robot_num}: {e}")
+                
         except Exception as e:
             node.get_logger().error(
                 f"Failed to connect to robot {robot_num} - exiting: {e}")

@@ -41,6 +41,7 @@ from aiortc import RTCPeerConnection, RTCSessionDescription
 
 
 from scripts.go2_lidar_decoder import LidarDecoder
+from scripts.go2_constants import DATA_CHANNEL_TYPE
 
 
 logging.basicConfig(level=logging.WARN)
@@ -375,6 +376,26 @@ class Go2Connection():
         payload_dumped = json.dumps(payload)
         logger.info(f"-> Sending message {payload_dumped}")
         self.data_channel.send(payload_dumped)
+
+    async def disableTrafficSaving(self, switch: bool):
+        """
+        Disable traffic saving mode for better data transmission
+        Should be turned on when subscribed to ulidar topic
+        """
+        data = {
+            "req_type": "disable_traffic_saving",
+            "instruction": "on" if switch else "off"
+        }
+        
+        # Use the publish method to send the request
+        self.publish(
+            "",
+            data,
+            DATA_CHANNEL_TYPE["RTC_INNER_REQ"],
+        )
+        
+        logger.info(f"DisableTrafficSaving: {data['instruction']}")
+        return True
 
     @staticmethod
     def hex_to_base64(hex_str):

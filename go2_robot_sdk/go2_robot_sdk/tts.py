@@ -234,7 +234,6 @@ class TTSNode(Node):
                 )
 
                 # Add a small delay between chunks to prevent flooding
-                # time.sleep(0.01)
                 time.sleep(0.15)
 
             # Wait until playback finished
