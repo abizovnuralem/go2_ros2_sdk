@@ -40,6 +40,8 @@ import requests
 from aiortc import RTCPeerConnection, RTCSessionDescription
 
 
+# Импортируем локальный LZ4-декодер
+from scripts.lidar_decoder_lz4 import LidarDecoderLz4
 from scripts.go2_lidar_decoder import LidarDecoder
 from scripts.go2_constants import DATA_CHANNEL_TYPE
 
@@ -49,7 +51,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-decoder = LidarDecoder()
+decoder = LidarDecoderLz4()
 
 
 def calc_local_path_ending(data1):

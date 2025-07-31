@@ -32,30 +32,43 @@ from ament_index_python import get_package_share_directory
 
 
 def update_meshes_for_cloud2(positions, uvs, res, origin, intense_limiter):
-    # Convert the list of positions to a NumPy array for vectorized operations
-    position_array = np.array(positions).reshape(-1, 3).astype(np.float32)
+    """Собирает облако точек с интенсивностью в формате `[x, y, z, i]`.
 
-    # Do some resolution for each point
-    position_array *= res
+    Оптимизация:
+    1. *In-place* умножение и смещение позиций без лишних копий.
+    2. Расчёт интенсивности через ``np.minimum`` — быстрее, чем ``amin`` с
+       сохранением оси.
+    3. Фильтрация по маске до конкатенации массивов, сокращая объём
+       обрабатываемых данных.
+    4. Создание финального массива сразу нужного dtype/shape, без
+       промежуточного ``hstack``.
+    """
 
-    # Recalculate origin
-    position_array += origin
+    # -- Подготовка позиций -------------------------------------------------
+    pos = np.asarray(positions, dtype=np.float32).reshape(-1, 3)
+    pos *= res                          # масштабируем
+    pos += origin                       # смещаем
 
-    # Convert the list of uvs to a NumPy array
-    uv_array = np.array(uvs, dtype=np.float32).reshape(-1, 2)
+    # -- Интенсивность ------------------------------------------------------
+    uv = np.asarray(uvs, dtype=np.float32).reshape(-1, 2)
+    intensities = np.minimum(uv[:, 0], uv[:, 1])  # shape (N,)
 
-    # Calculate intensities for unique positions based on their UV values
-    intensities = np.min(uv_array, axis=1, keepdims=True)
+    # -- Фильтрация по порогу ----------------------------------------------
+    mask = intensities > intense_limiter
+    if not np.any(mask):
+        return np.empty((0, 4), dtype=np.float32)
 
-    # Merge uvs with points
-    positions_with_uvs = np.hstack((position_array, intensities))
+    pos = pos[mask]
+    intensities = intensities[mask]
 
-    # Remove points with limit intensity
-    positions_with_uvs = positions_with_uvs[positions_with_uvs[:, -1] > intense_limiter]
+    # -- Объединяем позиции и интенсивность --------------------------------
+    result = np.empty((pos.shape[0], 4), dtype=np.float32)
+    result[:, :3] = pos
+    result[:, 3] = intensities
 
-    # Remove duplicated points by creating a set of tuples
-    positions_with_uvs = np.unique(positions_with_uvs, axis=0)
-    return positions_with_uvs
+    # -- Удаляем дубликаты ---------------------------------------------------
+    # np.unique быстрее на C-конт. массиве
+    return np.unique(result, axis=0)
 
 
 class LidarDecoder:

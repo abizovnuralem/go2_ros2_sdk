@@ -252,7 +252,7 @@ class RobotBaseNode(Node):
                 qos_profile)
 
         self.timer = self.create_timer(0.1, self.timer_callback)
-        self.timer_lidar = self.create_timer(0.01, self.timer_callback_lidar)
+        # Таймер lidar убран – публикация выполняется непосредственно при поступлении данных WebRTC
 
     def timer_callback(self):
         if self.conn_type == 'webrtc':
@@ -268,6 +268,54 @@ class RobotBaseNode(Node):
         # Publish raw voxel data
         if self.conn_type == 'webrtc' and self.publish_raw_voxel:
             self.publish_voxel_webrtc()
+
+    # -------------------------------
+    #  Обработка Lidar при получении
+    # -------------------------------
+    def _process_lidar_msg(self, robot_idx):
+        """Публикует PointCloud2 (и при необходимости voxel) для робота *robot_idx*.
+
+        Вызывается сразу при получении сообщения ULIDAR_ARRAY, избавляя
+        от периодического таймера.
+        """
+        str_idx = str(robot_idx)
+        int_idx = int(robot_idx)
+
+        if not self.robot_lidar[str_idx]:
+            return
+
+        # Подготовка облака точек
+        points = update_meshes_for_cloud2(
+            self.robot_lidar[str_idx]["decoded_data"]["positions"],
+            self.robot_lidar[str_idx]["decoded_data"]["uvs"],
+            self.robot_lidar[str_idx]["data"]["resolution"],
+            self.robot_lidar[str_idx]["data"]["origin"],
+            0,
+        )
+
+        point_cloud = PointCloud2()
+        point_cloud.header = Header(frame_id="odom")
+        point_cloud.header.stamp = self.get_clock().now().to_msg()
+        fields = [
+            PointField(name="x", offset=0, datatype=PointField.FLOAT32, count=1),
+            PointField(name="y", offset=4, datatype=PointField.FLOAT32, count=1),
+            PointField(name="z", offset=8, datatype=PointField.FLOAT32, count=1),
+            PointField(name="intensity", offset=12, datatype=PointField.FLOAT32, count=1),
+        ]
+        point_cloud = point_cloud2.create_cloud(point_cloud.header, fields, points)
+        self.go2_lidar_pub[int_idx].publish(point_cloud)
+
+        # Опционально публикуем сжатую voxel карту сразу же
+        if self.publish_raw_voxel:
+            voxel_msg = VoxelMapCompressed()
+            voxel_msg.stamp = float(self.robot_lidar[str_idx]["data"]["stamp"])
+            voxel_msg.frame_id = "odom"
+            voxel_msg.resolution = self.robot_lidar[str_idx]["data"]["resolution"]
+            voxel_msg.origin = self.robot_lidar[str_idx]["data"]["origin"]
+            voxel_msg.width = self.robot_lidar[str_idx]["data"]["width"]
+            voxel_msg.src_size = self.robot_lidar[str_idx]["data"]["src_size"]
+            voxel_msg.data = self.robot_lidar[str_idx]["compressed_data"]
+            self.voxel_pub[int_idx].publish(voxel_msg)
 
     def cmd_vel_cb(self, msg, robot_num):
         x = msg.linear.x
@@ -397,6 +445,31 @@ class RobotBaseNode(Node):
 
         if msg.get('topic') == RTC_TOPIC["ULIDAR_ARRAY"]:
             self.robot_lidar[robot_num] = msg
+            # Публикуем исходное сообщение ULIDAR_ARRAY в строковом виде
+            # без огромных массивов numpy, которые не сериализуются в JSON.
+            from std_msgs.msg import String
+
+            topic_name = f"/ulidar/raw_msg/robot{robot_num}"
+            if not hasattr(self, 'ulidar_raw_msg_pub'):
+                self.ulidar_raw_msg_pub = {}
+
+            if robot_num not in self.ulidar_raw_msg_pub:
+                self.ulidar_raw_msg_pub[robot_num] = self.create_publisher(
+                    String, topic_name, 10
+                )
+
+            # Удаляем поля с numpy-массивами перед сериализацией
+            safe_msg = dict(msg)  # поверхностная копия
+            if 'decoded_data' in safe_msg:
+                safe_msg.pop('decoded_data')
+
+            raw_msg = String()
+            raw_msg.data = json.dumps(safe_msg)
+            self.ulidar_raw_msg_pub[robot_num].publish(raw_msg)
+            
+            
+            if self.conn_type == 'webrtc' and self.decode_lidar:
+                self._process_lidar_msg(int(robot_num))
 
         if msg.get('topic') == RTC_TOPIC['ROBOTODOM']:
             self.robot_odom[robot_num] = msg
@@ -597,12 +670,12 @@ class RobotBaseNode(Node):
                         f'robot{str(i)}/RR_thigh_joint',
                         f'robot{str(i)}/RR_calf_joint']
 
-                joint_state.position = [
+                joint_state.position = list(map(float, [
                     FL_hip_joint, FL_thigh_joint, FL_calf_joint,
                     FR_hip_joint, FR_thigh_joint, FR_calf_joint,
                     RL_hip_joint, RL_thigh_joint, RL_calf_joint,
                     RR_hip_joint, RR_thigh_joint, RR_calf_joint,
-                ]
+                ]))
                 self.joint_pub[i].publish(joint_state)
 
     def publish_webrtc_commands(self, robot_num):
