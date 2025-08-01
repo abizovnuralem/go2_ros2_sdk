@@ -130,10 +130,10 @@ def get_robot_joints(footPositionValue, foot_num):
     if foot_position.z < 0:
         A = np.arcsin(-C / E) + y
     else:
-        A = -np.pi + np.arcsin(C / E) + y
+        A = -np.pi + np.arcsin(np.clip(C / E, -1.0, 1.0)) + y
 
     O = np.sqrt(foot_position_distance ** 2 - C ** 2)  # noqa: E741
-    L = np.arcsin(R / O)
+    L = np.arcsin(np.clip(R / O, -1.0, 1.0))
 
     if foot_position.z > 0:
         P = -1
@@ -141,10 +141,10 @@ def get_robot_joints(footPositionValue, foot_num):
         P = 1
 
     if foot_num % 2 == 0:
-        J = P * (L - np.arcsin(HIP_LENGTH / O))
+        J = P * (L - np.arcsin(np.clip(HIP_LENGTH / O, -1.0, 1.0)))
 
     else:
-        J = P * (L + np.arcsin(HIP_LENGTH / O))
+        J = P * (L + np.arcsin(np.clip(HIP_LENGTH / O, -1.0, 1.0)))
 
     if math.isnan(J + A + S):
         return 0, 0, 0

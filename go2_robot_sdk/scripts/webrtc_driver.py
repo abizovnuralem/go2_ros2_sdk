@@ -33,6 +33,7 @@ import hashlib
 import json
 import logging
 import struct
+import time
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import AES
 from Crypto.Cipher import PKCS1_v1_5
@@ -40,9 +41,8 @@ import requests
 from aiortc import RTCPeerConnection, RTCSessionDescription
 
 
-# Импортируем локальный LZ4-декодер
+
 from scripts.lidar_decoder_lz4 import LidarDecoderLz4
-from scripts.go2_lidar_decoder import LidarDecoder
 from scripts.go2_constants import DATA_CHANNEL_TYPE
 
 
@@ -426,7 +426,10 @@ class Go2Connection():
             json_str = json_segment.decode("utf-8")
             obj = json.loads(json_str)
             if perform_decode:
+                start_decode = time.perf_counter()
                 decoded_data = decoder.decode(compressed_data, obj['data'])
+                decode_ms = (time.perf_counter() - start_decode) * 1000.0
+                logger.info(f"Lidar decode took {decode_ms:.2f} ms (size={len(compressed_data)})")
                 obj["decoded_data"] = decoded_data
             else:
                 obj["compressed_data"] = compressed_data
