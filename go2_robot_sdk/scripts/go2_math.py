@@ -149,5 +149,4 @@ def get_robot_joints(footPositionValue, foot_num):
     if math.isnan(J + A + S):
         return 0, 0, 0
 
-    # Приводим к встроенному Python float, т.к. numpy.float32/64 не проходят проверку
     return float(J), float(A), float(S)

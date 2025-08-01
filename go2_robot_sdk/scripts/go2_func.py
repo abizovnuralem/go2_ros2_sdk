@@ -24,7 +24,7 @@
 import datetime
 import json
 import random
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
 SPORT_MODE_TOPIC = "rt/api/sport/request"
 OBSTACLE_AVOIDANCE_TOPIC = "rt/api/obstacles_avoid/request"
