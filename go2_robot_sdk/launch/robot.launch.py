@@ -27,187 +27,98 @@ from launch import LaunchDescription
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
-from launch.actions import IncludeLaunchDescription
-from launch.launch_description_sources import FrontendLaunchDescriptionSource, PythonLaunchDescriptionSource
+
 
 def generate_launch_description():
-
+    # Launch configurations
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
     with_rviz2 = LaunchConfiguration('rviz2', default='true')
-    with_nav2 = LaunchConfiguration('nav2', default='true')
-    with_slam = LaunchConfiguration('slam', default='true')
-    with_foxglove = LaunchConfiguration('foxglove', default='true')
     with_joystick = LaunchConfiguration('joystick', default='true')
     with_teleop = LaunchConfiguration('teleop', default='true')
 
-    robot_token = os.getenv('ROBOT_TOKEN', '') # how does this work for multiple robots?
+    # Environment variables
+    robot_token = os.getenv('ROBOT_TOKEN', '')
     robot_ip = os.getenv('ROBOT_IP', '')
-    robot_ip_lst = robot_ip.replace(" ", "").split(",")
-    print("IP list:", robot_ip_lst)
 
+    # Package directory
+    pkg_dir = get_package_share_directory('go2_robot_sdk')
+    
+    # Config files
+    rviz_config = os.path.join(pkg_dir, 'config', 'single_robot_conf.rviz')
+    joy_params = os.path.join(pkg_dir, 'config', 'joystick.yaml')
+    twist_mux_params = os.path.join(pkg_dir, 'config', 'twist_mux.yaml')
+    urdf_file = os.path.join(pkg_dir, 'urdf', 'go2.urdf')
 
-    # these are debug only
-    map_name = os.getenv('MAP_NAME', '3d_map')
-    save_map = os.getenv('MAP_SAVE', 'true')
-
-    conn_type = os.getenv('CONN_TYPE', 'webrtc')
-
-    conn_mode = "single" if len(robot_ip_lst) == 1 and conn_type != "cyclonedds" else "multi"
-
-    if conn_mode == 'single':
-        rviz_config = "single_robot_conf.rviz"
-    else:
-        rviz_config = "multi_robot_conf.rviz"
-
-    if conn_type == 'cyclonedds':
-        rviz_config = "cyclonedds_config.rviz"
-
-    urdf_file_name = 'multi_go2.urdf'
-    urdf = os.path.join(
-        get_package_share_directory('go2_robot_sdk'),
-        "urdf",
-        urdf_file_name)
-    with open(urdf, 'r') as infp:
-        robot_desc = infp.read()
-
-    robot_desc_modified_lst = []
-
-    for i in range(len(robot_ip_lst)):
-        robot_desc_modified_lst.append(robot_desc.format(robot_num=f"robot{i}"))
-
-    urdf_launch_nodes = []
-
-    joy_params = os.path.join(
-        get_package_share_directory('go2_robot_sdk'),
-        'config', 'joystick.yaml'
-    )
-
-    default_config_topics = os.path.join(
-        get_package_share_directory('go2_robot_sdk'),
-        'config', 'twist_mux.yaml')
-
-    foxglove_launch = os.path.join(
-        get_package_share_directory('foxglove_bridge'),
-        'launch',
-        'foxglove_bridge_launch.xml',
-    )
-
-    slam_toolbox_config = os.path.join(
-        get_package_share_directory('go2_robot_sdk'),
-        'config',
-        'mapper_params_online_async.yaml'
-    )
-
-    nav2_config = os.path.join(
-        get_package_share_directory('go2_robot_sdk'),
-        'config',
-        'nav2_params.yaml'
-    )
-
-    if conn_mode == 'single':
-
-        urdf_file_name = 'go2.urdf'
-        urdf = os.path.join(
-            get_package_share_directory('go2_robot_sdk'),
-            "urdf",
-            urdf_file_name)
-        with open(urdf, 'r') as infp:
-            robot_desc = infp.read()
-
-        urdf_launch_nodes.append(
-            Node(
-                package='robot_state_publisher',
-                executable='robot_state_publisher',
-                name='robot_state_publisher',
-                output='screen',
-                parameters=[{'use_sim_time': use_sim_time,
-                             'robot_description': robot_desc}],
-                arguments=[urdf]
-            ),
-        )
-        urdf_launch_nodes.append(
-            Node(
-                package='pointcloud_to_laserscan',
-                executable='pointcloud_to_laserscan_node',
-                name='pointcloud_to_laserscan',
-                remappings=[
-                    ('cloud_in', 'point_cloud2'),
-                    ('scan', 'scan'),
-                ],
-                parameters=[{
-                    'target_frame': 'base_link',
-                    'max_height': 0.5
-                }],
-                output='screen',
-            ),
-        )
-
-    else:
-
-        for i in range(len(robot_ip_lst)):
-            urdf_launch_nodes.append(
-                Node(
-                    package='robot_state_publisher',
-                    executable='robot_state_publisher',
-                    name='robot_state_publisher',
-                    output='screen',
-                    namespace=f"robot{i}",
-                    parameters=[{'use_sim_time': use_sim_time,
-                                 'robot_description': robot_desc_modified_lst[i]}],
-                    arguments=[urdf]
-                ),
-            )
-            urdf_launch_nodes.append(
-                Node(
-                    package='pointcloud_to_laserscan',
-                    executable='pointcloud_to_laserscan_node',
-                    name='pointcloud_to_laserscan',
-                    remappings=[
-                        ('cloud_in', f'robot{i}/point_cloud2'),
-                        ('scan', f'robot{i}/scan'),
-                    ],
-                    parameters=[{
-                        'target_frame': f'robot{i}/base_link',
-                        'max_height': 0.1
-                    }],
-                    output='screen',
-                ),
-            )
+    # Read URDF
+    with open(urdf_file, 'r') as f:
+        robot_desc = f.read()
 
     return LaunchDescription([
+        # Robot state publisher
+        Node(
+            package='robot_state_publisher',
+            executable='robot_state_publisher',
+            name='robot_state_publisher',
+            output='screen',
+            parameters=[{
+                'use_sim_time': use_sim_time,
+                'robot_description': robot_desc
+            }]
+        ),
 
-        *urdf_launch_nodes,
+        # Pointcloud to laserscan converter
+        Node(
+            package='pointcloud_to_laserscan',
+            executable='pointcloud_to_laserscan_node',
+            name='pointcloud_to_laserscan',
+            remappings=[
+                ('cloud_in', 'point_cloud2'),
+                ('scan', 'scan')
+            ],
+            parameters=[{
+                'target_frame': 'base_link',
+                'max_height': 0.5
+            }],
+            output='screen'
+        ),
+
+        # Main Go2 driver
         Node(
             package='go2_robot_sdk',
             executable='go2_driver_node',
-            parameters=[{'robot_ip': robot_ip, 'token': robot_token, "conn_type": conn_type}],
+            parameters=[{
+                'robot_ip': robot_ip,
+                'token': robot_token
+            }]
         ),
-        Node(
-            package='go2_robot_sdk',
-            executable='lidar_to_pointcloud',
-            parameters=[{'robot_ip_lst': robot_ip_lst, 'map_name': map_name, 'map_save': save_map}],
-        ),
+
+        # RViz2
         Node(
             package='rviz2',
-            namespace='',
             executable='rviz2',
-            condition=IfCondition(with_rviz2),
             name='rviz2',
-            arguments=['-d' + os.path.join(get_package_share_directory('go2_robot_sdk'), 'config', rviz_config)]
+            condition=IfCondition(with_rviz2),
+            arguments=['-d', rviz_config]
         ),
+
+        # Joystick
         Node(
             package='joy',
             executable='joy_node',
             condition=IfCondition(with_joystick),
             parameters=[joy_params]
         ),
+
+        # Teleop twist joy
         Node(
             package='teleop_twist_joy',
             executable='teleop_node',
             name='teleop_node',
             condition=IfCondition(with_joystick),
-            parameters=[default_config_topics],
+            parameters=[twist_mux_params]
         ),
+
+        # Twist mux
         Node(
             package='twist_mux',
             executable='twist_mux',
@@ -215,36 +126,7 @@ def generate_launch_description():
             condition=IfCondition(with_teleop),
             parameters=[
                 {'use_sim_time': use_sim_time},
-                default_config_topics
-            ],
-        ),
-
-        IncludeLaunchDescription(
-            FrontendLaunchDescriptionSource(foxglove_launch),
-            condition=IfCondition(with_foxglove),
-        ),
-
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource([
-                os.path.join(get_package_share_directory(
-                    'slam_toolbox'), 'launch', 'online_async_launch.py')
-            ]),
-            condition=IfCondition(with_slam),
-            launch_arguments={
-                'slam_params_file': slam_toolbox_config,
-                'use_sim_time': use_sim_time,
-            }.items(),
-        ),
-
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource([
-                os.path.join(get_package_share_directory(
-                    'nav2_bringup'), 'launch', 'navigation_launch.py')
-            ]),
-            condition=IfCondition(with_nav2),
-            launch_arguments={
-                'params_file': nav2_config,
-                'use_sim_time': use_sim_time,
-            }.items(),
+                twist_mux_params
+            ]
         ),
     ])

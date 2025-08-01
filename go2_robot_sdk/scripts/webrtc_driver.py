@@ -33,7 +33,7 @@ import hashlib
 import json
 import logging
 import struct
-import time
+# import time
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import AES
 from Crypto.Cipher import PKCS1_v1_5
@@ -190,7 +190,6 @@ class Go2Connection():
     def __init__(
             self,
             robot_ip=None,
-            robot_num=None,
             token="",
             on_validated=None,
             on_message=None,
@@ -201,7 +200,6 @@ class Go2Connection():
 
         self.pc = RTCPeerConnection()
         self.robot_ip = robot_ip
-        self.robot_num = str(robot_num)
         self.token = token
         self.robot_validation = "PENDING"
         self.on_validated = on_validated
@@ -231,7 +229,7 @@ class Go2Connection():
             if self.on_video_frame:
                 frame = await track.recv()
                 logger.info(f"Received frame {frame}")
-                await self.on_video_frame(track, int(self.robot_num))
+                await self.on_video_frame(track)
             else:
                 pass
 
@@ -265,7 +263,7 @@ class Go2Connection():
                 msgobj = Go2Connection.deal_array_buffer(msg, perform_decode=self.decode_lidar)
 
             if self.on_message:
-                self.on_message(msg, msgobj, self.robot_num)
+                self.on_message(msg, msgobj)
 
         except json.JSONDecodeError:
             pass
@@ -354,7 +352,7 @@ class Go2Connection():
 
             self.validation_result = "SUCCESS"
             if self.on_validated:
-                self.on_validated(self.robot_num)
+                self.on_validated()
         else:
             self.publish(
                 "",
@@ -426,10 +424,10 @@ class Go2Connection():
             json_str = json_segment.decode("utf-8")
             obj = json.loads(json_str)
             if perform_decode:
-                start_decode = time.perf_counter()
+                # start_decode = time.perf_counter()
                 decoded_data = decoder.decode(compressed_data, obj['data'])
-                decode_ms = (time.perf_counter() - start_decode) * 1000.0
-                logger.info(f"Lidar decode took {decode_ms:.2f} ms (size={len(compressed_data)})")
+                # decode_ms = (time.perf_counter() - start_decode) * 1000.0
+                # logger.info(f"Lidar decode took {decode_ms:.2f} ms (size={len(compressed_data)})")
                 obj["decoded_data"] = decoded_data
             else:
                 obj["compressed_data"] = compressed_data

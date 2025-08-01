@@ -109,11 +109,6 @@ def generate_launch_description():
             default_value='false',
             description='Enable obstacle avoidance',
         ),
-        DeclareLaunchArgument(
-            'enable_foxglove_bridge',
-            default_value='true',
-            description='Enable Foxglove Bridge'
-        ),
 
 
 
@@ -160,17 +155,6 @@ def generate_launch_description():
                     ('out/compressed', 'camera/compressed'),
                 ],
                 on_exit=on_exit,
-            ),
-
-            # Foxglove Bridge node
-            Node(
-                package='foxglove_bridge',
-                executable='foxglove_bridge',
-                parameters=[{
-                    'send_buffer_limit': send_buffer_limit
-                }],
-                on_exit=on_exit,
-                condition=IfCondition(LaunchConfiguration('enable_foxglove_bridge')),
             ),
 
             # TTS node
