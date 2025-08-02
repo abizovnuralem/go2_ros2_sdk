@@ -10,17 +10,17 @@ import ctypes
 import numpy as np
 import os
 import math
-from typing import Tuple, List, Optional
+from typing import Dict, Any
 
 from wasmtime import Config, Engine, Store, Module, Instance, Func, FuncType, ValType
 from ament_index_python import get_package_share_directory
 
 
 def update_meshes_for_cloud2(
-    positions: List[float], 
-    uvs: List[float], 
+    positions: list, 
+    uvs: list, 
     res: float, 
-    origin: List[float], 
+    origin: list, 
     intense_limiter: float
 ) -> np.ndarray:
     """
@@ -65,131 +65,156 @@ def update_meshes_for_cloud2(
     return unique_points
 
 
-class VoxelDecoder:
-    """WASM-based voxel map decoder for LiDAR data"""
+class LidarDecoder:
+    """Original WASM-based LiDAR decoder - the working implementation"""
     
-    def __init__(self):
-        self.engine = None
-        self.store = None
-        self.instance = None
-        self.memory = None
-        self.decoder_init_func = None
-        self.decoder_decode_func = None
-        self._initialize_wasm()
-    
-    def _initialize_wasm(self) -> None:
-        """Initialize WASM engine and load decoder module"""
-        try:
-            # Configure WASM engine
-            config = Config()
-            self.engine = Engine(config)
-            self.store = Store(self.engine)
-            
-            # Load WASM module
-            wasm_path = os.path.join(
-                get_package_share_directory('go2_robot_sdk'),
-                'external_lib',
-                'libvoxel.wasm'
-            )
-            
-            if not os.path.exists(wasm_path):
-                raise FileNotFoundError(f"WASM decoder not found: {wasm_path}")
-            
-            with open(wasm_path, 'rb') as wasm_file:
-                wasm_bytes = wasm_file.read()
-            
-            module = Module(self.engine, wasm_bytes)
-            self.instance = Instance(self.store, module, [])
-            
-            # Get memory and functions
-            self.memory = self.instance.exports(self.store)["memory"]
-            self.decoder_init_func = self.instance.exports(self.store)["decoder_init"]
-            self.decoder_decode_func = self.instance.exports(self.store)["decoder_decode"]
-            
-        except Exception as e:
-            raise RuntimeError(f"Failed to initialize WASM decoder: {e}")
-    
-    def decode_voxel_data(self, compressed_data: bytes) -> Tuple[List[float], List[float]]:
-        """
-        Decode compressed voxel data using WASM decoder.
-        
-        Args:
-            compressed_data: Compressed voxel map bytes
-            
-        Returns:
-            Tuple of (positions, uvs) lists
-        """
-        if not self.instance:
-            raise RuntimeError("WASM decoder not initialized")
-        
-        try:
-            data_length = len(compressed_data)
-            
-            # Allocate memory in WASM
-            memory_data = self.memory.data_ptr(self.store)
-            
-            # Copy compressed data to WASM memory
-            input_ptr = 1024  # Start offset in WASM memory
-            ctypes.memmove(
-                ctypes.c_void_p(memory_data + input_ptr),
-                compressed_data,
-                data_length
-            )
-            
-            # Initialize decoder
-            self.decoder_init_func(self.store)
-            
-            # Decode data
-            result_ptr = self.decoder_decode_func(
-                self.store, 
-                input_ptr, 
-                data_length
-            )
-            
-            # Extract results from WASM memory
-            positions, uvs = self._extract_decoded_data(memory_data, result_ptr)
-            
-            return positions, uvs
-            
-        except Exception as e:
-            raise RuntimeError(f"Failed to decode voxel data: {e}")
-    
-    def _extract_decoded_data(
-        self, 
-        memory_data: int, 
-        result_ptr: int
-    ) -> Tuple[List[float], List[float]]:
-        """Extract decoded position and UV data from WASM memory"""
-        # This is a simplified version - actual implementation depends on
-        # the specific WASM decoder output format
-        positions = []
-        uvs = []
-        
-        # Read result header to get data sizes
-        header_ptr = ctypes.c_void_p(memory_data + result_ptr)
-        
-        # Extract positions and UVs based on decoder output format
-        # Implementation details depend on the specific WASM module
-        
-        return positions, uvs
+    def __init__(self) -> None:
+        config = Config()
+        config.wasm_multi_value = True
+        config.debug_info = True
+        self.store = Store(Engine(config))
+
+        libvoxel_path = os.path.join(
+            get_package_share_directory('go2_robot_sdk'),
+            "external_lib",
+            'libvoxel.wasm')
+
+        self.module = Module.from_file(self.store.engine, libvoxel_path)
+
+        self.a_callback_type = FuncType([ValType.i32()], [ValType.i32()])
+        self.b_callback_type = FuncType([ValType.i32(), ValType.i32(), ValType.i32()], [])
+
+        a = Func(self.store, self.a_callback_type, self.adjust_memory_size)
+        b = Func(self.store, self.b_callback_type, self.copy_memory_region)
+
+        self.instance = Instance(self.store, self.module, [a, b])
+
+        self.generate = self.instance.exports(self.store)["e"]
+        self.malloc = self.instance.exports(self.store)["f"]
+        self.free = self.instance.exports(self.store)["g"]
+        self.wasm_memory = self.instance.exports(self.store)["c"]
+
+        self.buffer = self.wasm_memory.data_ptr(self.store)
+        self.memory_size = self.wasm_memory.data_len(self.store)
+
+        self.buffer_ptr = int.from_bytes(self.buffer, "little")
+
+        self.HEAP8 = (ctypes.c_int8 * self.memory_size).from_address(self.buffer_ptr)
+        self.HEAP16 = (ctypes.c_int16 * (self.memory_size // 2)).from_address(self.buffer_ptr)
+        self.HEAP32 = (ctypes.c_int32 * (self.memory_size // 4)).from_address(self.buffer_ptr)
+        self.HEAPU8 = (ctypes.c_uint8 * self.memory_size).from_address(self.buffer_ptr)
+        self.HEAPU16 = (ctypes.c_uint16 * (self.memory_size // 2)).from_address(self.buffer_ptr)
+        self.HEAPU32 = (ctypes.c_uint32 * (self.memory_size // 4)).from_address(self.buffer_ptr)
+        self.HEAPF32 = (ctypes.c_float * (self.memory_size // 4)).from_address(self.buffer_ptr)
+        self.HEAPF64 = (ctypes.c_double * (self.memory_size // 8)).from_address(self.buffer_ptr)
+
+        self.input = self.malloc(self.store, 61440)
+        self.decompressBuffer = self.malloc(self.store, 80000)
+        self.positions = self.malloc(self.store, 2880000)
+        self.uvs = self.malloc(self.store, 1920000)
+        self.indices = self.malloc(self.store, 5760000)
+        self.decompressedSize = self.malloc(self.store, 4)
+        self.faceCount = self.malloc(self.store, 4)
+        self.pointCount = self.malloc(self.store, 4)
+        self.decompressBufferSize = 80000
+
+    def adjust_memory_size(self, t):
+        return len(self.HEAPU8)
+
+    def copy_within(self, target, start, end):
+        sublist = self.HEAPU8[start:end]
+        for i in range(len(sublist)):
+            if target + i < len(self.HEAPU8):
+                self.HEAPU8[target + i] = sublist[i]
+
+    def copy_memory_region(self, t, n, a):
+        self.copy_within(t, n, n + a)
+
+    def get_value(self, t, n="i8"):
+        if n.endswith("*"):
+            n = "*"
+        if n == "i1" or n == "i8":
+            return self.HEAP8[t]
+        elif n == "i16":
+            return self.HEAP16[t >> 1]
+        elif n == "i32" or n == "i64":
+            return self.HEAP32[t >> 2]
+        elif n == "float":
+            return self.HEAPF32[t >> 2]
+        elif n == "double":
+            return self.HEAPF64[t >> 3]
+        elif n == "*":
+            return self.HEAPU32[t >> 2]
+        else:
+            raise ValueError(f"invalid type for getValue: {n}")
+
+    def add_value_arr(self, start, value):
+        if start + len(value) <= len(self.HEAPU8):
+            for i, byte in enumerate(value):
+                self.HEAPU8[start + i] = byte
+        else:
+            raise ValueError("Not enough space to insert bytes at the specified index.")
+
+    def decode(self, compressed_data, data):
+        """Original decode method that actually works with the WASM module"""
+        self.add_value_arr(self.input, compressed_data)
+
+        some_v = math.floor(data["origin"][2] / data["resolution"])
+
+        self.generate(
+            self.store,
+            self.input,
+            len(compressed_data),
+            self.decompressBufferSize,
+            self.decompressBuffer,
+            self.decompressedSize,
+            self.positions,
+            self.uvs,
+            self.indices,
+            self.faceCount,
+            self.pointCount,
+            some_v
+        )
+
+        self.get_value(self.decompressedSize, "i32")
+        c = self.get_value(self.pointCount, "i32")
+        u = self.get_value(self.faceCount, "i32")
+
+        positions_slice = self.HEAPU8[self.positions:self.positions + u * 12]
+        positions_copy = bytearray(positions_slice)
+        p = np.frombuffer(positions_copy, dtype=np.uint8)
+
+        uvs_slice = self.HEAPU8[self.uvs:self.uvs + u * 8]
+        uvs_copy = bytearray(uvs_slice)
+        r = np.frombuffer(uvs_copy, dtype=np.uint8)
+
+        indices_slice = self.HEAPU8[self.indices:self.indices + u * 24]
+        indices_copy = bytearray(indices_slice)
+        o = np.frombuffer(indices_copy, dtype=np.uint32)
+
+        return {
+            "point_count": c,
+            "face_count": u,
+            "positions": p,
+            "uvs": r,
+            "indices": o
+        }
 
 
-# Global decoder instance
-_voxel_decoder: Optional[VoxelDecoder] = None
-
-
-def get_voxel_decoder() -> VoxelDecoder:
-    """Get singleton voxel decoder instance"""
-    global _voxel_decoder
-    if _voxel_decoder is None:
-        _voxel_decoder = VoxelDecoder()
-    return _voxel_decoder
+def get_voxel_decoder() -> LidarDecoder:
+    """
+    Get a LidarDecoder instance.
+    
+    Returns:
+        Initialized LidarDecoder (the working implementation)
+    """
+    return LidarDecoder()
 
 
 def decode_lidar_data(
     compressed_data: bytes,
     resolution: float = 0.01,
-    origin: List[float] = [0.0, 0.0, 0.0],
+    origin: list = [0.0, 0.0, 0.0],
     intensity_threshold: float = 0.1
 ) -> np.ndarray:
     """
@@ -205,7 +230,16 @@ def decode_lidar_data(
         Processed point cloud array
     """
     decoder = get_voxel_decoder()
-    positions, uvs = decoder.decode_voxel_data(compressed_data)
+    metadata = {
+        "origin": origin,
+        "resolution": resolution
+    }
+    
+    result = decoder.decode(compressed_data, metadata)
+    
+    # Convert to expected format
+    positions = result["positions"]
+    uvs = result["uvs"]
     
     return update_meshes_for_cloud2(
         positions, uvs, resolution, origin, intensity_threshold

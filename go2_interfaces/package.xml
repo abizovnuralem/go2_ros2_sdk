@@ -3,7 +3,7 @@
 <package format="3">
   <name>go2_interfaces</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>ROS2 message interfaces for Go2 robot communication (merged unitree_go and go2_interfaces)</description>
   <maintainer email="abizov94@gmail.com">brimo</maintainer>
   <license>TODO: License declaration</license>
 

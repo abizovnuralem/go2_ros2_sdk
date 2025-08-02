@@ -4,7 +4,7 @@ uint8 frame_reserve
 uint32[2] sn
 uint32[2] version
 uint16 bandwidth
-IMUState imu_state
+IMU imu_state
 MotorState[20] motor_state
 BmsState bms_state
 int16[4] foot_force

@@ -1,6 +1,6 @@
 TimeSpec stamp
 uint32 error_code
-IMUState imu_state
+IMU imu_state
 uint8 mode
 float32 progress
 uint8 gait_type

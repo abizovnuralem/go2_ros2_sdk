@@ -11,16 +11,10 @@ import struct
 import logging
 from typing import Optional, Dict, Any, Union
 try:
-    # Try to use the original LidarDecoder for compatibility
-    from scripts.go2_lidar_decoder import LidarDecoder as OriginalLidarDecoder
+    # Use the working LidarDecoder from infrastructure
+    from ..sensors.lidar_decoder import LidarDecoder as OriginalLidarDecoder
 except ImportError:
-    try:
-        # Fallback to new implementation
-        from ..sensors.lidar_decoder import get_voxel_decoder
-        OriginalLidarDecoder = None
-    except ImportError:
-        OriginalLidarDecoder = None
-        get_voxel_decoder = None
+    OriginalLidarDecoder = None
 
 
 logger = logging.getLogger(__name__)
@@ -46,15 +40,11 @@ class WebRTCDataDecoder:
         
         if enable_lidar_decoding:
             try:
-                # Try original LidarDecoder first for compatibility
                 if OriginalLidarDecoder:
                     self._lidar_decoder = OriginalLidarDecoder()
-                    logger.info("Using original LidarDecoder for compatibility")
-                elif get_voxel_decoder:
-                    self._lidar_decoder = get_voxel_decoder()
-                    logger.info("Using new voxel decoder")
+                    logger.info("Using LidarDecoder")
                 else:
-                    raise ImportError("No LiDAR decoder available")
+                    raise ImportError("LiDAR decoder not available")
             except Exception as e:
                 logger.warning(f"Failed to initialize LiDAR decoder: {e}")
                 self.enable_lidar_decoding = False
@@ -174,13 +164,10 @@ class WebRTCDataDecoder:
         
         if enabled and self._lidar_decoder is None:
             try:
-                # Try original LidarDecoder first for compatibility
                 if OriginalLidarDecoder:
                     self._lidar_decoder = OriginalLidarDecoder()
-                elif get_voxel_decoder:
-                    self._lidar_decoder = get_voxel_decoder()
                 else:
-                    raise ImportError("No LiDAR decoder available")
+                    raise ImportError("LiDAR decoder not available")
             except Exception as e:
                 logger.warning(f"Failed to initialize LiDAR decoder: {e}")
                 self.enable_lidar_decoding = False
@@ -210,9 +197,9 @@ def get_data_decoder(enable_lidar: bool = True) -> WebRTCDataDecoder:
 
 # Create a global decoder instance for backward compatibility
 try:
-    _legacy_decoder = OriginalLidarDecoder() if OriginalLidarDecoder else None
+    _global_lidar_decoder = OriginalLidarDecoder() if OriginalLidarDecoder else None
 except:
-    _legacy_decoder = None
+    _global_lidar_decoder = None
 
 
 # Backward compatibility function
@@ -232,7 +219,7 @@ def deal_array_buffer(buffer: bytes, perform_decode: bool = True) -> Optional[Di
     
     try:
         # Use original implementation for full compatibility
-        if _legacy_decoder and perform_decode:
+        if _global_lidar_decoder and perform_decode:
             import struct
             import json
             
@@ -243,7 +230,7 @@ def deal_array_buffer(buffer: bytes, perform_decode: bool = True) -> Optional[Di
             obj = json.loads(json_str)
             
             if compressed_data:
-                decoded_data = _legacy_decoder.decode(compressed_data, obj['data'])
+                decoded_data = _global_lidar_decoder.decode(compressed_data, obj['data'])
                 obj["decoded_data"] = decoded_data
             else:
                 obj["compressed_data"] = compressed_data

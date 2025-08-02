@@ -17,7 +17,7 @@ from tf2_ros import TransformBroadcaster
 
 from geometry_msgs.msg import Twist, PoseStamped
 from go2_interfaces.msg import Go2State, IMU
-from unitree_go.msg import LowState, VoxelMapCompressed, WebRtcReq
+from go2_interfaces.msg import LowState, VoxelMapCompressed, WebRtcReq
 from sensor_msgs.msg import PointCloud2, JointState, Joy, Image, CameraInfo
 from nav_msgs.msg import Odometry
 

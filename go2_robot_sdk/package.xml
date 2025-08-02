@@ -9,7 +9,7 @@
 
   <depend>rclpy</depend>
   <depend>go2_interfaces</depend>
-  <depend>unitree_go</depend>
+  <!-- unitree_go merged into go2_interfaces -->
   <depend>sensor_msgs</depend>
 
   <exec_depend>twist_mux</exec_depend>
@@ -29,11 +29,6 @@
   <exec_depend>foxglove_bridge</exec_depend>
 
   <exec_depend>cv_bridge</exec_depend>
-
-  <test_depend>ament_copyright</test_depend>
-  <test_depend>ament_flake8</test_depend>
-  <test_depend>ament_pep257</test_depend>
-  <test_depend>python3-pytest</test_depend>
 
   <export>
     <build_type>ament_python</build_type>

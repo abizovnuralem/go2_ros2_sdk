@@ -44,8 +44,8 @@ import rclpy
 from rclpy.node import Node
 import requests
 from std_msgs.msg import String
-from scripts.go2_constants import RTC_TOPIC
-from unitree_go.msg import WebRtcReq
+from .domain.constants import RTC_TOPIC
+from go2_interfaces.msg import WebRtcReq
 
 # flake8: noqa: Q000
 

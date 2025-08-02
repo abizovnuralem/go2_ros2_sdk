@@ -8,7 +8,7 @@ from rclpy.node import Node
 from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import TransformStamped
 from go2_interfaces.msg import Go2State, IMU
-from unitree_go.msg import VoxelMapCompressed
+from go2_interfaces.msg import VoxelMapCompressed
 from sensor_msgs.msg import PointCloud2, PointField, JointState
 from sensor_msgs_py import point_cloud2
 from std_msgs.msg import Header
