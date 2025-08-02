@@ -2,6 +2,9 @@
 
 # Welcome to the Unitree Go2 ROS2 SDK Project!
 
+> [!IMPORTANT]  
+> I hadn’t updated this repository in a long time, and a lot of changes accumulated, making the project somewhat messy. I’ve finally found time to refactor everything using Clean Architecture principles. Previously, the LiDAR stream ran at around 2 Hz; it now updates at 7 Hz. However, joint states still arrive at 1 Hz, so you may notice some URDF update lag—that’s expected with the new firmware (v1.1.7). We’ll need to find a workaround for that.
+
 [![IsaacSim](https://img.shields.io/badge/IsaacSim-4.0-silver.svg)](https://docs.omniverse.nvidia.com/isaacsim/latest/overview.html)
 [![Python](https://img.shields.io/badge/python-3.10-blue.svg)](https://docs.python.org/3/whatsnew/3.10.html)
 [![Linux platform](https://img.shields.io/badge/platform-linux--64-orange.svg)](https://releases.ubuntu.com/22.04/)
@@ -15,6 +18,7 @@ We are happy to present you our integration of the Unitree Go2 with ROS2 over Wi
 This repo will empower your Unitree GO2 AIR/PRO/EDU robots with ROS2 capabilities, using both WebRTC (Wi-Fi) and CycloneDDS (Ethernet) protocols.
 
 If you are using WebRTC (Wi-Fi) protocol, close the connection with a mobile app before connecting to the robot.
+
 
 ## Project RoadMap:
 
@@ -137,7 +141,9 @@ When you run `robot.launch.py`, `rviz` will fire up, lidar data will begin to ac
 
 ### SLAM and Nav2
 
-![Initial Rviz Display](doc_images/slam_nav_map.png)
+
+![Initial Rviz Display](https://github.com/abizovnuralem/go2_ros2_sdk/assets/33475993/49edebbe-11b6-49c6-b82d-bc46257674bd)
+
 
 The goal of SLAM overall, and the `slam_toolbox` in particular, is to create a map. The `slam_toolbox` is a grid mapper - it thinks about the world in terms of a fixed grid that the dog operates in. When the dog initially moves through a new space, data accumulate and the developing map is and published it to the `/map` topic. The goal of `Nav2` is to navigate and perform other tasks in this map.
 
@@ -152,7 +158,9 @@ The `rviz` settings that are used upon initial launch (triggered by `ros2 launch
 
 If there is too much going on in the initial screen, deselect the `map` topic to allow you to see more.
 
-![Simplified Rviz Display](doc_images/slam_nav.png)
+![Simplified Rviz Display](https://github.com/user-attachments/assets/74a7c07c-2c2d-4022-9a23-94407f2c2a06)
+
+
 
 ### Mapping - creating your first map
 
