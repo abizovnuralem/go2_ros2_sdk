@@ -6,8 +6,8 @@ import logging
 
 
 from ...domain.interfaces import IRobotController
-from scripts.go2_func import gen_mov_command
-from scripts.go2_constants import RTC_TOPIC
+from ..utils.command_generator import gen_mov_command
+from ...domain.constants import RTC_TOPIC
 
 
 logger = logging.getLogger(__name__)

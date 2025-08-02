@@ -17,8 +17,8 @@ from cv_bridge import CvBridge
 
 from ...domain.interfaces import IRobotDataPublisher
 from ...domain.entities import RobotData, RobotConfig
-from scripts.go2_lidar_decoder import update_meshes_for_cloud2
-from scripts.go2_camerainfo import load_camera_info
+from ..sensors.lidar_decoder import update_meshes_for_cloud2
+from ..sensors.camera_config import load_camera_info
 
 logger = logging.getLogger(__name__)
 

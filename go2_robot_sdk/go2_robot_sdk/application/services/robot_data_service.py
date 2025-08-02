@@ -7,7 +7,7 @@ from typing import Dict, Any
 
 from ...domain.entities import RobotData, RobotState, IMUData, OdometryData, JointData, LidarData
 from ...domain.interfaces import IRobotDataPublisher
-from scripts.go2_constants import RTC_TOPIC
+from ...domain.constants import RTC_TOPIC
 
 logger = logging.getLogger(__name__)
 

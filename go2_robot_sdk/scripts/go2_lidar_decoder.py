@@ -1,66 +1,34 @@
 # Copyright (c) 2024, RoboVerse community
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-# 1. Redistributions of source code must retain the above copyright notice, this
-#    list of conditions and the following disclaimer.
-#
-# 2. Redistributions in binary form must reproduce the above copyright notice,
-#    this list of conditions and the following disclaimer in the documentation
-#    and/or other materials provided with the distribution.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# SPDX-License-Identifier: BSD-3-Clause
 
+"""
+DEPRECATED: This file has been moved to infrastructure layer.
+Use imports from go2_robot_sdk.infrastructure.sensors instead.
+This compatibility layer will be removed in future versions.
+"""
+
+import warnings
 import ctypes
 import numpy as np
 import os
 import math
+import json
+import struct
+from typing import Optional, Dict, Any
 
-from wasmtime import Config, Engine, Store, Module, Instance, Func, FuncType
-from wasmtime import ValType
+from wasmtime import Config, Engine, Store, Module, Instance, Func, FuncType, ValType
 from ament_index_python import get_package_share_directory
 
+# Issue deprecation warning
+warnings.warn(
+    "scripts.go2_lidar_decoder is deprecated. Use go2_robot_sdk.infrastructure.sensors instead.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
-def update_meshes_for_cloud2(positions, uvs, res, origin, intense_limiter):
-    # Convert the list of positions to a NumPy array for vectorized operations
-    position_array = np.array(positions).reshape(-1, 3).astype(np.float32)
-
-    # Do some resolution for each point
-    position_array *= res
-
-    # Recalculate origin
-    position_array += origin
-
-    # Convert the list of uvs to a NumPy array
-    uv_array = np.array(uvs, dtype=np.float32).reshape(-1, 2)
-
-    # Calculate intensities for unique positions based on their UV values
-    intensities = np.min(uv_array, axis=1, keepdims=True)
-
-    # Merge uvs with points
-    positions_with_uvs = np.hstack((position_array, intensities))
-
-    # Remove points with limit intensity
-    positions_with_uvs = positions_with_uvs[positions_with_uvs[:, -1] > intense_limiter]
-
-    # Remove duplicated points by creating a set of tuples
-    positions_with_uvs = np.unique(positions_with_uvs, axis=0)
-    return positions_with_uvs
-
-
+# Keep the original LidarDecoder class for backward compatibility
 class LidarDecoder:
     def __init__(self) -> None:
-
         config = Config()
         config.wasm_multi_value = True
         config.debug_info = True
@@ -114,10 +82,7 @@ class LidarDecoder:
         return len(self.HEAPU8)
 
     def copy_within(self, target, start, end):
-        # Copy the sublist for the specified range [start:end]
         sublist = self.HEAPU8[start:end]
-
-        # Replace elements in the list starting from index 'target'
         for i in range(len(sublist)):
             if target + i < len(self.HEAPU8):
                 self.HEAPU8[target + i] = sublist[i]
@@ -193,3 +158,34 @@ class LidarDecoder:
             "uvs": r,
             "indices": o
         }
+
+
+def update_meshes_for_cloud2(positions, uvs, res, origin, intense_limiter):
+    # Convert the list of positions to a NumPy array for vectorized operations
+    position_array = np.array(positions).reshape(-1, 3).astype(np.float32)
+
+    # Do some resolution for each point
+    position_array *= res
+
+    # Recalculate origin
+    position_array += origin
+
+    # Convert the list of uvs to a NumPy array
+    uv_array = np.array(uvs, dtype=np.float32).reshape(-1, 2)
+
+    # Calculate intensities for unique positions based on their UV values
+    intensities = np.min(uv_array, axis=1, keepdims=True)
+
+    # Merge uvs with points
+    positions_with_uvs = np.hstack((position_array, intensities))
+
+    # Remove points with limit intensity
+    positions_with_uvs = positions_with_uvs[positions_with_uvs[:, -1] > intense_limiter]
+
+    # Remove duplicated points by creating a set of tuples
+    positions_with_uvs = np.unique(positions_with_uvs, axis=0)
+    return positions_with_uvs
+
+
+# Re-export for backward compatibility
+__all__ = ['LidarDecoder', 'update_meshes_for_cloud2']

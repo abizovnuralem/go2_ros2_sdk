@@ -8,9 +8,9 @@ from typing import Callable, Dict, Any
 
 from ...domain.interfaces import IRobotDataReceiver, IRobotController
 from ...domain.entities import RobotData, RobotConfig
-from scripts.webrtc_driver import Go2Connection
-from scripts.go2_func import gen_command, gen_mov_command
-from scripts.go2_constants import ROBOT_CMD, RTC_TOPIC
+from .go2_connection import Go2Connection
+from ...application.utils.command_generator import gen_command, gen_mov_command
+from ...domain.constants import ROBOT_CMD, RTC_TOPIC
 
 logger = logging.getLogger(__name__)
 
