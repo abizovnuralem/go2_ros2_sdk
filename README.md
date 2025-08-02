@@ -141,9 +141,7 @@ When you run `robot.launch.py`, `rviz` will fire up, lidar data will begin to ac
 
 ### SLAM and Nav2
 
-
-![Initial Rviz Display](https://github.com/abizovnuralem/go2_ros2_sdk/assets/33475993/49edebbe-11b6-49c6-b82d-bc46257674bd)
-
+![Simplified Rviz Display](https://github.com/user-attachments/assets/74a7c07c-2c2d-4022-9a23-94407f2c2a06)
 
 The goal of SLAM overall, and the `slam_toolbox` in particular, is to create a map. The `slam_toolbox` is a grid mapper - it thinks about the world in terms of a fixed grid that the dog operates in. When the dog initially moves through a new space, data accumulate and the developing map is and published it to the `/map` topic. The goal of `Nav2` is to navigate and perform other tasks in this map.
 
@@ -157,9 +155,6 @@ The `rviz` settings that are used upon initial launch (triggered by `ros2 launch
 * `Odometry` is the history of directions/movements of the dog
 
 If there is too much going on in the initial screen, deselect the `map` topic to allow you to see more.
-
-![Simplified Rviz Display](https://github.com/user-attachments/assets/74a7c07c-2c2d-4022-9a23-94407f2c2a06)
-
 
 
 ### Mapping - creating your first map
