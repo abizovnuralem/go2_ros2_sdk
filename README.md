@@ -124,7 +124,7 @@ The `robot.launch.py` code starts many services/nodes simultaneously, including
 * ros2_go2_video (front color camera)
 * pointcloud_to_laserscan_node
 * go2_robot_sdk/go2_driver_node
-* go2_robot_sdk/lidar_to_pointcloud
+* lidar_processor/lidar_to_pointcloud
 * rviz2
 * `joy` (ROS2 Driver for Generic Joysticks and Game Controllers)
 * `teleop_twist_joy` (facility for tele-operating Twist-based ROS2 robots with a standard joystick. Converts joy messages to velocity commands)       

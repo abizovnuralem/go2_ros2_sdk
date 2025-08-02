@@ -2,16 +2,17 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 """
-WebRTC topic constants for Go2 robot communication.
-Contains all topic names used for WebRTC data channels.
-Originally forked from https://github.com/legion1581/go2_webrtc_connect
-Big thanks to @legion1581 (The RoboVerse Discord Group)
+WebRTC Topic Constants
+
+Centralized constants for WebRTC communication topics and data channels.
 """
 
-# Real-time communication topics
+# WebRTC Topic IDs for different communication channels
+# Contains all topic names used for WebRTC data channels.
+# Originally forked from https://github.com/legion1581/go2_webrtc_connect
 RTC_TOPIC = {
     "LOW_STATE": "rt/lf/lowstate",
-    "MULTIPLE_STATE": "rt/multiplestate",
+    "MULTIPLE_STATE": "rt/multiplestate", 
     "FRONT_PHOTO_REQ": "rt/api/videohub/request",
     "ULIDAR_SWITCH": "rt/utlidar/switch",
     "ULIDAR": "rt/utlidar/voxel_map",
@@ -61,4 +62,20 @@ DATA_CHANNEL_TYPE = {
     "ADD_ERROR": "add_error",
     "RM_ERROR": "rm_error",
     "ERRORS": "errors",
-} 
+}
+
+# Audio Hub specific constants
+AUDIO_HUB_COMMANDS = {
+    "START_AUDIO": 4001,
+    "STOP_AUDIO": 4002, 
+    "SEND_AUDIO_BLOCK": 4003,
+    "SET_VOLUME": 4004,
+    "GET_AUDIO_STATUS": 4005,
+}
+
+# Export all constants
+__all__ = [
+    'RTC_TOPIC',
+    'DATA_CHANNEL_TYPE',
+    'AUDIO_HUB_COMMANDS',
+] 

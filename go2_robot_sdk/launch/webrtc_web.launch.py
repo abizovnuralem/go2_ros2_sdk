@@ -25,7 +25,7 @@ def load_urdf(context, *args, **kwargs):
     robot_state_publisher_node = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
-        name='robot_state_publisher',
+        name='webrtc_robot_state_publisher',
         output='screen',
         parameters=[{
             'robot_description': ParameterValue(

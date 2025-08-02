@@ -37,8 +37,6 @@ setup(
     entry_points={
         'console_scripts': [
             'go2_driver_node = go2_robot_sdk.main:main',
-            'lidar_to_pointcloud = go2_robot_sdk.lidar_to_point:main',
-            'tts_node = go2_robot_sdk.tts:main'
         ],
     },
 )

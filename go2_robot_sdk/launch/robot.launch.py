@@ -101,7 +101,7 @@ class Go2NodeFactory:
                 Node(
                     package='robot_state_publisher',
                     executable='robot_state_publisher',
-                    name='robot_state_publisher',
+                    name='go2_robot_state_publisher',
                     output='screen',
                     parameters=[{
                         'use_sim_time': use_sim_time,
@@ -122,7 +122,7 @@ class Go2NodeFactory:
                     Node(
                         package='robot_state_publisher',
                         executable='robot_state_publisher',
-                        name='robot_state_publisher',
+                        name='go2_robot_state_publisher',
                         output='screen',
                         namespace=f"robot{i}",
                         parameters=[{
@@ -148,7 +148,7 @@ class Go2NodeFactory:
             return Node(
                 package='pointcloud_to_laserscan',
                 executable='pointcloud_to_laserscan_node',
-                name='pointcloud_to_laserscan',
+                name=f'{namespace}_pointcloud_to_laserscan',
                 remappings=[
                     ('cloud_in', f'{namespace}/point_cloud2'),
                     ('scan', f'{namespace}/scan'),
@@ -164,7 +164,7 @@ class Go2NodeFactory:
             return Node(
                 package='pointcloud_to_laserscan',
                 executable='pointcloud_to_laserscan_node',
-                name='pointcloud_to_laserscan',
+                name='go2_pointcloud_to_laserscan',
                 remappings=[
                     ('cloud_in', 'point_cloud2'),
                     ('scan', 'scan'),
@@ -191,14 +191,43 @@ class Go2NodeFactory:
                     'conn_type': self.config.conn_type
                 }],
             ),
-            # LiDAR processing node
+            # LiDAR processing node (new separate package)
             Node(
-                package='go2_robot_sdk',
+                package='lidar_processor',
                 executable='lidar_to_pointcloud',
+                name='lidar_to_pointcloud',
                 parameters=[{
                     'robot_ip_lst': self.config.robot_ip_list,
                     'map_name': self.config.map_name,
                     'map_save': self.config.save_map
+                }],
+            ),
+            # Advanced point cloud aggregator
+            Node(
+                package='lidar_processor',
+                executable='pointcloud_aggregator',
+                name='pointcloud_aggregator',
+                parameters=[{
+                    'max_range': 20.0,
+                    'min_range': 0.1,
+                    'height_filter_min': -2.0,
+                    'height_filter_max': 3.0,
+                    'downsample_rate': 5,
+                    'publish_rate': 10.0
+                }],
+            ),
+            # TTS Node (new separate package)
+            Node(
+                package='speech_processor',
+                executable='tts_node',
+                name='tts_node',
+                parameters=[{
+                    'api_key': os.getenv('ELEVENLABS_API_KEY', ''),
+                    'provider': 'elevenlabs',
+                    'voice_name': 'XrExE9yKIg1WjnnlVkGX',
+                    'local_playback': False,
+                    'use_cache': True,
+                    'audio_quality': 'standard'
                 }],
             ),
         ]
@@ -221,7 +250,7 @@ class Go2NodeFactory:
             Node(
                 package='teleop_twist_joy',
                 executable='teleop_node',
-                name='teleop_node',
+                name='go2_teleop_node',
                 condition=IfCondition(with_joystick),
                 parameters=[self.config.config_paths['twist_mux']],
             ),
@@ -246,11 +275,12 @@ class Go2NodeFactory:
             # RViz2
             Node(
                 package='rviz2',
-                namespace='',
                 executable='rviz2',
                 condition=IfCondition(with_rviz2),
-                name='rviz2',
-                arguments=['-d', self.config.config_paths['rviz']]
+                name='go2_rviz2',
+                output='screen',
+                arguments=['-d', self.config.config_paths['rviz']],
+                parameters=[{'use_sim_time': False}]
             ),
         ]
     
