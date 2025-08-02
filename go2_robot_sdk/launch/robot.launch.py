@@ -1,27 +1,8 @@
 # Copyright (c) 2024, RoboVerse community
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-# 1. Redistributions of source code must retain the above copyright notice, this
-#    list of conditions and the following disclaimer.
-#
-# 2. Redistributions in binary form must reproduce the above copyright notice,
-#    this list of conditions and the following disclaimer in the documentation
-#    and/or other materials provided with the distribution.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# SPDX-License-Identifier: BSD-3-Clause
 
 import os
+from typing import List
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.conditions import IfCondition
@@ -30,103 +11,157 @@ from launch_ros.actions import Node
 from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
 from launch.launch_description_sources import FrontendLaunchDescriptionSource, PythonLaunchDescriptionSource
 
-def generate_launch_description():
 
-    use_sim_time = LaunchConfiguration('use_sim_time', default='false')
-    with_rviz2 = LaunchConfiguration('rviz2', default='true')
-    with_nav2 = LaunchConfiguration('nav2', default='true')
-    with_slam = LaunchConfiguration('slam', default='true')
-    with_foxglove = LaunchConfiguration('foxglove', default='true')
-    with_joystick = LaunchConfiguration('joystick', default='true')
-    with_teleop = LaunchConfiguration('teleop', default='true')
+class Go2LaunchConfig:
+    """Configuration container for Go2 robot launch parameters"""
+    
+    def __init__(self):
+        # Environment variables
+        self.robot_token = os.getenv('ROBOT_TOKEN', '')
+        self.robot_ip = os.getenv('ROBOT_IP', '')
+        self.robot_ip_list = self._parse_ip_list(self.robot_ip)
+        self.map_name = os.getenv('MAP_NAME', '3d_map')
+        self.save_map = os.getenv('MAP_SAVE', 'true')
+        self.conn_type = os.getenv('CONN_TYPE', 'webrtc')
+        
+        # Derived configurations
+        self.conn_mode = self._determine_connection_mode()
+        self.rviz_config = self._get_rviz_config()
+        self.urdf_file = self._get_urdf_file()
+        
+        # Package paths
+        self.package_dir = get_package_share_directory('go2_robot_sdk')
+        self.config_paths = self._get_config_paths()
+        
+        print(f"🚀 Go2 Launch Configuration:")
+        print(f"   Robot IPs: {self.robot_ip_list}")
+        print(f"   Connection: {self.conn_type} ({self.conn_mode})")
+        print(f"   URDF: {self.urdf_file}")
+    
+    def _parse_ip_list(self, robot_ip: str) -> List[str]:
+        """Parse robot IP addresses from environment variable"""
+        return robot_ip.replace(" ", "").split(",") if robot_ip else []
+    
+    def _determine_connection_mode(self) -> str:
+        """Determine connection mode based on IP list and connection type"""
+        return "single" if len(self.robot_ip_list) == 1 and self.conn_type != "cyclonedx" else "multi"
+    
+    def _get_rviz_config(self) -> str:
+        """Get appropriate RViz configuration file"""
+        if self.conn_type == 'cyclonedx':
+            return "cyclonedx_config.rviz"
+        elif self.conn_mode == 'single':
+            return "single_robot_conf.rviz"
+        else:
+            return "multi_robot_conf.rviz"
+    
+    def _get_urdf_file(self) -> str:
+        """Get appropriate URDF file"""
+        return 'go2.urdf' if self.conn_mode == 'single' else 'multi_go2.urdf'
+    
+    def _get_config_paths(self) -> dict:
+        """Get all configuration file paths"""
+        return {
+            'joystick': os.path.join(self.package_dir, 'config', 'joystick.yaml'),
+            'twist_mux': os.path.join(self.package_dir, 'config', 'twist_mux.yaml'),
+            'slam': os.path.join(self.package_dir, 'config', 'mapper_params_online_async.yaml'),
+            'nav2': os.path.join(self.package_dir, 'config', 'nav2_params.yaml'),
+            'rviz': os.path.join(self.package_dir, 'config', self.rviz_config),
+            'urdf': os.path.join(self.package_dir, 'urdf', self.urdf_file),
+        }
 
-    robot_token = os.getenv('ROBOT_TOKEN', '') # how does this work for multiple robots?
-    robot_ip = os.getenv('ROBOT_IP', '')
-    robot_ip_lst = robot_ip.replace(" ", "").split(",")
-    print("IP list:", robot_ip_lst)
 
-
-    # these are debug only
-    map_name = os.getenv('MAP_NAME', '3d_map')
-    save_map = os.getenv('MAP_SAVE', 'true')
-
-    conn_type = os.getenv('CONN_TYPE', 'webrtc')
-
-    conn_mode = "single" if len(robot_ip_lst) == 1 and conn_type != "cyclonedds" else "multi"
-
-    if conn_mode == 'single':
-        rviz_config = "single_robot_conf.rviz"
-    else:
-        rviz_config = "multi_robot_conf.rviz"
-
-    if conn_type == 'cyclonedds':
-        rviz_config = "cyclonedds_config.rviz"
-
-    urdf_file_name = 'multi_go2.urdf'
-    urdf = os.path.join(
-        get_package_share_directory('go2_robot_sdk'),
-        "urdf",
-        urdf_file_name)
-    with open(urdf, 'r') as infp:
-        robot_desc = infp.read()
-
-    robot_desc_modified_lst = []
-
-    for i in range(len(robot_ip_lst)):
-        robot_desc_modified_lst.append(robot_desc.format(robot_num=f"robot{i}"))
-
-    urdf_launch_nodes = []
-
-    joy_params = os.path.join(
-        get_package_share_directory('go2_robot_sdk'),
-        'config', 'joystick.yaml'
-    )
-
-    default_config_topics = os.path.join(
-        get_package_share_directory('go2_robot_sdk'),
-        'config', 'twist_mux.yaml')
-
-    foxglove_launch = os.path.join(
-        get_package_share_directory('foxglove_bridge'),
-        'launch',
-        'foxglove_bridge_launch.xml',
-    )
-
-    slam_toolbox_config = os.path.join(
-        get_package_share_directory('go2_robot_sdk'),
-        'config',
-        'mapper_params_online_async.yaml'
-    )
-
-    nav2_config = os.path.join(
-        get_package_share_directory('go2_robot_sdk'),
-        'config',
-        'nav2_params.yaml'
-    )
-
-    if conn_mode == 'single':
-
-        urdf_file_name = 'go2.urdf'
-        urdf = os.path.join(
-            get_package_share_directory('go2_robot_sdk'),
-            "urdf",
-            urdf_file_name)
-        with open(urdf, 'r') as infp:
-            robot_desc = infp.read()
-
-        urdf_launch_nodes.append(
-            Node(
-                package='robot_state_publisher',
-                executable='robot_state_publisher',
-                name='robot_state_publisher',
+class Go2NodeFactory:
+    """Factory for creating Go2 robot nodes"""
+    
+    def __init__(self, config: Go2LaunchConfig):
+        self.config = config
+    
+    def create_launch_arguments(self) -> List[DeclareLaunchArgument]:
+        """Create all launch arguments"""
+        return [
+            DeclareLaunchArgument('rviz2', default_value='true', description='Launch RViz2'),
+            DeclareLaunchArgument('nav2', default_value='true', description='Launch Nav2'),
+            DeclareLaunchArgument('slam', default_value='true', description='Launch SLAM'),
+            DeclareLaunchArgument('foxglove', default_value='true', description='Launch Foxglove Bridge'),
+            DeclareLaunchArgument('joystick', default_value='true', description='Launch joystick'),
+            DeclareLaunchArgument('teleop', default_value='true', description='Launch teleoperation'),
+        ]
+    
+    def create_robot_state_nodes(self) -> List[Node]:
+        """Create robot state publisher nodes"""
+        nodes = []
+        use_sim_time = LaunchConfiguration('use_sim_time', default='false')
+        
+        if self.config.conn_mode == 'single':
+            # Single robot configuration
+            robot_desc = self._load_urdf_content(self.config.config_paths['urdf'])
+            
+            nodes.extend([
+                Node(
+                    package='robot_state_publisher',
+                    executable='robot_state_publisher',
+                    name='robot_state_publisher',
+                    output='screen',
+                    parameters=[{
+                        'use_sim_time': use_sim_time,
+                        'robot_description': robot_desc
+                    }],
+                    arguments=[self.config.config_paths['urdf']]
+                ),
+                self._create_pointcloud_to_laserscan_node()
+            ])
+        else:
+            # Multi-robot configuration
+            base_urdf = self._load_urdf_content(self.config.config_paths['urdf'])
+            
+            for i, _ in enumerate(self.config.robot_ip_list):
+                robot_desc = base_urdf.format(robot_num=f"robot{i}")
+                
+                nodes.extend([
+                    Node(
+                        package='robot_state_publisher',
+                        executable='robot_state_publisher',
+                        name='robot_state_publisher',
+                        output='screen',
+                        namespace=f"robot{i}",
+                        parameters=[{
+                            'use_sim_time': use_sim_time,
+                            'robot_description': robot_desc
+                        }],
+                        arguments=[self.config.config_paths['urdf']]
+                    ),
+                    self._create_pointcloud_to_laserscan_node(f"robot{i}")
+                ])
+        
+        return nodes
+    
+    def _load_urdf_content(self, urdf_path: str) -> str:
+        """Load URDF file content"""
+        with open(urdf_path, 'r') as file:
+            return file.read()
+    
+    def _create_pointcloud_to_laserscan_node(self, namespace: str = None) -> Node:
+        """Create pointcloud to laserscan conversion node"""
+        if namespace:
+            # Multi-robot setup
+            return Node(
+                package='pointcloud_to_laserscan',
+                executable='pointcloud_to_laserscan_node',
+                name='pointcloud_to_laserscan',
+                remappings=[
+                    ('cloud_in', f'{namespace}/point_cloud2'),
+                    ('scan', f'{namespace}/scan'),
+                ],
+                parameters=[{
+                    'target_frame': f'{namespace}/base_link',
+                    'max_height': 0.1
+                }],
                 output='screen',
-                parameters=[{'use_sim_time': use_sim_time,
-                             'robot_description': robot_desc}],
-                arguments=[urdf]
-            ),
-        )
-        urdf_launch_nodes.append(
-            Node(
+            )
+        else:
+            # Single robot setup
+            return Node(
                 package='pointcloud_to_laserscan',
                 executable='pointcloud_to_laserscan_node',
                 name='pointcloud_to_laserscan',
@@ -139,146 +174,154 @@ def generate_launch_description():
                     'max_height': 0.5
                 }],
                 output='screen',
+            )
+    
+    def create_core_nodes(self) -> List[Node]:
+        """Create core Go2 robot nodes"""
+        return [
+            # Main robot driver (clean architecture)
+            Node(
+                package='go2_robot_sdk',
+                executable='go2_driver_node',
+                name='go2_driver_node',
+                output='screen',
+                parameters=[{
+                    'robot_ip': self.config.robot_ip,
+                    'token': self.config.robot_token,
+                    'conn_type': self.config.conn_type
+                }],
             ),
-        )
-
-    else:
-
-        for i in range(len(robot_ip_lst)):
-            urdf_launch_nodes.append(
-                Node(
-                    package='robot_state_publisher',
-                    executable='robot_state_publisher',
-                    name='robot_state_publisher',
-                    output='screen',
-                    namespace=f"robot{i}",
-                    parameters=[{'use_sim_time': use_sim_time,
-                                 'robot_description': robot_desc_modified_lst[i]}],
-                    arguments=[urdf]
-                ),
-            )
-            urdf_launch_nodes.append(
-                Node(
-                    package='pointcloud_to_laserscan',
-                    executable='pointcloud_to_laserscan_node',
-                    name='pointcloud_to_laserscan',
-                    remappings=[
-                        ('cloud_in', f'robot{i}/point_cloud2'),
-                        ('scan', f'robot{i}/scan'),
-                    ],
-                    parameters=[{
-                        'target_frame': f'robot{i}/base_link',
-                        'max_height': 0.1
-                    }],
-                    output='screen',
-                ),
-            )
-
-    return LaunchDescription([
-        DeclareLaunchArgument(
-            'rviz2',
-            default_value='true',
-            description='Запуск RViz2'
-        ),
-        DeclareLaunchArgument(
-            'nav2',
-            default_value='true',
-            description='Запуск Nav2'
-        ),
-        DeclareLaunchArgument(
-            'slam',
-            default_value='true',
-            description='Запуск SLAM'
-        ),
-        DeclareLaunchArgument(
-            'foxglove',
-            default_value='true',
-            description='Запуск Foxglove Bridge'
-        ),
-        DeclareLaunchArgument(
-            'joystick',
-            default_value='true',
-            description='Запуск джойстика'
-        ),
-        DeclareLaunchArgument(
-            'teleop',
-            default_value='true',
-            description='Запуск телеуправления'
-        ),
-
-        *urdf_launch_nodes,
+            # LiDAR processing node
+            Node(
+                package='go2_robot_sdk',
+                executable='lidar_to_pointcloud',
+                parameters=[{
+                    'robot_ip_lst': self.config.robot_ip_list,
+                    'map_name': self.config.map_name,
+                    'map_save': self.config.save_map
+                }],
+            ),
+        ]
+    
+    def create_teleop_nodes(self) -> List[Node]:
+        """Create teleoperation and joystick nodes"""
+        use_sim_time = LaunchConfiguration('use_sim_time', default='false')
+        with_joystick = LaunchConfiguration('joystick', default='true')
+        with_teleop = LaunchConfiguration('teleop', default='true')
         
-        # Главный драйвер робота (clean architecture)
-        Node(
-            package='go2_robot_sdk',
-            executable='go2_driver_node',
-            name='go2_driver_node',
-            output='screen',
-            parameters=[{'robot_ip': robot_ip, 'token': robot_token, "conn_type": conn_type}],
-        ),
-        Node(
-            package='go2_robot_sdk',
-            executable='lidar_to_pointcloud',
-            parameters=[{'robot_ip_lst': robot_ip_lst, 'map_name': map_name, 'map_save': save_map}],
-        ),
-        Node(
-            package='rviz2',
-            namespace='',
-            executable='rviz2',
-            condition=IfCondition(with_rviz2),
-            name='rviz2',
-            arguments=['-d' + os.path.join(get_package_share_directory('go2_robot_sdk'), 'config', rviz_config)]
-        ),
-        Node(
-            package='joy',
-            executable='joy_node',
-            condition=IfCondition(with_joystick),
-            parameters=[joy_params]
-        ),
-        Node(
-            package='teleop_twist_joy',
-            executable='teleop_node',
-            name='teleop_node',
-            condition=IfCondition(with_joystick),
-            parameters=[default_config_topics],
-        ),
-        Node(
-            package='twist_mux',
-            executable='twist_mux',
-            output='screen',
-            condition=IfCondition(with_teleop),
-            parameters=[
-                {'use_sim_time': use_sim_time},
-                default_config_topics
-            ],
-        ),
+        return [
+            # Joystick node
+            Node(
+                package='joy',
+                executable='joy_node',
+                condition=IfCondition(with_joystick),
+                parameters=[self.config.config_paths['joystick']]
+            ),
+            # Teleop twist joy node
+            Node(
+                package='teleop_twist_joy',
+                executable='teleop_node',
+                name='teleop_node',
+                condition=IfCondition(with_joystick),
+                parameters=[self.config.config_paths['twist_mux']],
+            ),
+            # Twist multiplexer
+            Node(
+                package='twist_mux',
+                executable='twist_mux',
+                output='screen',
+                condition=IfCondition(with_teleop),
+                parameters=[
+                    {'use_sim_time': use_sim_time},
+                    self.config.config_paths['twist_mux']
+                ],
+            ),
+        ]
+    
+    def create_visualization_nodes(self) -> List[Node]:
+        """Create visualization nodes (RViz, Foxglove)"""
+        with_rviz2 = LaunchConfiguration('rviz2', default='true')
+        
+        return [
+            # RViz2
+            Node(
+                package='rviz2',
+                namespace='',
+                executable='rviz2',
+                condition=IfCondition(with_rviz2),
+                name='rviz2',
+                arguments=['-d', self.config.config_paths['rviz']]
+            ),
+        ]
+    
+    def create_include_launches(self) -> List[IncludeLaunchDescription]:
+        """Create included launch descriptions"""
+        use_sim_time = LaunchConfiguration('use_sim_time', default='false')
+        with_foxglove = LaunchConfiguration('foxglove', default='true')
+        with_slam = LaunchConfiguration('slam', default='true')
+        with_nav2 = LaunchConfiguration('nav2', default='true')
+        
+        foxglove_launch = os.path.join(
+            get_package_share_directory('foxglove_bridge'),
+            'launch', 'foxglove_bridge_launch.xml'
+        )
+        
+        return [
+            # Foxglove Bridge
+            IncludeLaunchDescription(
+                FrontendLaunchDescriptionSource(foxglove_launch),
+                condition=IfCondition(with_foxglove),
+            ),
+            # SLAM Toolbox
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource([
+                    os.path.join(get_package_share_directory('slam_toolbox'),
+                                'launch', 'online_async_launch.py')
+                ]),
+                condition=IfCondition(with_slam),
+                launch_arguments={
+                    'slam_params_file': self.config.config_paths['slam'],
+                    'use_sim_time': use_sim_time,
+                }.items(),
+            ),
+            # Nav2
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource([
+                    os.path.join(get_package_share_directory('nav2_bringup'),
+                                'launch', 'navigation_launch.py')
+                ]),
+                condition=IfCondition(with_nav2),
+                launch_arguments={
+                    'params_file': self.config.config_paths['nav2'],
+                    'use_sim_time': use_sim_time,
+                }.items(),
+            ),
+        ]
 
-        IncludeLaunchDescription(
-            FrontendLaunchDescriptionSource(foxglove_launch),
-            condition=IfCondition(with_foxglove),
-        ),
 
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource([
-                os.path.join(get_package_share_directory(
-                    'slam_toolbox'), 'launch', 'online_async_launch.py')
-            ]),
-            condition=IfCondition(with_slam),
-            launch_arguments={
-                'slam_params_file': slam_toolbox_config,
-                'use_sim_time': use_sim_time,
-            }.items(),
-        ),
-
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource([
-                os.path.join(get_package_share_directory(
-                    'nav2_bringup'), 'launch', 'navigation_launch.py')
-            ]),
-            condition=IfCondition(with_nav2),
-            launch_arguments={
-                'params_file': nav2_config,
-                'use_sim_time': use_sim_time,
-            }.items(),
-        ),
-    ])
+def generate_launch_description():
+    """Generate the launch description for Go2 robot system"""
+    
+    # Initialize configuration and factory
+    config = Go2LaunchConfig()
+    factory = Go2NodeFactory(config)
+    
+    # Create all components
+    launch_args = factory.create_launch_arguments()
+    robot_state_nodes = factory.create_robot_state_nodes()
+    core_nodes = factory.create_core_nodes()
+    teleop_nodes = factory.create_teleop_nodes()
+    visualization_nodes = factory.create_visualization_nodes()
+    include_launches = factory.create_include_launches()
+    
+    # Combine all elements
+    launch_entities = (
+        launch_args +
+        robot_state_nodes +
+        core_nodes +
+        teleop_nodes +
+        visualization_nodes +
+        include_launches
+    )
+    
+    return LaunchDescription(launch_entities)
