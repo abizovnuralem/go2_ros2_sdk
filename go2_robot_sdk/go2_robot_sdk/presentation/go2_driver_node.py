@@ -34,8 +34,9 @@ logger.setLevel(logging.INFO)
 class Go2DriverNode(Node):
     """Main Go2 driver node - entry point to the application"""
 
-    def __init__(self):
+    def __init__(self, event_loop=None):
         super().__init__('go2_driver_node')  # Clean architecture main driver
+        self.event_loop = event_loop
         
         # Configuration initialization
         self.config = self._setup_configuration()
@@ -58,7 +59,8 @@ class Go2DriverNode(Node):
         self.webrtc_adapter = WebRTCAdapter(
             config=self.config,
             on_validated_callback=self._on_robot_validated,
-            on_video_frame_callback=self._on_video_frame if self.config.enable_video else None
+            on_video_frame_callback=self._on_video_frame if self.config.enable_video else None,
+            event_loop=self.event_loop
         )
         
         self.robot_control_service = RobotControlService(self.webrtc_adapter)

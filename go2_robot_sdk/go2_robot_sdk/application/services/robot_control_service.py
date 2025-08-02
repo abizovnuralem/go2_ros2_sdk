@@ -30,7 +30,6 @@ class RobotControlService:
                     obstacle_avoidance
                 )
                 self.controller.send_movement_command(robot_id, x, y, z)
-                logger.info(f"Movement command sent to robot {robot_id}: x={x}, y={y}, z={z}")
         except Exception as e:
             logger.error(f"Error handling cmd_vel: {e}")
 

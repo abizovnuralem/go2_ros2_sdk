@@ -66,8 +66,9 @@ async def main_async():
     rclpy.init()
 
     try:
-        # Create node
-        node = Go2DriverNode()
+        # Create node with current event loop
+        current_loop = asyncio.get_running_loop()
+        node = Go2DriverNode(event_loop=current_loop)
         
         # Run ROS2 node and robot connections in parallel
         ros_task = asyncio.create_task(spin_node(node))

@@ -18,13 +18,21 @@ logger = logging.getLogger(__name__)
 class WebRTCAdapter(IRobotDataReceiver, IRobotController):
     """WebRTC adapter for robot communication"""
 
-    def __init__(self, config: RobotConfig, on_validated_callback: Callable, on_video_frame_callback: Callable = None):
+    def __init__(self, config: RobotConfig, on_validated_callback: Callable, on_video_frame_callback: Callable = None, event_loop=None):
         self.config = config
         self.connections: Dict[str, Go2Connection] = {}
         self.data_callback: Callable[[RobotData], None] = None
         self.webrtc_msgs = asyncio.Queue()
         self.on_validated_callback = on_validated_callback
         self.on_video_frame_callback = on_video_frame_callback
+        # Store the event loop (passed from main thread or detect current)
+        if event_loop:
+            self.main_loop = event_loop
+        else:
+            try:
+                self.main_loop = asyncio.get_running_loop()
+            except RuntimeError:
+                self.main_loop = None
 
     async def connect(self, robot_id: str) -> None:
         """Connect to robot via WebRTC"""
@@ -75,10 +83,41 @@ class WebRTCAdapter(IRobotDataReceiver, IRobotController):
         """Send command to robot"""
         if robot_id in self.connections:
             try:
-                self.connections[robot_id].data_channel.send(command)
-                logger.debug(f"Command sent to robot {robot_id}: {command[:50]}")
+                connection = self.connections[robot_id]
+                if hasattr(connection, 'data_channel') and connection.data_channel:
+                    # Use asyncio.run_coroutine_threadsafe to handle cross-thread calls
+                    loop = self._get_or_create_event_loop()
+                    if loop and loop.is_running():
+                        # Schedule the coroutine in the existing loop
+                        asyncio.run_coroutine_threadsafe(
+                            self._async_send_command(connection, command),
+                            loop
+                        )
+                    else:
+                        # Fallback to synchronous send
+                        connection.data_channel.send(command)
+                    logger.debug(f"Command sent to robot {robot_id}: {command[:50]}")
+                else:
+                    logger.warning(f"No data channel available for robot {robot_id}")
             except Exception as e:
                 logger.error(f"Error sending command to robot {robot_id}: {e}")
+
+    def _get_or_create_event_loop(self):
+        """Get existing event loop or return the main loop"""
+        # First try to get the current loop
+        try:
+            return asyncio.get_running_loop()
+        except RuntimeError:
+            # If no current loop, return the main loop stored during init
+            return self.main_loop
+
+    async def _async_send_command(self, connection, command: str):
+        """Async wrapper for sending commands"""
+        try:
+            if hasattr(connection, 'data_channel') and connection.data_channel:
+                connection.data_channel.send(command)
+        except Exception as e:
+            logger.error(f"Error in async send command: {e}")
 
     def send_movement_command(self, robot_id: str, x: float, y: float, z: float) -> None:
         """Send movement command to robot"""

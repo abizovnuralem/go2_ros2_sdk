@@ -4,13 +4,13 @@
       x: 1
       y: 3
     scale_linear:
-      x: 0.2
-      y: 0.2
+      x: 0.5
+      y: 0.5
 
     axis_angular:
       yaw: 6
     scale_angular:
-      yaw: 0.2
+      yaw: 1.0
 
     require_enable_button: false
 
