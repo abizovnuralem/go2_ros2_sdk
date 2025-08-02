@@ -56,8 +56,7 @@ setup(
     license='BSD-3-Clause',
     entry_points={
         'console_scripts': [
-            'go2_driver_node = go2_robot_sdk.go2_driver_node:main',
-            'go2_driver_node_refactored = go2_robot_sdk.go2_driver_node_refactored:main',
+            'go2_driver_node = go2_robot_sdk.main:main',
             'lidar_to_pointcloud = go2_robot_sdk.lidar_to_point:main',
             'tts_node = go2_robot_sdk.tts:main'
         ],

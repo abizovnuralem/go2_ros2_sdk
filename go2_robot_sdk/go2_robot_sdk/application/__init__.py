@@ -1,5 +1,5 @@
 """
-Application layer - сервисы приложения
+Application layer - application services
 """
 from .services import RobotDataService, RobotControlService
 

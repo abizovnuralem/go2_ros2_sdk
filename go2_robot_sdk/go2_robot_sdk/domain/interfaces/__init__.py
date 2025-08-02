@@ -1,5 +1,5 @@
 """
-Domain interfaces - абстракции для внешних зависимостей
+Domain interfaces - abstractions for external dependencies
 """
 from .robot_data_publisher import IRobotDataPublisher
 from .robot_data_receiver import IRobotDataReceiver

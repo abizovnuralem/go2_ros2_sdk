@@ -1,5 +1,5 @@
 """
-Presentation layer - интерфейс пользователя (ROS2 узел)
+Presentation layer - user interface (ROS2 node)
 """
 from .go2_driver_node import Go2DriverNode
 

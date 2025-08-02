@@ -5,24 +5,24 @@ from abc import ABC, abstractmethod
 
 
 class IRobotController(ABC):
-    """Интерфейс для управления роботом"""
+    """Interface for robot control operations"""
 
     @abstractmethod
     def send_movement_command(self, robot_id: str, x: float, y: float, z: float) -> None:
-        """Отправка команды движения"""
+        """Send movement command to robot"""
         pass
 
     @abstractmethod
     def send_stand_up_command(self, robot_id: str) -> None:
-        """Команда встать"""
+        """Send stand up command"""
         pass
 
     @abstractmethod
     def send_stand_down_command(self, robot_id: str) -> None:
-        """Команда лечь"""
+        """Send stand down command"""
         pass
 
     @abstractmethod
     def send_webrtc_request(self, robot_id: str, api_id: int, parameter: str, topic: str) -> None:
-        """Отправка WebRTC запроса"""
+        """Send WebRTC request"""
         pass 

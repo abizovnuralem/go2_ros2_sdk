@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 """
-Refactored entry point for Go2 Driver Node
-with clean architecture
+Main entry point for Go2 Robot SDK
+Implements clean architecture with real-time data publishing
 """
 
 import asyncio

@@ -1,5 +1,5 @@
 """
-Infrastructure layer - адаптеры для внешних систем
+Infrastructure layer - adapters for external systems
 """
 from .ros2 import ROS2Publisher
 from .webrtc import WebRTCAdapter

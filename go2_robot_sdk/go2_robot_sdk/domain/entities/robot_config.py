@@ -7,7 +7,7 @@ from typing import List
 
 @dataclass
 class RobotConfig:
-    """Конфигурация робота"""
+    """Robot configuration parameters"""
     robot_ip_list: List[str]
     token: str
     conn_type: str

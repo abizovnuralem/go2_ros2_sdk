@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class WebRTCAdapter(IRobotDataReceiver, IRobotController):
-    """WebRTC адаптер для связи с роботом"""
+    """WebRTC adapter for robot communication"""
 
     def __init__(self, config: RobotConfig, on_validated_callback: Callable, on_video_frame_callback: Callable = None):
         self.config = config
@@ -27,7 +27,7 @@ class WebRTCAdapter(IRobotDataReceiver, IRobotController):
         self.on_video_frame_callback = on_video_frame_callback
 
     async def connect(self, robot_id: str) -> None:
-        """Подключение к роботу"""
+        """Connect to robot via WebRTC"""
         try:
             robot_idx = int(robot_id)
             robot_ip = self.config.robot_ip_list[robot_idx]
@@ -53,7 +53,7 @@ class WebRTCAdapter(IRobotDataReceiver, IRobotController):
             raise
 
     async def disconnect(self, robot_id: str) -> None:
-        """Отключение от робота"""
+        """Disconnect from robot"""
         if robot_id in self.connections:
             try:
                 # Используем правильный метод для закрытия WebRTC соединения
@@ -68,11 +68,11 @@ class WebRTCAdapter(IRobotDataReceiver, IRobotController):
                 logger.error(f"Error disconnecting from robot {robot_id}: {e}")
 
     def set_data_callback(self, callback: Callable[[RobotData], None]) -> None:
-        """Установка callback для получения данных"""
+        """Set callback for data reception"""
         self.data_callback = callback
 
     def send_command(self, robot_id: str, command: str) -> None:
-        """Отправка команды роботу"""
+        """Send command to robot"""
         if robot_id in self.connections:
             try:
                 self.connections[robot_id].data_channel.send(command)
@@ -81,7 +81,7 @@ class WebRTCAdapter(IRobotDataReceiver, IRobotController):
                 logger.error(f"Error sending command to robot {robot_id}: {e}")
 
     def send_movement_command(self, robot_id: str, x: float, y: float, z: float) -> None:
-        """Отправка команды движения"""
+        """Send movement command to robot"""
         try:
             command = gen_mov_command(
                 round(x, 2), 
@@ -94,7 +94,7 @@ class WebRTCAdapter(IRobotDataReceiver, IRobotController):
             logger.error(f"Error sending movement command: {e}")
 
     def send_stand_up_command(self, robot_id: str) -> None:
-        """Команда встать"""
+        """Send stand up command"""
         try:
             stand_up_cmd = gen_command(ROBOT_CMD["StandUp"])
             self.send_command(robot_id, stand_up_cmd)
@@ -105,7 +105,7 @@ class WebRTCAdapter(IRobotDataReceiver, IRobotController):
             logger.error(f"Error sending stand up command: {e}")
 
     def send_stand_down_command(self, robot_id: str) -> None:
-        """Команда лечь"""
+        """Send stand down command"""
         try:
             stand_down_cmd = gen_command(ROBOT_CMD["StandDown"])
             self.send_command(robot_id, stand_down_cmd)
@@ -113,7 +113,7 @@ class WebRTCAdapter(IRobotDataReceiver, IRobotController):
             logger.error(f"Error sending stand down command: {e}")
 
     def send_webrtc_request(self, robot_id: str, api_id: int, parameter: Any, topic: str) -> None:
-        """Отправка WebRTC запроса"""
+        """Send WebRTC request"""
         try:
             payload = gen_command(api_id, parameter, topic)
             self.webrtc_msgs.put_nowait(payload)
@@ -122,7 +122,7 @@ class WebRTCAdapter(IRobotDataReceiver, IRobotController):
             logger.error(f"Error sending WebRTC request: {e}")
 
     def process_webrtc_commands(self, robot_id: str) -> None:
-        """Обработка команд WebRTC из очереди"""
+        """Process WebRTC commands from queue"""
         while True:
             try:
                 message = self.webrtc_msgs.get_nowait()
@@ -134,7 +134,7 @@ class WebRTCAdapter(IRobotDataReceiver, IRobotController):
                 break
 
     def _on_validated(self, robot_id: str) -> None:
-        """Callback после валидации соединения"""
+        """Callback after connection validation"""
         try:
             if robot_id in self.connections:
                 for topic in RTC_TOPIC.values():
@@ -148,7 +148,7 @@ class WebRTCAdapter(IRobotDataReceiver, IRobotController):
             logger.error(f"Error in validated callback: {e}")
 
     def _on_data_channel_message(self, _, msg: Dict[str, Any], robot_id: str) -> None:
-        """Обработка входящих сообщений"""
+        """Handle incoming data channel messages"""
         try:
             if self.data_callback:
                 # Создаем объект RobotData для передачи в callback

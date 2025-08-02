@@ -35,7 +35,7 @@ class Go2DriverNode(Node):
     """Main Go2 driver node - entry point to the application"""
 
     def __init__(self):
-        super().__init__('go2_driver_node')
+        super().__init__('go2_driver_node')  # Clean architecture main driver
         
         # Configuration initialization
         self.config = self._setup_configuration()

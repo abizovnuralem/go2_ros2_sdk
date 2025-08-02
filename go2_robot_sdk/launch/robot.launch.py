@@ -24,7 +24,7 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.conditions import IfCondition, UnlessCondition
+from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
@@ -39,7 +39,6 @@ def generate_launch_description():
     with_foxglove = LaunchConfiguration('foxglove', default='true')
     with_joystick = LaunchConfiguration('joystick', default='true')
     with_teleop = LaunchConfiguration('teleop', default='true')
-    use_refactored = LaunchConfiguration('refactored', default='false')
 
     robot_token = os.getenv('ROBOT_TOKEN', '') # how does this work for multiple robots?
     robot_ip = os.getenv('ROBOT_IP', '')
@@ -175,18 +174,7 @@ def generate_launch_description():
                 ),
             )
 
-    # Выбор драйвера в зависимости от параметра
-    def get_driver_executable():
-        return 'go2_driver_node_refactored' if use_refactored.perform({}) == 'true' else 'go2_driver_node'
-
     return LaunchDescription([
-
-        # Добавляем декларацию аргумента для выбора архитектуры
-        DeclareLaunchArgument(
-            'refactored',
-            default_value='false',
-            description='Использовать рефакторированную архитектуру (true/false)'
-        ),
         DeclareLaunchArgument(
             'rviz2',
             default_value='true',
@@ -220,23 +208,12 @@ def generate_launch_description():
 
         *urdf_launch_nodes,
         
-        # Старый драйвер (по умолчанию)
+        # Главный драйвер робота (clean architecture)
         Node(
             package='go2_robot_sdk',
             executable='go2_driver_node',
             name='go2_driver_node',
             output='screen',
-            condition=UnlessCondition(use_refactored),
-            parameters=[{'robot_ip': robot_ip, 'token': robot_token, "conn_type": conn_type}],
-        ),
-        
-        # Новый рефакторированный драйвер
-        Node(
-            package='go2_robot_sdk',
-            executable='go2_driver_node_refactored',
-            name='go2_driver_node_refactored',
-            output='screen',
-            condition=IfCondition(use_refactored),
             parameters=[{'robot_ip': robot_ip, 'token': robot_token, "conn_type": conn_type}],
         ),
         Node(

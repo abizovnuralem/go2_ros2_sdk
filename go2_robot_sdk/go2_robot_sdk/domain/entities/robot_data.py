@@ -8,7 +8,7 @@ import numpy as np
 
 @dataclass
 class RobotState:
-    """Состояние робота"""
+    """Robot state information"""
     mode: int
     progress: float
     gait_type: int
@@ -23,7 +23,7 @@ class RobotState:
 
 @dataclass
 class IMUData:
-    """Данные IMU"""
+    """IMU sensor data"""
     quaternion: List[float]
     accelerometer: List[float]
     gyroscope: List[float]
@@ -33,20 +33,20 @@ class IMUData:
 
 @dataclass
 class OdometryData:
-    """Данные одометрии"""
+    """Odometry data"""
     position: Dict[str, float]  # x, y, z
     orientation: Dict[str, float]  # x, y, z, w (quaternion)
 
 
 @dataclass
 class JointData:
-    """Данные суставов"""
+    """Joint data"""
     motor_state: List[Dict[str, float]]  # q, dq, ddq, tau
 
 
 @dataclass
 class LidarData:
-    """Данные лидара"""
+    """LiDAR sensor data"""
     positions: np.ndarray
     uvs: np.ndarray
     resolution: float
@@ -59,7 +59,7 @@ class LidarData:
 
 @dataclass
 class CameraData:
-    """Данные камеры"""
+    """Camera data"""
     image: np.ndarray
     height: int
     width: int
@@ -68,7 +68,7 @@ class CameraData:
 
 @dataclass
 class RobotData:
-    """Агрегированные данные робота"""
+    """Aggregated robot data container"""
     robot_id: str
     timestamp: float
     robot_state: Optional[RobotState] = None

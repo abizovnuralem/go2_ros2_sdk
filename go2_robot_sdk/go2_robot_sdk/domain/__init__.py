@@ -1,5 +1,5 @@
 """
-Domain layer - бизнес-логика и сущности
+Domain layer - business logic and entities
 """
 from .entities import *
 from .interfaces import *

@@ -6,34 +6,34 @@ from ..entities.robot_data import RobotData
 
 
 class IRobotDataPublisher(ABC):
-    """Интерфейс для публикации данных робота"""
+    """Interface for publishing robot data to ROS2"""
 
     @abstractmethod
     def publish_odometry(self, robot_data: RobotData) -> None:
-        """Публикация данных одометрии"""
+        """Publish odometry data"""
         pass
 
     @abstractmethod
     def publish_joint_state(self, robot_data: RobotData) -> None:
-        """Публикация состояния суставов"""
+        """Publish joint states"""
         pass
 
     @abstractmethod
     def publish_robot_state(self, robot_data: RobotData) -> None:
-        """Публикация состояния робота и IMU"""
+        """Publish robot state and IMU data"""
         pass
 
     @abstractmethod
     def publish_lidar_data(self, robot_data: RobotData) -> None:
-        """Публикация данных лидара"""
+        """Publish LiDAR point cloud data"""
         pass
 
     @abstractmethod
     def publish_camera_data(self, robot_data: RobotData) -> None:
-        """Публикация данных камеры"""
+        """Publish camera image data"""
         pass
 
     @abstractmethod
     def publish_voxel_data(self, robot_data: RobotData) -> None:
-        """Публикация voxel данных"""
+        """Publish voxel map data"""
         pass 
