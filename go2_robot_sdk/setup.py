@@ -54,10 +54,10 @@ setup(
     maintainer_email='abizov94@gmail.com',
     description='Go2 ROS2 SDK for Unitree Go2 Edu/Pro/Air models',
     license='BSD-3-Clause',
-    tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             'go2_driver_node = go2_robot_sdk.go2_driver_node:main',
+            'go2_driver_node_refactored = go2_robot_sdk.go2_driver_node_refactored:main',
             'lidar_to_pointcloud = go2_robot_sdk.lidar_to_point:main',
             'tts_node = go2_robot_sdk.tts:main'
         ],

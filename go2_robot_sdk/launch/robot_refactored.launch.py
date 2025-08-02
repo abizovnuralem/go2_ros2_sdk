@@ -1,30 +1,15 @@
 # Copyright (c) 2024, RoboVerse community
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-# 1. Redistributions of source code must retain the above copyright notice, this
-#    list of conditions and the following disclaimer.
-#
-# 2. Redistributions in binary form must reproduce the above copyright notice,
-#    this list of conditions and the following disclaimer in the documentation
-#    and/or other materials provided with the distribution.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# SPDX-License-Identifier: BSD-3-Clause
+
+"""
+Launch файл для рефакторированной архитектуры Go2 Robot SDK
+Использует новую чистую архитектуру с разделением на слои
+"""
 
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.conditions import IfCondition, UnlessCondition
+from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
@@ -39,21 +24,19 @@ def generate_launch_description():
     with_foxglove = LaunchConfiguration('foxglove', default='true')
     with_joystick = LaunchConfiguration('joystick', default='true')
     with_teleop = LaunchConfiguration('teleop', default='true')
-    use_refactored = LaunchConfiguration('refactored', default='false')
 
-    robot_token = os.getenv('ROBOT_TOKEN', '') # how does this work for multiple robots?
+    robot_token = os.getenv('ROBOT_TOKEN', '')
     robot_ip = os.getenv('ROBOT_IP', '')
     robot_ip_lst = robot_ip.replace(" ", "").split(",")
-    print("IP list:", robot_ip_lst)
+    print("🚀 [REFACTORED] IP list:", robot_ip_lst)
 
-
-    # these are debug only
+    # debug parameters
     map_name = os.getenv('MAP_NAME', '3d_map')
     save_map = os.getenv('MAP_SAVE', 'true')
 
     conn_type = os.getenv('CONN_TYPE', 'webrtc')
 
-    conn_mode = "single" if len(robot_ip_lst) == 1 and conn_type != "cyclonedds" else "multi"
+    conn_mode = "single" if len(robot_ip_lst) == 1 and conn_type != "cyclonedx" else "multi"
 
     if conn_mode == 'single':
         rviz_config = "single_robot_conf.rviz"
@@ -175,18 +158,9 @@ def generate_launch_description():
                 ),
             )
 
-    # Выбор драйвера в зависимости от параметра
-    def get_driver_executable():
-        return 'go2_driver_node_refactored' if use_refactored.perform({}) == 'true' else 'go2_driver_node'
-
     return LaunchDescription([
 
-        # Добавляем декларацию аргумента для выбора архитектуры
-        DeclareLaunchArgument(
-            'refactored',
-            default_value='false',
-            description='Использовать рефакторированную архитектуру (true/false)'
-        ),
+        # Добавляем декларацию аргументов
         DeclareLaunchArgument(
             'rviz2',
             default_value='true',
@@ -220,25 +194,19 @@ def generate_launch_description():
 
         *urdf_launch_nodes,
         
-        # Старый драйвер (по умолчанию)
-        Node(
-            package='go2_robot_sdk',
-            executable='go2_driver_node',
-            name='go2_driver_node',
-            output='screen',
-            condition=UnlessCondition(use_refactored),
-            parameters=[{'robot_ip': robot_ip, 'token': robot_token, "conn_type": conn_type}],
-        ),
-        
-        # Новый рефакторированный драйвер
+        # 🚀 НОВЫЙ РЕФАКТОРИРОВАННЫЙ ДРАЙВЕР
         Node(
             package='go2_robot_sdk',
             executable='go2_driver_node_refactored',
             name='go2_driver_node_refactored',
             output='screen',
-            condition=IfCondition(use_refactored),
-            parameters=[{'robot_ip': robot_ip, 'token': robot_token, "conn_type": conn_type}],
+            parameters=[{
+                'robot_ip': robot_ip, 
+                'token': robot_token, 
+                "conn_type": conn_type
+            }],
         ),
+        
         Node(
             package='go2_robot_sdk',
             executable='lidar_to_pointcloud',
@@ -304,4 +272,4 @@ def generate_launch_description():
                 'use_sim_time': use_sim_time,
             }.items(),
         ),
-    ])
+    ]) 

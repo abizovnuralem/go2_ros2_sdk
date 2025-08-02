@@ -36,7 +36,6 @@ from cv_bridge import CvBridge
 from scripts.go2_constants import ROBOT_CMD, RTC_TOPIC
 from scripts.go2_func import gen_command, gen_mov_command
 from scripts.go2_lidar_decoder import update_meshes_for_cloud2
-from scripts.go2_math import get_robot_joints
 from scripts.go2_camerainfo import load_camera_info
 from scripts.webrtc_driver import Go2Connection
 
@@ -267,8 +266,6 @@ class RobotBaseNode(Node):
                 self.publish_lidar_cyclonedds,
                 qos_profile)
 
-        self.timer = self.create_timer(0.1, self.timer_callback)
-        self.timer_lidar = self.create_timer(0.5, self.timer_callback_lidar)
 
     def cb_set_parameters(self, params):
         result = SetParametersResult(successful=True)
@@ -295,21 +292,6 @@ class RobotBaseNode(Node):
             result.successful = False
             result.reason = str(e)
         return result
-
-    def timer_callback(self):
-        if self.conn_type == 'webrtc':
-            self.publish_odom_webrtc()
-            self.publish_odom_topic_webrtc()
-            self.publish_robot_state_webrtc()
-            self.publish_joint_state_webrtc()
-
-    def timer_callback_lidar(self):
-        if self.conn_type == 'webrtc' and self.decode_lidar:
-            self.publish_lidar_webrtc()
-
-        # Publish raw voxel data
-        if self.conn_type == 'webrtc' and self.publish_raw_voxel:
-            self.publish_voxel_webrtc()
 
     def cmd_vel_cb(self, msg, robot_num):
         x = msg.linear.x
@@ -455,196 +437,284 @@ class RobotBaseNode(Node):
             await asyncio.sleep(0)
 
     def on_data_channel_message(self, _, msg, robot_num):
+        robot_idx = int(robot_num)
 
         if msg.get('topic') == RTC_TOPIC["ULIDAR_ARRAY"]:
             self.robot_lidar[robot_num] = msg
+            if self.conn_type == 'webrtc' and self.decode_lidar:
+                self.publish_lidar_webrtc_immediate(robot_idx)
+            if self.conn_type == 'webrtc' and self.publish_raw_voxel:
+                self.publish_voxel_webrtc_immediate(robot_idx)
 
         if msg.get('topic') == RTC_TOPIC['ROBOTODOM']:
             self.robot_odom[robot_num] = msg
+            if self.conn_type == 'webrtc':
+                self.publish_odom_webrtc_immediate(robot_idx)
+                self.publish_odom_topic_webrtc_immediate(robot_idx)
 
         if msg.get('topic') == RTC_TOPIC['LF_SPORT_MOD_STATE']:
             self.robot_sport_state[robot_num] = msg
+            if self.conn_type == 'webrtc':
+                self.publish_robot_state_webrtc_immediate(robot_idx)
 
         if msg.get('topic') == RTC_TOPIC['LOW_STATE']:
             self.robot_low_cmd[robot_num] = msg
+            if self.conn_type == 'webrtc':
+                self.publish_joint_state_webrtc_immediate(robot_idx)
 
-    def publish_odom_webrtc(self):
-        for i in range(len(self.robot_odom)):
-            if self.robot_odom[str(i)]:
-                odom_trans = TransformStamped()
-                odom_trans.header.stamp = self.get_clock().now().to_msg()
-                odom_trans.header.frame_id = 'odom'
+    # Новые функции для немедленной публикации конкретного робота
+    def publish_odom_webrtc_immediate(self, robot_idx):
+        """Публикует odometry transform для конкретного робота немедленно"""
+        robot_num = str(robot_idx)
+        if robot_num in self.robot_odom and self.robot_odom[robot_num]:
+            odom_trans = TransformStamped()
+            odom_trans.header.stamp = self.get_clock().now().to_msg()
+            odom_trans.header.frame_id = 'odom'
 
-                if self.conn_mode == 'single':
-                    odom_trans.child_frame_id = "base_link"
-                else:
-                    odom_trans.child_frame_id = f"robot{str(i)}/base_link"
+            if self.conn_mode == 'single':
+                odom_trans.child_frame_id = "base_link"
+            else:
+                odom_trans.child_frame_id = f"robot{robot_num}/base_link"
 
-                pose = self.robot_odom[str(i)]['data']['pose']
-                position = pose['position']
-                orientation = pose['orientation']
+            pose = self.robot_odom[robot_num]['data']['pose']
+            position = pose['position']
+            orientation = pose['orientation']
 
-                pos_vals = [position['x'], position['y'], position['z']]
-                rot_vals = [orientation['x'], orientation['y'], orientation['z'], orientation['w']]
+            pos_vals = [position['x'], position['y'], position['z']]
+            rot_vals = [orientation['x'], orientation['y'], orientation['z'], orientation['w']]
 
-                # Check all are numbers and finite
-                if not all(
-                    isinstance(v, (int, float)) and math.isfinite(v)
-                    for v in pos_vals + rot_vals
-                ):
-                    continue
-                try:
-                    odom_trans.transform.translation.x = float(position['x'])
-                    odom_trans.transform.translation.y = float(position['y'])
-                    odom_trans.transform.translation.z = float(position['z']) + 0.07
+            # Check all are numbers and finite
+            if not all(
+                isinstance(v, (int, float)) and math.isfinite(v)
+                for v in pos_vals + rot_vals
+            ):
+                return
+            try:
+                odom_trans.transform.translation.x = float(position['x'])
+                odom_trans.transform.translation.y = float(position['y'])
+                odom_trans.transform.translation.z = float(position['z']) + 0.07
 
-                    odom_trans.transform.rotation.x = float(orientation['x'])
-                    odom_trans.transform.rotation.y = float(orientation['y'])
-                    odom_trans.transform.rotation.z = float(orientation['z'])
-                    odom_trans.transform.rotation.w = float(orientation['w'])
+                odom_trans.transform.rotation.x = float(orientation['x'])
+                odom_trans.transform.rotation.y = float(orientation['y'])
+                odom_trans.transform.rotation.z = float(orientation['z'])
+                odom_trans.transform.rotation.w = float(orientation['w'])
 
-                    self.broadcaster.sendTransform(odom_trans)
-                except Exception as e:
-                    self.get_logger().error(
-                        f"Error in publish_odom_webrtc: {e} for robot {i}")
+                self.broadcaster.sendTransform(odom_trans)
+            except Exception as e:
+                self.get_logger().error(
+                    f"Error in publish_odom_webrtc_immediate: {e} for robot {robot_idx}")
 
-    def publish_odom_topic_webrtc(self):
-        for i in range(len(self.robot_odom)):
-            if self.robot_odom.get(str(i)):
-                odom_msg = Odometry()
-                odom_msg.header.stamp = self.get_clock().now().to_msg()
-                odom_msg.header.frame_id = 'odom'
+    def publish_odom_topic_webrtc_immediate(self, robot_idx):
+        """Публикует odometry topic для конкретного робота немедленно"""
+        robot_num = str(robot_idx)
+        if robot_num in self.robot_odom and self.robot_odom[robot_num]:
+            odom_msg = Odometry()
+            odom_msg.header.stamp = self.get_clock().now().to_msg()
+            odom_msg.header.frame_id = 'odom'
 
-                if self.conn_mode == 'single':
-                    odom_msg.child_frame_id = "base_link"
-                else:
-                    odom_msg.child_frame_id = f"robot{str(i)}/base_link"
+            if self.conn_mode == 'single':
+                odom_msg.child_frame_id = "base_link"
+            else:
+                odom_msg.child_frame_id = f"robot{robot_num}/base_link"
 
-                pose = self.robot_odom[str(i)]['data']['pose']
-                position = pose['position']
-                orientation = pose['orientation']
+            pose = self.robot_odom[robot_num]['data']['pose']
+            position = pose['position']
+            orientation = pose['orientation']
 
-                pos_vals = [position['x'], position['y'], position['z']]
-                rot_vals = [orientation['x'],
-                            orientation['y'],
-                            orientation['z'],
-                            orientation['w']]
+            pos_vals = [position['x'], position['y'], position['z']]
+            rot_vals = [orientation['x'],
+                        orientation['y'],
+                        orientation['z'],
+                        orientation['w']]
 
-                if not all(
-                    isinstance(v, (int, float)) and math.isfinite(v)
-                    for v in pos_vals + rot_vals
-                ):
-                    continue
+            if not all(
+                isinstance(v, (int, float)) and math.isfinite(v)
+                for v in pos_vals + rot_vals
+            ):
+                return
 
-                try:
-                    odom_msg.pose.pose.position.x = float(position['x'])
-                    odom_msg.pose.pose.position.y = float(position['y'])
-                    odom_msg.pose.pose.position.z = float(position['z']) + 0.07
+            try:
+                odom_msg.pose.pose.position.x = float(position['x'])
+                odom_msg.pose.pose.position.y = float(position['y'])
+                odom_msg.pose.pose.position.z = float(position['z']) + 0.07
 
-                    odom_msg.pose.pose.orientation.x = float(orientation['x'])
-                    odom_msg.pose.pose.orientation.y = float(orientation['y'])
-                    odom_msg.pose.pose.orientation.z = float(orientation['z'])
-                    odom_msg.pose.pose.orientation.w = float(orientation['w'])
+                odom_msg.pose.pose.orientation.x = float(orientation['x'])
+                odom_msg.pose.pose.orientation.y = float(orientation['y'])
+                odom_msg.pose.pose.orientation.z = float(orientation['z'])
+                odom_msg.pose.pose.orientation.w = float(orientation['w'])
 
-                    self.go2_odometry_pub[i].publish(odom_msg)
+                self.go2_odometry_pub[robot_idx].publish(odom_msg)
 
-                except Exception as e:
-                    self.get_logger().error(
-                        f"Error in publish_odom_topic_webrtc: {e} for robot {i}")
+            except Exception as e:
+                self.get_logger().error(
+                    f"Error in publish_odom_topic_webrtc_immediate: {e} for robot {robot_idx}")
 
-    def publish_lidar_webrtc(self):
-        for i in range(len(self.robot_lidar)):
-            if self.robot_lidar[str(i)]:
-                points = update_meshes_for_cloud2(
-                    self.robot_lidar[str(i)]["decoded_data"]["positions"],
-                    self.robot_lidar[str(i)]["decoded_data"]["uvs"],
-                    self.robot_lidar[str(i)]['data']['resolution'],
-                    self.robot_lidar[str(i)]['data']['origin'],
-                    0
+    def publish_lidar_webrtc_immediate(self, robot_idx):
+        """Публикует lidar данные для конкретного робота немедленно"""
+        robot_num = str(robot_idx)
+        if robot_num in self.robot_lidar and self.robot_lidar[robot_num]:
+            points = update_meshes_for_cloud2(
+                self.robot_lidar[robot_num]["decoded_data"]["positions"],
+                self.robot_lidar[robot_num]["decoded_data"]["uvs"],
+                self.robot_lidar[robot_num]['data']['resolution'],
+                self.robot_lidar[robot_num]['data']['origin'],
+                0
+            )
+            point_cloud = PointCloud2()
+            point_cloud.header = Header(frame_id="odom")
+            point_cloud.header.stamp = self.get_clock().now().to_msg()
+            fields = [
+                PointField(name='x', offset=0,
+                           datatype=PointField.FLOAT32, count=1),
+                PointField(name='y', offset=4,
+                           datatype=PointField.FLOAT32, count=1),
+                PointField(name='z', offset=8,
+                           datatype=PointField.FLOAT32, count=1),
+                PointField(name='intensity', offset=12,
+                           datatype=PointField.FLOAT32, count=1),
+            ]
+            point_cloud = point_cloud2.create_cloud(
+                point_cloud.header, fields, points)
+            self.go2_lidar_pub[robot_idx].publish(point_cloud)
+
+    def publish_voxel_webrtc_immediate(self, robot_idx):
+        """Публикует voxel данные для конкретного робота немедленно"""
+        robot_num = str(robot_idx)
+        if robot_num in self.robot_lidar and self.robot_lidar[robot_num]:
+            voxel_msg = VoxelMapCompressed()
+            voxel_msg.stamp = float(
+                self.robot_lidar[robot_num]['data']['stamp'])
+            voxel_msg.frame_id = 'odom'
+
+            voxel_msg.resolution = self.robot_lidar[robot_num]['data']['resolution']
+            voxel_msg.origin = self.robot_lidar[robot_num]['data']['origin']
+            voxel_msg.width = self.robot_lidar[robot_num]['data']['width']
+            voxel_msg.src_size = self.robot_lidar[robot_num]['data']['src_size']
+            voxel_msg.data = self.robot_lidar[robot_num]['compressed_data']
+
+            self.voxel_pub[robot_idx].publish(voxel_msg)
+
+    def publish_joint_state_webrtc_immediate(self, robot_idx):
+        """Публикует joint state для конкретного робота немедленно"""
+        robot_num = str(robot_idx)
+        if robot_num in self.robot_low_cmd and self.robot_low_cmd[robot_num]:
+            # Extract data message for easy reading.
+            low_state_data = self.robot_low_cmd[robot_num]['data']
+
+            joint_state = JointState()
+            joint_state.header.stamp = self.get_clock().now().to_msg()
+
+            # Define joint names based on connection mode (single or multiple).
+            if self.conn_mode == 'single':
+                joint_state.name = [
+                    'FL_hip_joint', 'FL_thigh_joint', 'FL_calf_joint',
+                    'FR_hip_joint', 'FR_thigh_joint', 'FR_calf_joint',
+                    'RL_hip_joint', 'RL_thigh_joint', 'RL_calf_joint',
+                    'RR_hip_joint', 'RR_thigh_joint', 'RR_calf_joint',
+                ]
+            else:
+                joint_state.name = [
+                    f'robot{robot_num}/FL_hip_joint', f'robot{robot_num}/FL_thigh_joint', f'robot{robot_num}/FL_calf_joint',
+                    f'robot{robot_num}/FR_hip_joint', f'robot{robot_num}/FR_thigh_joint', f'robot{robot_num}/FR_calf_joint',
+                    f'robot{robot_num}/RL_hip_joint', f'robot{robot_num}/RL_thigh_joint', f'robot{robot_num}/RL_calf_joint',
+                    f'robot{robot_num}/RR_hip_joint', f'robot{robot_num}/RR_thigh_joint', f'robot{robot_num}/RR_calf_joint'
+                ]
+            
+            motor_state = low_state_data['motor_state']
+            joint_state.position = [
+                motor_state[3]['q'], motor_state[4]['q'], motor_state[5]['q'],  # FL leg
+                motor_state[0]['q'], motor_state[1]['q'], motor_state[2]['q'],  # FR leg
+                motor_state[9]['q'], motor_state[10]['q'], motor_state[11]['q'], # RL leg
+                motor_state[6]['q'], motor_state[7]['q'], motor_state[8]['q'],  # RR leg
+            ]
+
+            try:
+                self.joint_pub[robot_idx].publish(joint_state)
+            except Exception as e:
+                self.get_logger().error(
+                    f"Error in publish_joint_state_webrtc_immediate: {e} for robot {robot_idx}"
                 )
-                point_cloud = PointCloud2()
-                point_cloud.header = Header(frame_id="odom")
-                point_cloud.header.stamp = self.get_clock().now().to_msg()
-                fields = [
-                    PointField(name='x', offset=0,
-                               datatype=PointField.FLOAT32, count=1),
-                    PointField(name='y', offset=4,
-                               datatype=PointField.FLOAT32, count=1),
-                    PointField(name='z', offset=8,
-                               datatype=PointField.FLOAT32, count=1),
-                    PointField(name='intensity', offset=12,
-                               datatype=PointField.FLOAT32, count=1),
-                ]
-                point_cloud = point_cloud2.create_cloud(
-                    point_cloud.header, fields, points)
-                self.go2_lidar_pub[i].publish(point_cloud)
 
-    def publish_voxel_webrtc(self):
-        for i in range(len(self.robot_lidar)):
-            if self.robot_lidar[str(i)]:
-                voxel_msg = VoxelMapCompressed()
-                voxel_msg.stamp = float(
-                    self.robot_lidar[str(i)]['data']['stamp'])
-                voxel_msg.frame_id = 'odom'
+    def publish_robot_state_webrtc_immediate(self, robot_idx):
+        """Публикует robot state и IMU для конкретного робота немедленно"""
+        robot_num = str(robot_idx)
+        if robot_num in self.robot_sport_state and self.robot_sport_state[robot_num]:
+            try:
+                data = self.robot_sport_state[robot_num]["data"]
 
-                # Example data: {"type":"msg","topic":"rt/utlidar/voxel_map_compressed",
-                # "data":{"stamp":1.709106e+09,"frame_id":"odom","resolution":0.050000,
-                # "src_size":77824,"origin":[1.675000,5.325000,-0.575000],"width":[128,128,38]}}
-                voxel_msg.resolution = self.robot_lidar[str(
-                    i)]['data']['resolution']
-                voxel_msg.origin = self.robot_lidar[str(i)]['data']['origin']
-                voxel_msg.width = self.robot_lidar[str(i)]['data']['width']
-                voxel_msg.src_size = self.robot_lidar[str(
-                    i)]['data']['src_size']
-                voxel_msg.data = self.robot_lidar[str(i)]['compressed_data']
+                # Check required lists for float validity
+                if not all(
+                    isinstance(x, float) and math.isfinite(x)
+                    for x in data["position"]
+                ):
+                    return
+                if not all(
+                    isinstance(x, float) and math.isfinite(x)
+                    for x in data["range_obstacle"]
+                ):
+                    return
+                if not all(
+                    isinstance(x, float) and math.isfinite(x)
+                    for x in data["foot_position_body"]
+                ):
+                    return
+                if not all(
+                    isinstance(x, float) and math.isfinite(x)
+                    for x in data["foot_speed_body"]
+                ):
+                    return
+                if (
+                    not isinstance(data["body_height"], (int, float)) or
+                    not math.isfinite(data["body_height"])
+                ):
+                    return
 
-                self.voxel_pub[i].publish(voxel_msg)
+                go2_state = Go2State()
+                go2_state.mode = data["mode"]
+                go2_state.progress = data["progress"]
+                go2_state.gait_type = data["gait_type"]
+                go2_state.position = list(map(float, data["position"]))
+                go2_state.body_height = float(data["body_height"])
+                go2_state.velocity = data["velocity"]
+                go2_state.range_obstacle = list(map(float, data["range_obstacle"]))
+                go2_state.foot_force = data["foot_force"]
+                go2_state.foot_position_body = list(map(float, data["foot_position_body"]))
+                go2_state.foot_speed_body = list(map(float, data["foot_speed_body"]))
+                self.go2_state_pub[robot_idx].publish(go2_state)
 
-    def publish_joint_state_webrtc(self):
-        # Modified to iterate over self.robot_low_cmd instead of self.robot_sport_state
-        for i in range(len(self.robot_low_cmd)):
-            # Check if data exists for the current robot.
-            if str(i) in self.robot_low_cmd and self.robot_low_cmd[str(i)]:
-                
-                # Extract data message for easy reading.
-                low_state_data = self.robot_low_cmd[str(i)]['data']
+                imu_data = data["imu_state"]
+                # Check all IMU fields
+                if not all(
+                    isinstance(x, float) and math.isfinite(x)
+                    for x in imu_data["quaternion"]
+                ):
+                    return
+                if not all(
+                    isinstance(x, float) and math.isfinite(x)
+                    for x in imu_data["accelerometer"]
+                ):
+                    return
+                if not all(
+                    isinstance(x, float) and math.isfinite(x)
+                    for x in imu_data["gyroscope"]
+                ):
+                    return
+                if not all(
+                    isinstance(x, float) and math.isfinite(x)
+                    for x in imu_data["rpy"]
+                ):
+                    return
 
-                joint_state = JointState()
-                joint_state.header.stamp = self.get_clock().now().to_msg()
-
-                # Define joint names based on connection mode (single or multiple).
-                if self.conn_mode == 'single':
-                    joint_state.name = [
-                        'FL_hip_joint', 'FL_thigh_joint', 'FL_calf_joint',
-                        'FR_hip_joint', 'FR_thigh_joint', 'FR_calf_joint',
-                        'RL_hip_joint', 'RL_thigh_joint', 'RL_calf_joint',
-                        'RR_hip_joint', 'RR_thigh_joint', 'RR_calf_joint',
-                    ]
-                else:
-                    joint_state.name = [
-                        f'robot{str(i)}/FL_hip_joint', f'robot{str(i)}/FL_thigh_joint', f'robot{str(i)}/FL_calf_joint',
-                        f'robot{str(i)}/FR_hip_joint', f'robot{str(i)}/FR_thigh_joint', f'robot{str(i)}/FR_calf_joint',
-                        f'robot{str(i)}/RL_hip_joint', f'robot{str(i)}/RL_thigh_joint', f'robot{str(i)}/RL_calf_joint',
-                        f'robot{str(i)}/RR_hip_joint', f'robot{str(i)}/RR_thigh_joint', f'robot{str(i)}/RR_calf_joint'
-                    ]
-                
-                # Use the same logic to access motor data (motor_state) from the cyclone_dds function.
-                # Modify the access method to fit the JSON structure coming from WebRTC.
-                motor_state = low_state_data['motor_state']
-                joint_state.position = [
-                    motor_state[3]['q'], motor_state[4]['q'], motor_state[5]['q'],  # FL leg
-                    motor_state[0]['q'], motor_state[1]['q'], motor_state[2]['q'],  # FR leg
-                    motor_state[9]['q'], motor_state[10]['q'], motor_state[11]['q'], # RL leg
-                    motor_state[6]['q'], motor_state[7]['q'], motor_state[8]['q'],  # RR leg
-                ]
-
-                # Publish joint data.
-                try:
-                    self.joint_pub[i].publish(joint_state)
-                except Exception as e:
-                    self.get_logger().error(
-                        f"Error in publish_joint_state_webrtc: {e} for robot {i}"
-                    )
+                imu = IMU()
+                imu.quaternion = list(map(float, imu_data["quaternion"]))
+                imu.accelerometer = list(map(float, imu_data["accelerometer"]))
+                imu.gyroscope = list(map(float, imu_data["gyroscope"]))
+                imu.rpy = list(map(float, imu_data["rpy"]))
+                imu.temperature = imu_data["temperature"]
+                self.imu_pub[robot_idx].publish(imu)
+            except Exception as e:
+                self.get_logger().error(
+                    f"Error in publish_robot_state_webrtc_immediate: {e} for robot {robot_idx}")
 
     def publish_webrtc_commands(self, robot_num):
         while True:
@@ -656,86 +726,6 @@ class RobotBaseNode(Node):
                     self.webrtc_msgs.task_done()
             except asyncio.QueueEmpty:
                 break
-
-    def publish_robot_state_webrtc(self):
-        for i in range(len(self.robot_sport_state)):
-            if self.robot_sport_state[str(i)]:
-                try:
-                    data = self.robot_sport_state[str(i)]["data"]
-
-                    # Check required lists for float validity
-                    if not all(
-                        isinstance(x, float) and math.isfinite(x)
-                        for x in data["position"]
-                    ):
-                        continue
-                    if not all(
-                        isinstance(x, float) and math.isfinite(x)
-                        for x in data["range_obstacle"]
-                    ):
-                        continue
-                    if not all(
-                        isinstance(x, float) and math.isfinite(x)
-                        for x in data["foot_position_body"]
-                    ):
-                        continue
-                    if not all(
-                        isinstance(x, float) and math.isfinite(x)
-                        for x in data["foot_speed_body"]
-                    ):
-                        continue
-                    if (
-                        not isinstance(data["body_height"], (int, float)) or
-                        not math.isfinite(data["body_height"])
-                    ):
-                        continue
-
-                    go2_state = Go2State()
-                    go2_state.mode = data["mode"]
-                    go2_state.progress = data["progress"]
-                    go2_state.gait_type = data["gait_type"]
-                    go2_state.position = list(map(float, data["position"]))
-                    go2_state.body_height = float(data["body_height"])
-                    go2_state.velocity = data["velocity"]
-                    go2_state.range_obstacle = list(map(float, data["range_obstacle"]))
-                    go2_state.foot_force = data["foot_force"]
-                    go2_state.foot_position_body = list(map(float, data["foot_position_body"]))
-                    go2_state.foot_speed_body = list(map(float, data["foot_speed_body"]))
-                    self.go2_state_pub[i].publish(go2_state)
-
-                    imu_data = data["imu_state"]
-                    # Check all IMU fields
-                    if not all(
-                        isinstance(x, float) and math.isfinite(x)
-                        for x in imu_data["quaternion"]
-                    ):
-                        continue
-                    if not all(
-                        isinstance(x, float) and math.isfinite(x)
-                        for x in imu_data["accelerometer"]
-                    ):
-                        continue
-                    if not all(
-                        isinstance(x, float) and math.isfinite(x)
-                        for x in imu_data["gyroscope"]
-                    ):
-                        continue
-                    if not all(
-                        isinstance(x, float) and math.isfinite(x)
-                        for x in imu_data["rpy"]
-                    ):
-                        continue
-
-                    imu = IMU()
-                    imu.quaternion = list(map(float, imu_data["quaternion"]))
-                    imu.accelerometer = list(map(float, imu_data["accelerometer"]))
-                    imu.gyroscope = list(map(float, imu_data["gyroscope"]))
-                    imu.rpy = list(map(float, imu_data["rpy"]))
-                    imu.temperature = imu_data["temperature"]
-                    self.imu_pub[i].publish(imu)
-                except Exception as e:
-                    self.get_logger().error(
-                        f"Error in publish_robot_state_webrtc: {e} for robot {i}")
 
 
 async def run(conn, robot_num, node):
@@ -751,12 +741,10 @@ async def run(conn, robot_num, node):
     if node.conn_type == 'webrtc':
         try:
             await node.conn[robot_num].connect()
-            # await
-            # node.conn[robot_num].data_channel.disableTrafficSaving(True)
+            await node.conn[robot_num].disableTrafficSaving(True)
         except Exception as e:
             node.get_logger().error(
                 f"Failed to connect to robot {robot_num} - exiting: {e}")
-            # Signal that a critical error occurred by raising an exception
             raise RuntimeError(f"Failed to connect to robot {robot_num}") from e
 
     try:

@@ -376,6 +376,26 @@ class Go2Connection():
         logger.info(f"-> Sending message {payload_dumped}")
         self.data_channel.send(payload_dumped)
 
+    async def disableTrafficSaving(self, switch: bool):
+        """
+        Disable traffic saving mode for better data transmission
+        Should be turned on when subscribed to ulidar topic
+        """
+        data = {
+            "req_type": "disable_traffic_saving",
+            "instruction": "on" if switch else "off"
+        }
+        
+        # Use the publish method to send the request
+        self.publish(
+            "",
+            data,
+            "rtc_inner_req",
+        )
+        
+        logger.info(f"DisableTrafficSaving: {data['instruction']}")
+        return True
+
     @staticmethod
     def hex_to_base64(hex_str):
         bytes_array = bytes.fromhex(hex_str)
