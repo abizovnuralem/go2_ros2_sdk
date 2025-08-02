@@ -20,7 +20,6 @@ setup(
     maintainer_email='julian.w.francis@gmail.com',
     description='COCO detector',
     license='TODO: License declaration',
-    tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             "coco_detector_node = coco_detector.coco_detector_node"
