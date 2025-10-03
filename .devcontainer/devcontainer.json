@@ -1,0 +1,73 @@
+{
+  "name": "Go2 ROS2 Humble",
+
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "..",
+    "args": {
+  "ROS_DISTRO": "humble",
+  "VARIANT": "ros-core"
+    }
+  },
+
+  "workspaceFolder": "/workspaces/go2_ros2_sdk",
+
+  "remoteUser": "ros",
+
+  "overrideCommand": false,
+
+  "containerEnv": {
+    "ROS_DOMAIN_ID": "42",
+    "RMW_IMPLEMENTATION": "rmw_cyclonedds_cpp"
+  },
+
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "editor.formatOnSave": true,
+        "python.defaultInterpreterPath": "/usr/bin/python3",
+        "python.analysis.typeCheckingMode": "basic",
+        "ros.distro": "humble",
+        "files.associations": {
+          "*.launch": "xml",
+          "*.urdf": "xml",
+          "*.xacro": "xml",
+          "*.sdf": "xml"
+        }
+      },
+      "extensions": [
+        "ms-iot.vscode-ros",
+        "ms-vscode.cmake-tools",
+        "twxs.cmake",
+        "ms-python.python",
+        "ms-python.black-formatter",
+        "ms-python.isort",
+        "ms-python.vscode-pylance",
+        "ms-vscode.cpptools",
+        "ms-vscode.cpptools-extension-pack",
+        "streetsidesoftware.code-spell-checker",
+        "eamodio.gitlens",
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  },
+
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  "postCreateCommand": [
+    "bash",
+    "-lc",
+    "cd /workspaces/go2_ros2_sdk && bash .devcontainer/setup.sh"
+  ],
+
+  "forwardPorts": [
+    8080,
+    9090,
+    5900,
+    6080
+  ]
+}
