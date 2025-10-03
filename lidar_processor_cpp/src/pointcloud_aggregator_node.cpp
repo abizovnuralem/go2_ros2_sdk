@@ -38,7 +38,7 @@ PointCloudAggregatorNode::PointCloudAggregatorNode()
   config_ = loadConfiguration();
   
   // Initialize filters
-  statistical_filter_ = std::make_unique<StatisticalFilter>();
+  statistical_filter_ = std::make_unique<StatisticalFilter>(20, 2.0);
   
   // Initialize timing
   last_publish_time_ = std::chrono::steady_clock::now();
