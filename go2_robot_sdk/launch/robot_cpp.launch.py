@@ -1,5 +1,4 @@
-# Copyright (c) 2024, RoboVerse community
-# SPDX-License-Identifier: BSD-3-Clause
+# Robot launch file with C++ lidar processing nodes
 
 import os
 from typing import List
@@ -191,10 +190,10 @@ class Go2NodeFactory:
                     'conn_type': self.config.conn_type
                 }],
             ),
-            # LiDAR processing node (new separate package)
+            # LiDAR processing node (C++ implementation)
             Node(
-                package='lidar_processor',
-                executable='lidar_to_pointcloud',
+                package='lidar_processor_cpp',
+                executable='lidar_to_pointcloud_node',
                 name='lidar_to_pointcloud',
                 parameters=[{
                     'robot_ip_lst': self.config.robot_ip_list,
@@ -202,10 +201,10 @@ class Go2NodeFactory:
                     'map_save': self.config.save_map
                 }],
             ),
-            # Advanced point cloud aggregator
+            # Advanced point cloud aggregator (C++ implementation)
             Node(
-                package='lidar_processor',
-                executable='pointcloud_aggregator',
+                package='lidar_processor_cpp',
+                executable='pointcloud_aggregator_node',
                 name='pointcloud_aggregator',
                 parameters=[{
                     'max_range': 20.0,
