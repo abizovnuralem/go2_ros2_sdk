@@ -1,4 +1,4 @@
-/teleop_node:
+/go2_teleop_node:
   ros__parameters:
     axis_linear:
       x: 1
