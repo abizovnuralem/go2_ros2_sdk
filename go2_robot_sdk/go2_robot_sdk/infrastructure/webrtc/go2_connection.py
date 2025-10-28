@@ -252,8 +252,9 @@ class Go2Connection:
                 decoded_response = base64.b64decode(response.text).decode('utf-8')
                 decoded_json = json.loads(decoded_response)
                 
-                # Extract the 'data1' field from the JSON
+                # Extract the 'data1' and 'data2' fields from the JSON
                 data1 = decoded_json.get('data1')
+				data2 = decoded_json.get('data2')
                 if not data1:
                     raise Go2ConnectionError("No data1 field in public key response")
 
