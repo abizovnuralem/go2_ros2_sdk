@@ -273,10 +273,10 @@ To send commands via the WebRTC topic:
 
 ```bash
 # Basic command structure
-ros2 topic pub /webrtc_req unitree_go/msg/WebRtcReq "{api_id: <API_ID>, parameter: '<PARAMETER>', topic: '<TOPIC>', priority: <0|1>}" --once
+ros2 topic pub /webrtc_req go2_interfaces/msg/WebRtcReq "{api_id: <API_ID>, parameter: '<PARAMETER>', topic: '<TOPIC>', priority: <0|1>}" --once
 
 # Example: Send a handshake command
-ros2 topic pub /webrtc_req unitree_go/msg/WebRtcReq "{api_id: 1016, topic: 'rt/api/sport/request'}" --once
+ros2 topic pub /webrtc_req go2_interfaces/msg/WebRtcReq "{api_id: 1016, topic: 'rt/api/sport/request'}" --once
 ```
 
 ## WSL 2
