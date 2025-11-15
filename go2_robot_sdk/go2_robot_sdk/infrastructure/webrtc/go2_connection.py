@@ -254,7 +254,7 @@ class Go2Connection:
                 
                 # Extract the 'data1' and 'data2' fields from the JSON
                 data1 = decoded_json.get('data1')
-				data2 = decoded_json.get('data2')
+                data2 = decoded_json.get('data2')
                 if not data1:
                     raise Go2ConnectionError("No data1 field in public key response")
 
