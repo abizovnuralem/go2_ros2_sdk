@@ -5,8 +5,8 @@ import os
 from typing import List
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.conditions import IfCondition
-from launch.substitutions import LaunchConfiguration
+from launch.conditions import IfCondition, UnlessCondition
+from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
 from launch.launch_description_sources import FrontendLaunchDescriptionSource, PythonLaunchDescriptionSource
@@ -82,7 +82,7 @@ class Go2NodeFactory:
         return [
             DeclareLaunchArgument('rviz2', default_value='true', description='Launch RViz2'),
             DeclareLaunchArgument('nav2', default_value='true', description='Launch Nav2'),
-            DeclareLaunchArgument('slam', default_value='true', description='Launch SLAM'),
+            DeclareLaunchArgument('map', default_value='', description='Full path to map file to load (for localization)'),
             DeclareLaunchArgument('foxglove', default_value='true', description='Launch Foxglove Bridge'),
             DeclareLaunchArgument('joystick', default_value='true', description='Launch joystick'),
             DeclareLaunchArgument('teleop', default_value='true', description='Launch teleoperation'),
@@ -288,9 +288,12 @@ class Go2NodeFactory:
         """Create included launch descriptions"""
         use_sim_time = LaunchConfiguration('use_sim_time', default='false')
         with_foxglove = LaunchConfiguration('foxglove', default='true')
-        with_slam = LaunchConfiguration('slam', default='true')
         with_nav2 = LaunchConfiguration('nav2', default='true')
+        map_file = LaunchConfiguration('map')
         
+        # Check if map file is provided (Empty string means SLAM mode)
+        has_map = PythonExpression(["'", map_file, "' != ''"])
+
         foxglove_launch = os.path.join(
             get_package_share_directory('foxglove_bridge'),
             'launch', 'foxglove_bridge_launch.xml'
@@ -302,19 +305,32 @@ class Go2NodeFactory:
                 FrontendLaunchDescriptionSource(foxglove_launch),
                 condition=IfCondition(with_foxglove),
             ),
-            # SLAM Toolbox
+            # SLAM Toolbox (Run if NO map is provided)
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource([
                     os.path.join(get_package_share_directory('slam_toolbox'),
                                 'launch', 'online_async_launch.py')
                 ]),
-                condition=IfCondition(with_slam),
+                condition=UnlessCondition(has_map),
                 launch_arguments={
                     'slam_params_file': self.config.config_paths['slam'],
                     'use_sim_time': use_sim_time,
                 }.items(),
             ),
-            # Nav2
+            # Nav2 (Localization Mode - Run if map IS provided)
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource([
+                    os.path.join(get_package_share_directory('nav2_bringup'),
+                                'launch', 'localization_launch.py')
+                ]),
+                condition=IfCondition(has_map),
+                launch_arguments={
+                    'map': map_file,
+                    'use_sim_time': use_sim_time,
+                    'params_file': self.config.config_paths['nav2'],
+                }.items(),
+            ),
+            # Nav2 (Navigation Mode - Always run)
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource([
                     os.path.join(get_package_share_directory('nav2_bringup'),
@@ -324,6 +340,7 @@ class Go2NodeFactory:
                 launch_arguments={
                     'params_file': self.config.config_paths['nav2'],
                     'use_sim_time': use_sim_time,
+                    'map_subscribe_transient_local': 'true',
                 }.items(),
             ),
         ]
