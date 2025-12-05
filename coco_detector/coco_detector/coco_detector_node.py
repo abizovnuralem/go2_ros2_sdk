@@ -10,6 +10,7 @@ import collections
 import numpy as np
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 from sensor_msgs.msg import Image
 from vision_msgs.msg import BoundingBox2D, ObjectHypothesis, ObjectHypothesisWithPose
 from vision_msgs.msg import Detection2D, Detection2DArray
@@ -36,11 +37,17 @@ class CocoDetectorNode(Node):
         self.device = self.get_parameter('device').get_parameter_value().string_value
         self.detection_threshold = \
             self.get_parameter('detection_threshold').get_parameter_value().double_value
+        image_qos = QoSProfile(
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=10)
+            
+        ###qos profile for image subscription
         self.subscription = self.create_subscription(
             Image,
             "/camera/image_raw",
             self.listener_callback,
-            10)
+            image_qos)
         self.detected_objects_publisher = \
             self.create_publisher(Detection2DArray, "detected_objects", 10)
         if self.get_parameter('publish_annotated_image').get_parameter_value().bool_value:
@@ -55,6 +62,11 @@ class CocoDetectorNode(Node):
             weights_backbone="MobileNet_V3_Large_Weights.IMAGENET1K_V1").to(self.device)
         self.class_labels = \
             detection_model.FasterRCNN_MobileNet_V3_Large_320_FPN_Weights.DEFAULT.meta["categories"]
+        
+        ### Person Label Index
+        self.person_label_index = self.class_labels.index("person")
+        self.detected_persons_publisher = \
+            self.create_publisher(Detection2DArray, "detected_persons", 10)
         self.model.eval()
         self.get_logger().info("Node has started.")
 
@@ -95,6 +107,7 @@ class CocoDetectorNode(Node):
 
     def listener_callback(self, msg):
         """Reads image and publishes on /detected_objects and /annotated_image."""
+        self.get_logger().info("Received image on subscription topic")
         cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="rgb8")
         image = cv_image.copy().transpose((2, 0, 1))
         batch_image = np.expand_dims(image, axis=0)
@@ -104,11 +117,21 @@ class CocoDetectorNode(Node):
             zip(mobilenet_detections["labels"],
             mobilenet_detections["boxes"],
             mobilenet_detections["scores"]) if score >= self.detection_threshold]
+        person_detections = [d for d in filtered_detections if d.label == self.person_label_index]
+        self.get_logger().info(
+            f"Frame {msg.header.stamp.sec}.{msg.header.stamp.nanosec}: "
+            f"detections={len(filtered_detections)}, persons={len(person_detections)}")
         detection_array = Detection2DArray()
         detection_array.header = msg.header
         detection_array.detections = \
             [self.mobilenet_to_ros2(detection, msg.header) for detection in filtered_detections]
         self.detected_objects_publisher.publish(detection_array)
+        if len(person_detections) > 0:
+            person_detection_array = Detection2DArray()
+            person_detection_array.header = msg.header
+            person_detection_array.detections = \
+                [self.mobilenet_to_ros2(detection, msg.header) for detection in person_detections]
+            self.detected_persons_publisher.publish(person_detection_array)
         if self.annotated_image_publisher is not None:
             self.publish_annotated_image(filtered_detections, msg.header, image)
 
@@ -118,3 +141,4 @@ coco_detector_node = CocoDetectorNode()
 rclpy.spin(coco_detector_node)
 coco_detector_node.destroy_node()
 rclpy.shutdown()
+
