@@ -17,8 +17,8 @@ from vision_msgs.msg import BoundingBox2D, ObjectHypothesis, ObjectHypothesisWit
 from vision_msgs.msg import Detection2D, Detection2DArray
 from cv_bridge import CvBridge
 import torch
-from torchvision.models import detection as detection_model
-from torchvision.utils import draw_bounding_boxes
+from ultralytics import YOLO
+import cv2
 
 
 Detection = collections.namedtuple("Detection", "label, bbox, score")
@@ -63,20 +63,22 @@ class CocoDetectorNode(Node):
         else:
             self.annotated_image_publisher = None
         self.bridge = CvBridge()
-        # Load detection model and move to target device, with safety fallback from CUDA to CPU
-        base_model = detection_model.fasterrcnn_mobilenet_v3_large_320_fpn(
-            weights="FasterRCNN_MobileNet_V3_Large_320_FPN_Weights.COCO_V1",
-            progress=True,
-            weights_backbone="MobileNet_V3_Large_Weights.IMAGENET1K_V1")
+        # Load YOLO model and move to target device, with safety fallback from CUDA to CPU
+        self.model = YOLO("yolov8n.pt")
         try:
-            self.model = base_model.to(self.device)
+            self.model.to(self.device)
         except RuntimeError as exc:  # e.g. CUDA allocator / NVML errors
             self.get_logger().warning(
-                f"Failed to move model to device '{self.device}' ({exc}); falling back to CPU")
+                f"Failed to move YOLO model to device '{self.device}' ({exc}); falling back to CPU")
             self.device = 'cpu'
-            self.model = base_model.to(self.device)
-        self.class_labels = \
-            detection_model.FasterRCNN_MobileNet_V3_Large_320_FPN_Weights.DEFAULT.meta["categories"]
+            self.model.to(self.device)
+
+        # Get class labels from YOLO model (COCO dataset)
+        names = self.model.names
+        if isinstance(names, dict):
+            self.class_labels = [names[i] for i in range(len(names))]
+        else:
+            self.class_labels = list(names)
 
         # Person Label Index
         self.person_label_index = self.class_labels.index("person")
@@ -84,7 +86,6 @@ class CocoDetectorNode(Node):
             self.create_publisher(Detection2DArray, "detected_persons", 10)
         # Track last published person count so we only publish/log on changes
         self.last_person_count = None
-        self.model.eval()
         self.get_logger().info("Node has started.")
 
     def mobilenet_to_ros2(self, detection, header):
@@ -95,7 +96,7 @@ class CocoDetectorNode(Node):
         object_hypothesis_with_pose = ObjectHypothesisWithPose()
         object_hypothesis = ObjectHypothesis()
         object_hypothesis.class_id = self.class_labels[detection.label]
-        object_hypothesis.score = detection.score.detach().item()
+        object_hypothesis.score = float(detection.score)
         object_hypothesis_with_pose.hypothesis = object_hypothesis
         detection2d.results.append(object_hypothesis_with_pose)
         bounding_box = BoundingBox2D()
@@ -115,48 +116,35 @@ class CocoDetectorNode(Node):
         detection2d.bbox = bounding_box
         return detection2d
 
-    def publish_annotated_image(self, filtered_detections, header, image):
-        """Draws the bounding boxes on the image and publishes to /annotated_image"""
+    def publish_annotated_image(self, annotated_bgr_image, header):
+        """Publishes an annotated BGR image on /annotated_image"""
 
-        if len(filtered_detections) > 0:
-            pred_boxes = torch.stack([detection.bbox for detection in filtered_detections])
-            pred_labels = [self.class_labels[detection.label] for detection in filtered_detections]
-            annotated_image = draw_bounding_boxes(torch.tensor(image), pred_boxes,
-                                                  pred_labels, colors="yellow")
-        else:
-            annotated_image = torch.tensor(image)
-        ros2_image_msg = self.bridge.cv2_to_imgmsg(annotated_image.numpy().transpose(1, 2, 0),
-                                                   encoding="rgb8")
+        annotated_rgb = cv2.cvtColor(annotated_bgr_image, cv2.COLOR_BGR2RGB)
+        ros2_image_msg = self.bridge.cv2_to_imgmsg(annotated_rgb, encoding="rgb8")
         ros2_image_msg.header = header
         self.annotated_image_publisher.publish(ros2_image_msg)
 
     def listener_callback(self, msg):
         """Reads image and publishes on /detected_objects and /annotated_image."""
 
-        cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="rgb8")
-        image = cv_image.copy().transpose((2, 0, 1))
-        batch_image = np.expand_dims(image, axis=0)
-        tensor_image = torch.tensor(batch_image/255.0, dtype=torch.float, device=self.device)
+        cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
 
-        # Run model inference, with CUDA error handling to fall back to CPU if needed
-        try:
-            mobilenet_detections = self.model(tensor_image)[0]  # pylint: disable=E1102 disable not callable warning
-        except RuntimeError as exc:
-            # Typical on Jetson / low-memory devices when CUDA allocator fails
-            if 'cuda' in str(exc).lower() or 'CUDACachingAllocator' in str(exc):
-                self.get_logger().warning(
-                    f"CUDA inference failed on device '{self.device}' ({exc}); "
-                    "falling back to CPU for subsequent frames")
-                self.device = 'cpu'
-                self.model = self.model.to(self.device)
-                tensor_image = tensor_image.to(self.device)
-                mobilenet_detections = self.model(tensor_image)[0]
-            else:
-                raise
-        filtered_detections = [Detection(label_id, box, score) for label_id, box, score in
-            zip(mobilenet_detections["labels"],
-            mobilenet_detections["boxes"],
-            mobilenet_detections["scores"]) if score >= self.detection_threshold]
+        # Run YOLO model inference
+        results = self.model(cv_image)[0]
+
+        # Convert YOLO results to Detection tuples (label index, bbox, score)
+        filtered_detections = []
+        if results.boxes is not None and len(results.boxes) > 0:
+            boxes_xyxy = results.boxes.xyxy.cpu().numpy()
+            classes = results.boxes.cls.cpu().numpy()
+            scores = results.boxes.conf.cpu().numpy()
+
+            for box, cls_id, score in zip(boxes_xyxy, classes, scores):
+                if score < self.detection_threshold:
+                    continue
+                label_id = int(cls_id)
+                bbox_tensor = torch.tensor(box, dtype=torch.float32)
+                filtered_detections.append(Detection(label_id, bbox_tensor, float(score)))
         person_detections = [d for d in filtered_detections if d.label == self.person_label_index]
         person_count = len(person_detections)
         detection_array = Detection2DArray()
@@ -176,7 +164,8 @@ class CocoDetectorNode(Node):
                     [self.mobilenet_to_ros2(detection, msg.header) for detection in person_detections]
                 self.detected_persons_publisher.publish(person_detection_array)
         if self.annotated_image_publisher is not None:
-            self.publish_annotated_image(filtered_detections, msg.header, image)
+            annotated_bgr = results.plot()
+            self.publish_annotated_image(annotated_bgr, msg.header)
 
 rclpy.init()
 coco_detector_node = CocoDetectorNode()
