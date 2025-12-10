@@ -59,7 +59,7 @@ class CocoDetectorNode(Node):
             self.create_publisher(Detection2DArray, "detected_objects", 10)
         if self.get_parameter('publish_annotated_image').get_parameter_value().bool_value:
             self.annotated_image_publisher = \
-                self.create_publisher(Image, "annotated_image", 10)
+                self.create_publisher(Image, "annotated_image", image_qos)
         else:
             self.annotated_image_publisher = None
         self.bridge = CvBridge()
@@ -130,7 +130,12 @@ class CocoDetectorNode(Node):
         cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
 
         # Run YOLO model inference
-        results = self.model(cv_image)[0]
+        results = self.model(
+            cv_image,
+            imgsz=256,
+            half=True,
+            classes=[self.person_label_index],  # only detect person class
+        )[0]
 
         # Convert YOLO results to Detection tuples (label index, bbox, score)
         filtered_detections = []
@@ -145,7 +150,7 @@ class CocoDetectorNode(Node):
                 label_id = int(cls_id)
                 bbox_tensor = torch.tensor(box, dtype=torch.float32)
                 filtered_detections.append(Detection(label_id, bbox_tensor, float(score)))
-        person_detections = [d for d in filtered_detections if d.label == self.person_label_index]
+        person_detections = filtered_detections
         person_count = len(person_detections)
         detection_array = Detection2DArray()
         detection_array.header = msg.header
