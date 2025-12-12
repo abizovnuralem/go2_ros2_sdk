@@ -10,7 +10,6 @@ from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
 from launch.launch_description_sources import FrontendLaunchDescriptionSource, PythonLaunchDescriptionSource
-from nav2_common.launch import RewrittenYaml
 
 
 class Go2LaunchConfig:
@@ -295,39 +294,6 @@ class Go2NodeFactory:
         # Check if map file is provided (Empty string means SLAM mode)
         has_map = PythonExpression(["'", map_file, "' != ''"])
 
-        # Handle namespaced parameters for Nav2
-        nav2_params_file = self.config.config_paths['nav2']
-        robot_id = os.getenv('ROBOT_ID')
-        
-        if robot_id:
-            # Map of nodes to rewrite with namespace prefix
-            # This ensures /go2_01/controller_server matches go2_01/controller_server in params
-            root_keys = [
-                'amcl',
-                'bt_navigator',
-                'bt_navigator_navigate_through_poses_rclcpp_node',
-                'bt_navigator_navigate_to_pose_rclcpp_node',
-                'controller_server',
-                'planner_server',
-                'recoveries_server',
-                'behavior_server',
-                'waypoint_follower',
-                'map_server',
-                'map_saver',
-                'local_costmap',
-                'global_costmap',
-                'robot_state_publisher'
-            ]
-            
-            root_keys_to_rewrite = {key: f"{robot_id}/{key}" for key in root_keys}
-            
-            nav2_params_file = RewrittenYaml(
-                source_file=self.config.config_paths['nav2'],
-                root_keys_to_rewrite=root_keys_to_rewrite,
-                param_rewrites={},
-                convert_types=True
-            )
-
         foxglove_launch = os.path.join(
             get_package_share_directory('foxglove_bridge'),
             'launch', 'foxglove_bridge_launch.xml'
@@ -361,7 +327,7 @@ class Go2NodeFactory:
                 launch_arguments={
                     'map': map_file,
                     'use_sim_time': use_sim_time,
-                    'params_file': nav2_params_file,
+                    'params_file': self.config.config_paths['nav2'],
                 }.items(),
             ),
             # Nav2 (Navigation Mode - Always run)
@@ -372,7 +338,7 @@ class Go2NodeFactory:
                 ]),
                 condition=IfCondition(with_nav2),
                 launch_arguments={
-                    'params_file': nav2_params_file,
+                    'params_file': self.config.config_paths['nav2'],
                     'use_sim_time': use_sim_time,
                     'map_subscribe_transient_local': 'true',
                 }.items(),
