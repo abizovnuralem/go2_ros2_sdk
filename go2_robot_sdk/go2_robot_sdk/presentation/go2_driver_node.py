@@ -5,6 +5,7 @@ import asyncio
 import logging
 import os
 from typing import Dict, Any
+import cv2
 
 from aiortc import MediaStreamTrack
 from cv_bridge import CvBridge
@@ -37,15 +38,15 @@ class Go2DriverNode(Node):
     def __init__(self, event_loop=None):
         super().__init__('go2_driver_node')  # Clean architecture main driver
         self.event_loop = event_loop
-        
+
         # Configuration initialization
         self.config = self._setup_configuration()
-        
+
         # Infrastructure initialization
         self.publishers_dict = self._setup_publishers()
         self.broadcaster = TransformBroadcaster(self, qos=QoSProfile(depth=10))
         self.bridge = CvBridge()
-        
+
         # Architecture layers initialization
         self.ros2_publisher = ROS2Publisher(
             node=self,
@@ -53,24 +54,24 @@ class Go2DriverNode(Node):
             publishers=self.publishers_dict,
             broadcaster=self.broadcaster
         )
-        
+
         self.robot_data_service = RobotDataService(self.ros2_publisher)
-        
+
         self.webrtc_adapter = WebRTCAdapter(
             config=self.config,
             on_validated_callback=self._on_robot_validated,
             on_video_frame_callback=self._on_video_frame if self.config.enable_video else None,
             event_loop=self.event_loop
         )
-        
+
         self.robot_control_service = RobotControlService(self.webrtc_adapter)
-        
+
         # Set callback for data
         self.webrtc_adapter.set_data_callback(self._on_robot_data_received)
-        
+
         # Subscribers initialization
         self._setup_subscribers()
-        
+
         # State
         self.joy_state = Joy()
 
@@ -139,7 +140,7 @@ class Go2DriverNode(Node):
         }
 
         num_robots = len(self.config.robot_ip_list)
-        
+
         for i in range(num_robots):
             # Define topics depending on connection mode
             if self.config.conn_mode == 'single':
@@ -198,7 +199,7 @@ class Go2DriverNode(Node):
 
         # Command subscribers
         num_robots = len(self.config.robot_ip_list)
-        
+
         if self.config.conn_mode == 'single':
             self.create_subscription(
                 Twist, 'cmd_vel_out',
@@ -239,7 +240,7 @@ class Go2DriverNode(Node):
                 if p.name == 'obstacle_avoidance':
                     self.get_logger().info(f'New obstacle_avoidance value: {p.value}')
                     self.config.obstacle_avoidance = p.value
-                    
+
                     try:
                         self.robot_control_service.set_obstacle_avoidance(p.value, "0")
                     except Exception as e:
@@ -247,7 +248,7 @@ class Go2DriverNode(Node):
                         result.successful = False
                         result.reason = str(e)
                         break
-                    
+
                     result.successful = True
                     result.reason = 'Updated obstacle_avoidance'
                     break
@@ -255,7 +256,7 @@ class Go2DriverNode(Node):
             self.get_logger().error(f"Error setting parameters: {e}")
             result.successful = False
             result.reason = str(e)
-            
+
         return result
 
     def _on_cmd_vel(self, msg: Twist, robot_id: str) -> None:
@@ -290,7 +291,12 @@ class Go2DriverNode(Node):
         while True:
             try:
                 frame = await track.recv()
-                img = frame.to_ndarray(format="bgr24")
+                
+                # Convert using OpenCV to avoid swscaler warnings and utilize potential optimizations
+                # Convert to YUV420P (I420) first
+                img_yuv = frame.to_ndarray(format="yuv420p")
+                # Convert YUV to BGR using OpenCV
+                img = cv2.cvtColor(img_yuv, cv2.COLOR_YUV2BGR_I420)
 
                 # Create camera data
                 camera_data = CameraData(
@@ -352,9 +358,9 @@ class Go2DriverNode(Node):
 
                 # Process WebRTC commands
                 self.webrtc_adapter.process_webrtc_commands(robot_id)
-                
+
                 await asyncio.sleep(0.1)
-                
+
             except Exception as e:
                 self.get_logger().error(f"Error in control loop for robot {robot_id}: {e}")
                 raise 
