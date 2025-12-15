@@ -264,6 +264,9 @@ class Go2NodeFactory:
                     {'use_sim_time': use_sim_time},
                     self.config.config_paths['twist_mux']
                 ],
+                remappings=[
+                    ('cmd_vel', 'cmd_vel_out'),
+                ],
             ),
         ]
     
