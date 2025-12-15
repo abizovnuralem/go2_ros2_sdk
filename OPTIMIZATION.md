@@ -75,3 +75,42 @@ point_cloud.data = points.tobytes() # Zero-Copy에 가까운 방식
     ```
 2.  **전력 모드:** `sudo nvpmodel -m 0` (15W MAX 성능)
 3.  **Jetson Clocks:** `sudo jetson_clocks` (최대 클럭 고정)
+
+```
+ uv run python benchmark_optimizations.py
+
+=== [1] WebRTC: Case Matrix (A/B/C) ===
++-------------+-------+-----------+---------+---------+-----------+----------+--------+--------+---------+---------+
+| case        | mode  | period_ms | work_ms | maxsize | processed | drop_pct | p50_ms | p95_ms | total_s | peak    |
++-------------+-------+-----------+---------+---------+-----------+----------+--------+--------+---------+---------+
+| A(normal)   | SYNC  | 50        | 12      | -       | 300       | 0.00     | 13.84  | 15.57  | 15.06   | 2.3MB   |
+| A(normal)   | ASYNC | 50        | 12      | 2       | 300       | 0.00     | 38.13  | 40.28  | 15.02   | 250.3KB |
+| B(overload) | SYNC  | 10        | 12      | -       | 300       | 0.00     | 15.03  | 16.10  | 4.45    | 241.7KB |
+| B(overload) | ASYNC | 10        | 12      | 2       | 125       | 58.33    | 40.03  | 47.66  | 3.04    | 401.1KB |
+| C(tuning)   | ASYNC | 10        | 12      | 2       | 126       | 58.00    | 40.03  | 47.66  | 3.04    | 400.9KB |
+| C(tuning)   | ASYNC | 10        | 12      | 4       | 131       | 56.33    | 60.03  | 67.66  | 3.07    | 557.7KB |
+| C(tuning)   | ASYNC | 10        | 12      | 8       | 135       | 55.00    | 100.03 | 107.66 | 3.12    | 870.1KB |
++-------------+-------+-----------+---------+---------+-----------+----------+--------+--------+---------+---------+
+
+=== [2] Memory copy: python loop vs ctypes.memmove ===
+- memcopy size=500000B iters=10
+  before=1.422s peak=489.3KB
+  after =0.002s peak=980.2KB
+  speedup ~ 764.1x
+
+=== [3] LiDAR unique: float-unique vs uint8 early unique ===
+- points=120000 iters=5
+  before=0.462s peak=11.4MB out=109911
+  after =0.389s peak=6.1MB out=109911
+  speedup ~ 1.2x
+
+=== [4] Packing: per-point loop vs tobytes ===
+- points=120000 iters=3 bytes=1920000
+  before=1.024s peak=3.7MB
+  after =0.001s peak=3.7MB
+  speedup ~ 2004.7x
+
+[NOTE]
+- 이 결과는 절대값이 아니라 '상대 비교(전/후) 트렌드'를 보기 위한 것입니다.
+- Jetson Orin에서는 메모리/CPU 특성이 달라서 speedup 배수가 더 커지거나 작아질 수 있습니다.
+```
