@@ -4,7 +4,7 @@ import os
 from typing import List
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.conditions import IfCondition, UnlessCondition
+from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
@@ -290,11 +290,6 @@ class Go2NodeFactory:
         with_slam = LaunchConfiguration('slam', default='true')
         with_nav2 = LaunchConfiguration('nav2', default='true')
         
-        map_file = LaunchConfiguration('map')
-        
-        # Check if map file is provided (Empty string means SLAM mode)
-        has_map = PythonExpression(["'", map_file, "' != ''"])
-
         foxglove_launch = os.path.join(
             get_package_share_directory('foxglove_bridge'),
             'launch', 'foxglove_bridge_launch.xml'
@@ -312,7 +307,7 @@ class Go2NodeFactory:
                     os.path.join(get_package_share_directory('slam_toolbox'),
                                 'launch', 'online_async_launch.py')
                 ]),
-                condition=UnlessCondition(has_map),
+                condition=IfCondition(with_slam),
                 launch_arguments={
                     'slam_params_file': self.config.config_paths['slam'],
                     'use_sim_time': use_sim_time,
@@ -322,26 +317,12 @@ class Go2NodeFactory:
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource([
                     os.path.join(get_package_share_directory('nav2_bringup'),
-                                'launch', 'localization_launch.py')
-                ]),
-                condition=IfCondition(has_map),
-                launch_arguments={
-                    'map': map_file,
-                    'use_sim_time': use_sim_time,
-                    'params_file': self.config.config_paths['nav2'],
-                }.items(),
-            ),
-            # Nav2 (Navigation Mode - Always run)
-            IncludeLaunchDescription(
-                PythonLaunchDescriptionSource([
-                    os.path.join(get_package_share_directory('nav2_bringup'),
                                 'launch', 'navigation_launch.py')
                 ]),
                 condition=IfCondition(with_nav2),
                 launch_arguments={
                     'params_file': self.config.config_paths['nav2'],
                     'use_sim_time': use_sim_time,
-                    'map_subscribe_transient_local': 'true',
                 }.items(),
             ),
         ]
