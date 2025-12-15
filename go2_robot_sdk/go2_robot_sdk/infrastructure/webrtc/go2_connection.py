@@ -13,6 +13,8 @@ import asyncio
 import json
 import logging
 import base64
+import threading
+import queue
 from typing import Callable, Optional, Any, Dict, Union
 from aiortc import RTCPeerConnection, RTCSessionDescription, MediaStreamTrack
 
@@ -73,7 +75,37 @@ class Go2Connection:
         # Add video transceiver if video callback provided
         if self.on_video_frame:
             self.pc.addTransceiver("video", direction="recvonly")
+            
+        # LiDAR Processing Worker
+        # We use a small queue to drop old frames if processing is slow (Head-Drop / Max-Age)
+        self.lidar_queue = queue.Queue(maxsize=2)
+        self.worker_running = True
+        self.worker_thread = threading.Thread(target=self._lidar_worker, daemon=True)
+        self.worker_thread.start()
     
+    def _lidar_worker(self):
+        """Worker thread to decode LiDAR data asynchronously"""
+        while self.worker_running:
+            try:
+                # Wait for data with timeout to allow checking running state
+                message = self.lidar_queue.get(timeout=0.1)
+            except queue.Empty:
+                continue
+            
+            try:
+                # Perform heavy decoding in this separate thread
+                # This prevents blocking the WebRTC data channel callback
+                msgobj = legacy_deal_array_buffer(message, perform_decode=self.decode_lidar)
+                
+                # Forward to callback (ROS publishing)
+                if self.on_message:
+                    self.on_message(message, msgobj, self.robot_num)
+                    
+            except Exception as e:
+                logger.error(f"Error in LiDAR worker: {e}")
+            finally:
+                self.lidar_queue.task_done()
+
     def on_connection_state_change(self) -> None:
         """Handle peer connection state changes"""
         logger.info(f"Connection state is {self.pc.connectionState}")
@@ -95,13 +127,11 @@ class Go2Connection:
     def on_data_channel_message(self, message: Union[str, bytes]) -> None:
         """Handle incoming data channel messages"""
         try:
-            logger.debug(f"Received message: {message}")
+            # logger.debug(f"Received message: {message}")
             
             # Ensure data channel is marked as open
             if self.data_channel.readyState != "open":
                 self.data_channel._setReadyState("open")
-            
-            msgobj = None
             
             if isinstance(message, str):
                 # Text message - likely JSON
@@ -109,16 +139,30 @@ class Go2Connection:
                     msgobj = json.loads(message)
                     if msgobj.get("type") == "validation":
                         self.validate_robot_conn(msgobj)
+                    
+                    # For text messages, process immediately
+                    if self.on_message:
+                        self.on_message(message, msgobj, self.robot_num)
+                        
                 except json.JSONDecodeError:
                     logger.warning("Failed to decode JSON message")
                     
             elif isinstance(message, bytes):
-                # Binary message - likely compressed data
-                msgobj = legacy_deal_array_buffer(message, perform_decode=self.decode_lidar)
-            
-            # Forward message to callback
-            if self.on_message:
-                self.on_message(message, msgobj, self.robot_num)
+                # Binary message - likely compressed LiDAR data
+                # Offload to worker thread to avoid blocking
+                try:
+                    # If queue is full, remove oldest item to make space for newest (Head-Drop)
+                    # This ensures we always process the latest frame and minimize latency
+                    if self.lidar_queue.full():
+                        try:
+                            self.lidar_queue.get_nowait()
+                        except queue.Empty:
+                            pass
+                    
+                    self.lidar_queue.put_nowait(message)
+                except queue.Full:
+                    # Should rare occur due to get_nowait above, but safe to ignore
+                    pass
                 
         except Exception as e:
             logger.error(f"Error processing data channel message: {e}")
@@ -315,6 +359,9 @@ class Go2Connection:
     async def disconnect(self) -> None:
         """Close WebRTC connection and cleanup resources"""
         try:
+            # Stop worker thread
+            self.worker_running = False
+            
             # Close peer connection
             await self.pc.close()
             
@@ -329,6 +376,7 @@ class Go2Connection:
     def __del__(self):
         """Cleanup on object destruction"""
         try:
+            self.worker_running = False
             if hasattr(self, 'http_client'):
                 self.http_client.close()
         except:
