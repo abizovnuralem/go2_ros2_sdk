@@ -17,52 +17,54 @@ from ament_index_python import get_package_share_directory
 
 
 def update_meshes_for_cloud2(
-    positions: list, 
-    uvs: list, 
+    positions: np.ndarray, 
+    uvs: np.ndarray, 
     res: float, 
     origin: list, 
     intense_limiter: float
 ) -> np.ndarray:
     """
     Process LiDAR point cloud data for ROS2 PointCloud2 message.
-    
-    Args:
-        positions: Raw position data from LiDAR
-        uvs: UV coordinate data
-        res: Resolution factor
-        origin: Origin offset coordinates
-        intense_limiter: Intensity threshold filter
-        
-    Returns:
-        Processed point cloud array with x,y,z,intensity
+    Optimized to perform filtering and unique operations on uint8 data before float conversion.
     """
-    # Convert positions to numpy array for vectorized operations
-    position_array = np.array(positions).reshape(-1, 3).astype(np.float32)
+    # Ensure inputs are numpy arrays (they should be from decode, but to be safe)
+    # reshape without copy if possible
+    pos_view = positions.reshape(-1, 3)
+    uv_view = uvs.reshape(-1, 2)
 
-    # Apply resolution scaling
-    position_array *= res
-
-    # Apply origin offset
-    position_array += origin
-
-    # Convert UV coordinates to numpy array
-    uv_array = np.array(uvs, dtype=np.float32).reshape(-1, 2)
-
-    # Calculate intensities from UV values
-    intensities = np.min(uv_array, axis=1, keepdims=True)
-
-    # Combine positions with intensities
-    positions_with_intensities = np.hstack((position_array, intensities))
+    # Calculate intensities from UV values (uint8)
+    # min(u, v)
+    intensities = np.min(uv_view, axis=1, keepdims=True)
 
     # Filter out points below intensity threshold
-    filtered_points = positions_with_intensities[
-        positions_with_intensities[:, -1] > intense_limiter
-    ]
+    # intense_limiter is float, but data is uint8. 
+    mask = intensities.flatten() > intense_limiter
+    
+    # Apply mask - this creates copies but reduces size significantly
+    pos_filtered = pos_view[mask]
+    int_filtered = intensities[mask]
+
+    # Combine positions with intensities for unique check
+    # Stack (N, 3) and (N, 1) -> (N, 4) uint8
+    merged = np.hstack((pos_filtered, int_filtered))
 
     # Remove duplicate points
-    unique_points = np.unique(filtered_points, axis=0)
+    # Running unique on uint8 is much faster than on float32
+    unique_merged = np.unique(merged, axis=0)
     
-    return unique_points
+    if unique_merged.size == 0:
+        return np.empty((0, 4), dtype=np.float32)
+
+    # Convert to float and apply transform only on unique points
+    final_pos = unique_merged[:, :3].astype(np.float32)
+    final_int = unique_merged[:, 3:].astype(np.float32)
+
+    # Apply resolution scaling and origin offset
+    final_pos *= res
+    final_pos += origin
+
+    # Combine back: x, y, z, intensity
+    return np.hstack((final_pos, final_int))
 
 
 class LidarDecoder:
@@ -149,9 +151,10 @@ class LidarDecoder:
             raise ValueError(f"invalid type for getValue: {n}")
 
     def add_value_arr(self, start, value):
-        if start + len(value) <= len(self.HEAPU8):
-            for i, byte in enumerate(value):
-                self.HEAPU8[start + i] = byte
+        # Optimized memory copy using ctypes.memmove
+        # This replaces the slow python loop: for i, byte in enumerate(value): ...
+        if start + len(value) <= self.memory_size:
+            ctypes.memmove(self.buffer_ptr + start, value, len(value))
         else:
             raise ValueError("Not enough space to insert bytes at the specified index.")
 
@@ -180,17 +183,32 @@ class LidarDecoder:
         c = self.get_value(self.pointCount, "i32")
         u = self.get_value(self.faceCount, "i32")
 
-        positions_slice = self.HEAPU8[self.positions:self.positions + u * 12]
-        positions_copy = bytearray(positions_slice)
-        p = np.frombuffer(positions_copy, dtype=np.uint8)
+        # Optimized extraction using ctypes.memmove directly to numpy arrays
+        # This avoids creating large Python lists and bytearrays
+        
+        # Positions: u * 12 bytes
+        pos_size = u * 12
+        p = np.empty(pos_size, dtype=np.uint8)
+        ctypes.memmove(p.ctypes.data, self.buffer_ptr + self.positions, pos_size)
 
-        uvs_slice = self.HEAPU8[self.uvs:self.uvs + u * 8]
-        uvs_copy = bytearray(uvs_slice)
-        r = np.frombuffer(uvs_copy, dtype=np.uint8)
+        # UVs: u * 8 bytes
+        uv_size = u * 8
+        r = np.empty(uv_size, dtype=np.uint8)
+        ctypes.memmove(r.ctypes.data, self.buffer_ptr + self.uvs, uv_size)
 
-        indices_slice = self.HEAPU8[self.indices:self.indices + u * 24]
-        indices_copy = bytearray(indices_slice)
-        o = np.frombuffer(indices_copy, dtype=np.uint32)
+        # Indices: u * 24 bytes
+        ind_size = u * 24
+        # Note: Indices are read as uint8 bytes here, then cast to uint32 later?
+        # Original code: indices_copy = bytearray(slice); o = np.frombuffer(indices_copy, dtype=np.uint32)
+        # So we should read bytes first, then view as uint32?
+        # Or read directly into uint32 array?
+        # 24 bytes per face. If 3 indices (triangles)? 3 * 4 = 12 bytes? 
+        # Or 4 indices (quads)? 4 * 4 = 16 bytes?
+        # The original code reads u*24 bytes.
+        # Let's stick to reading bytes to be safe and consistent with original logic.
+        o_bytes = np.empty(ind_size, dtype=np.uint8)
+        ctypes.memmove(o_bytes.ctypes.data, self.buffer_ptr + self.indices, ind_size)
+        o = np.frombuffer(o_bytes, dtype=np.uint32)
 
         return {
             "point_count": c,
