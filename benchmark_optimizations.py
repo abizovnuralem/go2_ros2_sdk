@@ -34,6 +34,39 @@ def fmt_bytes(n):
         n /= 1024
     return f"{n:.1f}TB"
 
+
+def _fmt_cell(v):
+    if v is None:
+        return "-"
+    if isinstance(v, float):
+        if np.isnan(v):
+            return "nan"
+        return f"{v:.2f}"
+    return str(v)
+
+
+def print_table(headers, rows):
+    cols = [len(h) for h in headers]
+    for r in rows:
+        for i, h in enumerate(headers):
+            cols[i] = max(cols[i], len(_fmt_cell(r.get(h))))
+
+    def line(sep, fill):
+        return sep + sep.join(fill * (w + 2) for w in cols) + sep
+
+    def row(values, sep):
+        parts = []
+        for i, v in enumerate(values):
+            parts.append(" " + _fmt_cell(v).ljust(cols[i]) + " ")
+        return sep + sep.join(parts) + sep
+
+    print(line("+", "-"))
+    print(row(headers, "|"))
+    print(line("+", "-"))
+    for r in rows:
+        print(row([r.get(h) for h in headers], "|"))
+    print(line("+", "-"))
+
 # ---------------------------
 # 1) WebRTC 병목: 동기 처리 vs 비동기+Head-Drop
 # ---------------------------
@@ -306,19 +339,124 @@ def bench_pack(n_points=200_000, iters=5):
         "peak_after": peak_after,
     }
 
+
+def run_webrtc_case(case_name, period_ms, work_ms, maxsize=None, n_msgs=300, msg_bytes=80_000):
+    rows = []
+
+    r_sync, t_sync, p_sync = run_with_tracemalloc(
+        lambda: bench_sync_processing(
+            n_msgs=n_msgs,
+            msg_bytes=msg_bytes,
+            period_ms=period_ms,
+            work_ms=work_ms,
+        )
+    )
+    rows.append({
+        "case": case_name,
+        "mode": "SYNC",
+        "period_ms": period_ms,
+        "work_ms": work_ms,
+        "maxsize": "-",
+        "processed": r_sync.get("n"),
+        "drop_pct": 0.0,
+        "p50_ms": r_sync.get("lat_ms_p50"),
+        "p95_ms": r_sync.get("lat_ms_p95"),
+        "total_s": t_sync,
+        "peak": fmt_bytes(p_sync),
+    })
+
+    r_async, t_async, p_async = run_with_tracemalloc(
+        lambda: bench_async_head_drop(
+            n_msgs=n_msgs,
+            msg_bytes=msg_bytes,
+            period_ms=period_ms,
+            work_ms=work_ms,
+            maxsize=maxsize if maxsize is not None else 2,
+        )
+    )
+    rows.append({
+        "case": case_name,
+        "mode": "ASYNC",
+        "period_ms": period_ms,
+        "work_ms": work_ms,
+        "maxsize": maxsize if maxsize is not None else 2,
+        "processed": r_async.get("processed"),
+        "drop_pct": r_async.get("drop_pct"),
+        "p50_ms": r_async.get("lat_ms_p50"),
+        "p95_ms": r_async.get("lat_ms_p95"),
+        "total_s": t_async,
+        "peak": fmt_bytes(p_async),
+    })
+
+    return rows
+
+
+def run_webrtc_tuning_case(case_name, period_ms, work_ms, maxsizes, n_msgs=300, msg_bytes=80_000):
+    rows = []
+    for m in maxsizes:
+        r_async, t_async, p_async = run_with_tracemalloc(
+            lambda m=m: bench_async_head_drop(
+                n_msgs=n_msgs,
+                msg_bytes=msg_bytes,
+                period_ms=period_ms,
+                work_ms=work_ms,
+                maxsize=m,
+            )
+        )
+        rows.append({
+            "case": case_name,
+            "mode": "ASYNC",
+            "period_ms": period_ms,
+            "work_ms": work_ms,
+            "maxsize": m,
+            "processed": r_async.get("processed"),
+            "drop_pct": r_async.get("drop_pct"),
+            "p50_ms": r_async.get("lat_ms_p50"),
+            "p95_ms": r_async.get("lat_ms_p95"),
+            "total_s": t_async,
+            "peak": fmt_bytes(p_async),
+        })
+    return rows
+
 # ---------------------------
 # Main report
 # ---------------------------
 def main():
-    print("\n=== [1] WebRTC: SYNC vs ASYNC+Head-Drop ===")
-    r1, t1, p1 = run_with_tracemalloc(lambda: bench_sync_processing())
-    r2, t2, p2 = run_with_tracemalloc(lambda: bench_async_head_drop(maxsize=2))
+    print("\n=== [1] WebRTC: Case Matrix (A/B/C) ===")
+    webrtc_rows = []
+    webrtc_rows += run_webrtc_case(
+        case_name="A(normal)",
+        period_ms=50,
+        work_ms=12,
+        maxsize=2,
+    )
+    webrtc_rows += run_webrtc_case(
+        case_name="B(overload)",
+        period_ms=10,
+        work_ms=12,
+        maxsize=2,
+    )
+    webrtc_rows += run_webrtc_tuning_case(
+        case_name="C(tuning)",
+        period_ms=10,
+        work_ms=12,
+        maxsizes=[2, 4, 8],
+    )
 
-    print(f"- SYNC total={t1:.3f}s peak={fmt_bytes(p1)} :: "
-          f"avg={r1['lat_ms_avg']:.2f}ms p95={r1['lat_ms_p95']:.2f}ms")
-    print(f"- ASYNC total={t2:.3f}s peak={fmt_bytes(p2)} :: "
-          f"processed={r2['processed']} drop={r2['drop']}({r2['drop_pct']:.1f}%) "
-          f"avg={r2['lat_ms_avg']:.2f}ms p95={r2['lat_ms_p95']:.2f}ms")
+    headers = [
+        "case",
+        "mode",
+        "period_ms",
+        "work_ms",
+        "maxsize",
+        "processed",
+        "drop_pct",
+        "p50_ms",
+        "p95_ms",
+        "total_s",
+        "peak",
+    ]
+    print_table(headers, webrtc_rows)
 
     print("\n=== [2] Memory copy: python loop vs ctypes.memmove ===")
     mc = bench_memcopy(size_bytes=500_000, iters=10)
