@@ -49,6 +49,15 @@ def on_data_channel_message(self, message):
 - **직접 메모리 할당:** Numpy 배열의 메모리(`tobytes()`)를 `PointCloud2.data`에 직접 대입.
 - 반복문이 완전히 제거되어 **CPU 부하가 거의 0에 수렴**.
 
+### 안정성 보강(추가)
+- **디코딩 실패(None) 방어:** `points`가 `None`이거나 예상 포맷이 아니면 퍼블리시를 건너뜀.
+- **레이아웃 보장:** `np.ascontiguousarray(points, dtype=np.float32)`로
+  - dtype을 `float32`로 강제
+  - `(N, 4)` (x, y, z, intensity) 형태 및 C-contiguous 메모리 레이아웃을 보장
+  - `PointCloud2.data = points.tobytes()`가 기대하는 바이트 레이아웃과 항상 일치하도록 함
+- **`is_dense` 정확도 향상:** NaN 포함 여부에 따라 `point_cloud.is_dense`를 동적으로 설정하여
+  RViz/다운스트림에서 PointCloud2 해석이 더 안전해짐.
+
 ```python
 # 변경된 로직 요약
 point_cloud.data = points.tobytes() # Zero-Copy에 가까운 방식

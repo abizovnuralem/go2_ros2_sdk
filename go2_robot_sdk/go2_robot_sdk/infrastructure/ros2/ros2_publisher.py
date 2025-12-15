@@ -195,7 +195,15 @@ class ROS2Publisher(IRobotDataPublisher):
                 lidar.origin,
                 0
             )
-            
+
+            if points is None:
+                return
+
+            if not isinstance(points, np.ndarray) or points.ndim != 2 or points.shape[1] != 4:
+                return
+
+            points = np.ascontiguousarray(points, dtype=np.float32)
+
             # Optimization: Create PointCloud2 directly from numpy array bytes
             # This avoids the slow point_cloud2.create_cloud iteration
             point_cloud = PointCloud2()
@@ -205,7 +213,7 @@ class ROS2Publisher(IRobotDataPublisher):
             point_cloud.height = 1
             point_cloud.width = points.shape[0]
             point_cloud.is_bigendian = False
-            point_cloud.is_dense = True
+            point_cloud.is_dense = not np.isnan(points).any()
             
             # x, y, z, intensity (float32 each)
             point_cloud.fields = [

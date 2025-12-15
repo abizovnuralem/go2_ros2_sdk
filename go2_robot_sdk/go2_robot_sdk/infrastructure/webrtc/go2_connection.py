@@ -156,6 +156,7 @@ class Go2Connection:
                     if self.lidar_queue.full():
                         try:
                             self.lidar_queue.get_nowait()
+                            self.lidar_queue.task_done()
                         except queue.Empty:
                             pass
                     
