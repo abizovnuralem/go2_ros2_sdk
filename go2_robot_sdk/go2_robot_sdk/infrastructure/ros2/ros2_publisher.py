@@ -195,19 +195,32 @@ class ROS2Publisher(IRobotDataPublisher):
                 lidar.origin,
                 0
             )
-
+            
+            # Optimization: Create PointCloud2 directly from numpy array bytes
+            # This avoids the slow point_cloud2.create_cloud iteration
             point_cloud = PointCloud2()
             point_cloud.header = Header(frame_id="odom")
             point_cloud.header.stamp = self.node.get_clock().now().to_msg()
             
-            fields = [
+            point_cloud.height = 1
+            point_cloud.width = points.shape[0]
+            point_cloud.is_bigendian = False
+            point_cloud.is_dense = True
+            
+            # x, y, z, intensity (float32 each)
+            point_cloud.fields = [
                 PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
                 PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
                 PointField(name='z', offset=8, datatype=PointField.FLOAT32, count=1),
                 PointField(name='intensity', offset=12, datatype=PointField.FLOAT32, count=1),
             ]
             
-            point_cloud = point_cloud2.create_cloud(point_cloud.header, fields, points)
+            point_cloud.point_step = 16  # 4 fields * 4 bytes
+            point_cloud.row_step = point_cloud.point_step * point_cloud.width
+            
+            # Direct byte assignment
+            point_cloud.data = points.tobytes()
+            
             self.publishers['lidar'][robot_idx].publish(point_cloud)
 
         except Exception as e:
