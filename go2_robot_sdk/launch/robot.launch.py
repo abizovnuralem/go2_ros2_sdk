@@ -188,7 +188,13 @@ class Go2NodeFactory:
                 parameters=[{
                     'robot_ip': self.config.robot_ip,
                     'token': self.config.robot_token,
-                    'conn_type': self.config.conn_type
+                    'conn_type': self.config.conn_type,
+                    'decode_lidar': True,
+                    'lidar_publish_rate': 5.0,
+                    'lidar_downsample_step': 4,
+                    'lidar_max_points': 25000,
+                    'lidar_deduplicate': False,
+                    'lidar_intensity_threshold': 0.0,
                 }],
             ),
             # LiDAR processing node (new separate package)
@@ -263,9 +269,6 @@ class Go2NodeFactory:
                 parameters=[
                     {'use_sim_time': use_sim_time},
                     self.config.config_paths['twist_mux']
-                ],
-                remappings=[
-                    ('cmd_vel', 'cmd_vel_out'),
                 ],
             ),
         ]
