@@ -270,19 +270,32 @@ class ROS2Publisher(IRobotDataPublisher):
                         int(getattr(self.config, "lidar_max_points", 0) or 0),
                     )
 
-            point_cloud = PointCloud2()
-            point_cloud.header = Header(frame_id="odom")
-            point_cloud.header.stamp = self.node.get_clock().now().to_msg()
-            
-            fields = [
-                PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
-                PointField(name='y', offset=4, datatype=PointField.FLOAT32, count=1),
-                PointField(name='z', offset=8, datatype=PointField.FLOAT32, count=1),
-                PointField(name='intensity', offset=12, datatype=PointField.FLOAT32, count=1),
-            ]
-            
-            point_cloud = point_cloud2.create_cloud(point_cloud.header, fields, points)
-            self.publishers['lidar'][robot_idx].publish(point_cloud)
+                    point_cloud = PointCloud2()
+                    point_cloud.header = Header(frame_id="odom")
+                    point_cloud.header.stamp = self.node.get_clock().now().to_msg()
+
+                    fields = [
+                        PointField(
+                            name="x", offset=0, datatype=PointField.FLOAT32, count=1
+                        ),
+                        PointField(
+                            name="y", offset=4, datatype=PointField.FLOAT32, count=1
+                        ),
+                        PointField(
+                            name="z", offset=8, datatype=PointField.FLOAT32, count=1
+                        ),
+                        PointField(
+                            name="intensity",
+                            offset=12,
+                            datatype=PointField.FLOAT32,
+                            count=1,
+                        ),
+                    ]
+
+                    point_cloud = point_cloud2.create_cloud(
+                        point_cloud.header, fields, points
+                    )
+                    self.publishers["lidar"][robot_idx].publish(point_cloud)
 
                 finally:
                     self._lidar_queue.task_done()
