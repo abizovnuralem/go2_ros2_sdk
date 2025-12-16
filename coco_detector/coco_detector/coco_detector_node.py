@@ -172,8 +172,18 @@ class CocoDetectorNode(Node):
             annotated_bgr = results.plot()
             self.publish_annotated_image(annotated_bgr, msg.header)
 
-rclpy.init()
-coco_detector_node = CocoDetectorNode()
-rclpy.spin(coco_detector_node)
-coco_detector_node.destroy_node()
-rclpy.shutdown()
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = CocoDetectorNode()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main()
