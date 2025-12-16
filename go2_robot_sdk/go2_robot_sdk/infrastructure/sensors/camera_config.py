@@ -11,7 +11,7 @@ import logging
 import glob
 import os
 import re
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from sensor_msgs.msg import CameraInfo
 from ament_index_python.packages import get_package_share_directory
 
@@ -25,7 +25,7 @@ class CameraConfigLoader:
         self.package_name = package_name
         self._camera_info_cache: Optional[Dict[int, CameraInfo]] = None
     
-    def get_supported_resolutions(self) -> list[int]:
+    def get_supported_resolutions(self) -> List[int]:
         """Get list of supported camera resolutions"""
         try:
             calibration_dir = os.path.join(

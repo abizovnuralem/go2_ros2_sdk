@@ -38,25 +38,15 @@ def update_meshes_for_cloud2(
     Returns:
         Processed point cloud array with x,y,z,intensity
     """
-    # Convert positions to numpy array for vectorized operations
     position_array = np.array(positions).reshape(-1, 3).astype(np.float32)
-
-    # Apply resolution scaling
     position_array *= res
-
-    # Apply origin offset
     position_array += origin
 
-    # Convert UV coordinates to numpy array
     uv_array = np.array(uvs, dtype=np.float32).reshape(-1, 2)
-
-    # Calculate intensities from UV values
     intensities = np.min(uv_array, axis=1, keepdims=True)
 
-    # Combine positions with intensities
     positions_with_intensities = np.hstack((position_array, intensities))
 
-    # Filter out points below intensity threshold
     filtered_points = positions_with_intensities[
         positions_with_intensities[:, -1] > intense_limiter
     ]
@@ -175,9 +165,8 @@ class LidarDecoder:
             raise ValueError(f"invalid type for getValue: {n}")
 
     def add_value_arr(self, start, value):
-        if start + len(value) <= len(self.HEAPU8):
-            for i, byte in enumerate(value):
-                self.HEAPU8[start + i] = byte
+        if start + len(value) <= self.memory_size:
+            ctypes.memmove(self.buffer_ptr + start, value, len(value))
         else:
             raise ValueError("Not enough space to insert bytes at the specified index.")
 

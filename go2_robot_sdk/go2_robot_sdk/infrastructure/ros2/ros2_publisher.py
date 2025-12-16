@@ -275,15 +275,9 @@ class ROS2Publisher(IRobotDataPublisher):
                     point_cloud.header.stamp = self.node.get_clock().now().to_msg()
 
                     fields = [
-                        PointField(
-                            name="x", offset=0, datatype=PointField.FLOAT32, count=1
-                        ),
-                        PointField(
-                            name="y", offset=4, datatype=PointField.FLOAT32, count=1
-                        ),
-                        PointField(
-                            name="z", offset=8, datatype=PointField.FLOAT32, count=1
-                        ),
+                        PointField(name="x", offset=0, datatype=PointField.FLOAT32, count=1),
+                        PointField(name="y", offset=4, datatype=PointField.FLOAT32, count=1),
+                        PointField(name="z", offset=8, datatype=PointField.FLOAT32, count=1),
                         PointField(
                             name="intensity",
                             offset=12,
