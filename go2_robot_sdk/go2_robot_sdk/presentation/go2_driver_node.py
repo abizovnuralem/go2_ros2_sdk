@@ -36,7 +36,7 @@ class Go2DriverNode(Node):
     """Main Go2 driver node - entry point to the application"""
 
     def __init__(self, event_loop=None):
-        super().__init__('go2_driver_node')  # Clean architecture main driver
+        super().__init__("go2_driver_node")  # Clean architecture main driver
         self.event_loop = event_loop
 
         # Configuration initialization
@@ -52,7 +52,7 @@ class Go2DriverNode(Node):
             node=self,
             config=self.config,
             publishers=self.publishers_dict,
-            broadcaster=self.broadcaster
+            broadcaster=self.broadcaster,
         )
 
         self.robot_data_service = RobotDataService(self.ros2_publisher)
@@ -60,8 +60,10 @@ class Go2DriverNode(Node):
         self.webrtc_adapter = WebRTCAdapter(
             config=self.config,
             on_validated_callback=self._on_robot_validated,
-            on_video_frame_callback=self._on_video_frame if self.config.enable_video else None,
-            event_loop=self.event_loop
+            on_video_frame_callback=(
+                self._on_video_frame if self.config.enable_video else None
+            ),
+            event_loop=self.event_loop,
         )
 
         self.robot_control_service = RobotControlService(self.webrtc_adapter)
@@ -77,35 +79,65 @@ class Go2DriverNode(Node):
 
     def _setup_configuration(self) -> RobotConfig:
         """Configuration setup"""
-        robot_ip = os.getenv('ROBOT_IP', os.getenv('GO2_IP', ''))
-        token = os.getenv('ROBOT_TOKEN', os.getenv('GO2_TOKEN', ''))
-        conn_type = os.getenv('CONN_TYPE', '')
+        robot_ip = os.getenv("ROBOT_IP", os.getenv("GO2_IP", ""))
+        token = os.getenv("ROBOT_TOKEN", os.getenv("GO2_TOKEN", ""))
+        conn_type = os.getenv("CONN_TYPE", "")
 
         # Declare parameters
         self.declare_parameters(
-            namespace='',
+            namespace="",
             parameters=[
-                ('robot_ip', robot_ip),
-                ('token', token),
-                ('conn_type', conn_type),
-                ('enable_video', True),
-                ('decode_lidar', True),
-                ('publish_raw_voxel', False),
-                ('obstacle_avoidance', False),
-            ]
+                ("robot_ip", robot_ip),
+                ("token", token),
+                ("conn_type", conn_type),
+                ("enable_video", True),
+                ("decode_lidar", True),
+                ("lidar_publish_rate", 5.0),
+                ("lidar_downsample_step", 4),
+                ("lidar_max_points", 25000),
+                ("lidar_deduplicate", False),
+                ("lidar_intensity_threshold", 0.0),
+                ("publish_raw_voxel", False),
+                ("obstacle_avoidance", False),
+            ],
         )
 
         self.add_on_set_parameters_callback(self._on_set_parameters)
 
         # Get parameter values
         config = RobotConfig.from_params(
-            robot_ip=self.get_parameter('robot_ip').get_parameter_value().string_value,
-            token=self.get_parameter('token').get_parameter_value().string_value,
-            conn_type=self.get_parameter('conn_type').get_parameter_value().string_value,
-            enable_video=self.get_parameter('enable_video').get_parameter_value().bool_value,
-            decode_lidar=self.get_parameter('decode_lidar').get_parameter_value().bool_value,
-            publish_raw_voxel=self.get_parameter('publish_raw_voxel').get_parameter_value().bool_value,
-            obstacle_avoidance=self.get_parameter('obstacle_avoidance').get_parameter_value().bool_value
+            robot_ip=self.get_parameter("robot_ip").get_parameter_value().string_value,
+            token=self.get_parameter("token").get_parameter_value().string_value,
+            conn_type=self.get_parameter("conn_type")
+            .get_parameter_value()
+            .string_value,
+            enable_video=self.get_parameter("enable_video")
+            .get_parameter_value()
+            .bool_value,
+            decode_lidar=self.get_parameter("decode_lidar")
+            .get_parameter_value()
+            .bool_value,
+            lidar_publish_rate=self.get_parameter("lidar_publish_rate")
+            .get_parameter_value()
+            .double_value,
+            lidar_downsample_step=self.get_parameter("lidar_downsample_step")
+            .get_parameter_value()
+            .integer_value,
+            lidar_max_points=self.get_parameter("lidar_max_points")
+            .get_parameter_value()
+            .integer_value,
+            lidar_deduplicate=self.get_parameter("lidar_deduplicate")
+            .get_parameter_value()
+            .bool_value,
+            lidar_intensity_threshold=self.get_parameter("lidar_intensity_threshold")
+            .get_parameter_value()
+            .double_value,
+            publish_raw_voxel=self.get_parameter("publish_raw_voxel")
+            .get_parameter_value()
+            .bool_value,
+            obstacle_avoidance=self.get_parameter("obstacle_avoidance")
+            .get_parameter_value()
+            .bool_value,
         )
 
         # Log configuration
@@ -114,6 +146,13 @@ class Go2DriverNode(Node):
         self.get_logger().info(f"Connection mode: {config.conn_mode}")
         self.get_logger().info(f"Enable video: {config.enable_video}")
         self.get_logger().info(f"Decode lidar: {config.decode_lidar}")
+        self.get_logger().info(f"Lidar publish rate: {config.lidar_publish_rate}")
+        self.get_logger().info(f"Lidar downsample step: {config.lidar_downsample_step}")
+        self.get_logger().info(f"Lidar max points: {config.lidar_max_points}")
+        self.get_logger().info(f"Lidar deduplicate: {config.lidar_deduplicate}")
+        self.get_logger().info(
+            f"Lidar intensity threshold: {config.lidar_intensity_threshold}"
+        )
         self.get_logger().info(f"Publish raw voxel: {config.publish_raw_voxel}")
         self.get_logger().info(f"Obstacle avoidance: {config.obstacle_avoidance}")
 
@@ -125,71 +164,88 @@ class Go2DriverNode(Node):
         best_effort_qos = QoSProfile(
             reliability=QoSReliabilityPolicy.BEST_EFFORT,
             history=QoSHistoryPolicy.KEEP_LAST,
-            depth=1
+            depth=1,
         )
 
         publishers = {
-            'joint_state': [],
-            'robot_state': [],
-            'lidar': [],
-            'odometry': [],
-            'imu': [],
-            'camera': [],
-            'camera_info': [],
-            'voxel': []
+            "joint_state": [],
+            "robot_state": [],
+            "lidar": [],
+            "odometry": [],
+            "imu": [],
+            "camera": [],
+            "camera_info": [],
+            "voxel": [],
         }
 
         num_robots = len(self.config.robot_ip_list)
 
         for i in range(num_robots):
             # Define topics depending on connection mode
-            if self.config.conn_mode == 'single':
-                joint_topic = 'joint_states'
-                robot_state_topic = 'go2_states'
-                lidar_topic = 'point_cloud2'
-                odom_topic = 'odom'
-                imu_topic = 'imu'
-                camera_topic = 'camera/image_raw'
-                camera_info_topic = 'camera/camera_info'
-                voxel_topic = '/utlidar/voxel_map_compressed'
+            if self.config.conn_mode == "single":
+                joint_topic = "joint_states"
+                robot_state_topic = "go2_states"
+                lidar_topic = "point_cloud2"
+                odom_topic = "odom"
+                imu_topic = "imu"
+                camera_topic = "camera/image_raw"
+                camera_info_topic = "camera/camera_info"
+                voxel_topic = "/utlidar/voxel_map_compressed"
             else:
-                prefix = f'robot{i}'
-                joint_topic = f'{prefix}/joint_states'
-                robot_state_topic = f'{prefix}/go2_states'
-                lidar_topic = f'{prefix}/point_cloud2'
-                odom_topic = f'{prefix}/odom'
-                imu_topic = f'{prefix}/imu'
-                camera_topic = f'{prefix}/camera/image_raw'
-                camera_info_topic = f'{prefix}/camera/camera_info'
-                voxel_topic = f'{prefix}/utlidar/voxel_map_compressed'
+                prefix = f"robot{i}"
+                joint_topic = f"{prefix}/joint_states"
+                robot_state_topic = f"{prefix}/go2_states"
+                lidar_topic = f"{prefix}/point_cloud2"
+                odom_topic = f"{prefix}/odom"
+                imu_topic = f"{prefix}/imu"
+                camera_topic = f"{prefix}/camera/image_raw"
+                camera_info_topic = f"{prefix}/camera/camera_info"
+                voxel_topic = f"{prefix}/utlidar/voxel_map_compressed"
 
             # Create publishers
-            publishers['joint_state'].append(
-                self.create_publisher(JointState, joint_topic, qos_profile))
-            publishers['robot_state'].append(
-                self.create_publisher(Go2State, robot_state_topic, qos_profile))
-            publishers['lidar'].append(
+            publishers["joint_state"].append(
+                self.create_publisher(JointState, joint_topic, qos_profile)
+            )
+            publishers["robot_state"].append(
+                self.create_publisher(Go2State, robot_state_topic, qos_profile)
+            )
+            publishers["lidar"].append(
                 self.create_publisher(
-                    PointCloud2, lidar_topic, best_effort_qos,
-                    qos_overriding_options=QoSOverridingOptions.with_default_policies()))
-            publishers['odometry'].append(
-                self.create_publisher(Odometry, odom_topic, qos_profile))
-            publishers['imu'].append(
-                self.create_publisher(IMU, imu_topic, qos_profile))
+                    PointCloud2,
+                    lidar_topic,
+                    best_effort_qos,
+                    qos_overriding_options=QoSOverridingOptions.with_default_policies(),
+                )
+            )
+            publishers["odometry"].append(
+                self.create_publisher(Odometry, odom_topic, qos_profile)
+            )
+            publishers["imu"].append(self.create_publisher(IMU, imu_topic, qos_profile))
 
             if self.config.enable_video:
-                publishers['camera'].append(
+                publishers["camera"].append(
                     self.create_publisher(
-                        Image, camera_topic, best_effort_qos,
-                        qos_overriding_options=QoSOverridingOptions.with_default_policies()))
-                publishers['camera_info'].append(
+                        Image,
+                        camera_topic,
+                        best_effort_qos,
+                        qos_overriding_options=QoSOverridingOptions.with_default_policies(),
+                    )
+                )
+                publishers["camera_info"].append(
                     self.create_publisher(
-                        CameraInfo, camera_info_topic, best_effort_qos,
-                        qos_overriding_options=QoSOverridingOptions.with_default_policies()))
+                        CameraInfo,
+                        camera_info_topic,
+                        best_effort_qos,
+                        qos_overriding_options=QoSOverridingOptions.with_default_policies(),
+                    )
+                )
 
             if self.config.publish_raw_voxel:
-                publishers['voxel'].append(
-                    self.create_publisher(VoxelMapCompressed, voxel_topic, best_effort_qos))
+                publishers["voxel"].append(
+                    self.create_publisher(
+                        VoxelMapCompressed, voxel_topic, best_effort_qos
+                    )
+                )
 
         return publishers
 
@@ -200,36 +256,51 @@ class Go2DriverNode(Node):
         # Command subscribers
         num_robots = len(self.config.robot_ip_list)
 
-        if self.config.conn_mode == 'single':
+        if self.config.conn_mode == "single":
             self.create_subscription(
-                Twist, 'cmd_vel_out',
-                lambda msg: self._on_cmd_vel(msg, "0"), qos_profile)
+                Twist,
+                "cmd_vel_out",
+                lambda msg: self._on_cmd_vel(msg, "0"),
+                qos_profile,
+            )
             self.create_subscription(
-                WebRtcReq, 'webrtc_req',
-                lambda msg: self._on_webrtc_req(msg, "0"), qos_profile)
+                WebRtcReq,
+                "webrtc_req",
+                lambda msg: self._on_webrtc_req(msg, "0"),
+                qos_profile,
+            )
         else:
             for i in range(num_robots):
                 self.create_subscription(
-                    Twist, f'robot{i}/cmd_vel_out',
-                    lambda msg, robot_id=str(i): self._on_cmd_vel(msg, robot_id), qos_profile)
+                    Twist,
+                    f"robot{i}/cmd_vel_out",
+                    lambda msg, robot_id=str(i): self._on_cmd_vel(msg, robot_id),
+                    qos_profile,
+                )
                 self.create_subscription(
-                    WebRtcReq, f'robot{i}/webrtc_req',
-                    lambda msg, robot_id=str(i): self._on_webrtc_req(msg, robot_id), qos_profile)
+                    WebRtcReq,
+                    f"robot{i}/webrtc_req",
+                    lambda msg, robot_id=str(i): self._on_webrtc_req(msg, robot_id),
+                    qos_profile,
+                )
 
         # Joystick subscriber
-        self.create_subscription(Joy, 'joy', self._on_joy, qos_profile)
+        self.create_subscription(Joy, "joy", self._on_joy, qos_profile)
 
         # CycloneDDS support
-        if self.config.conn_type == 'cyclonedds':
+        if self.config.conn_type == "cyclonedds":
             self.create_subscription(
-                LowState, 'lowstate',
-                self._on_cyclonedds_low_state, qos_profile)
+                LowState, "lowstate", self._on_cyclonedds_low_state, qos_profile
+            )
             self.create_subscription(
-                PoseStamped, '/utlidar/robot_pose',
-                self._on_cyclonedds_pose, qos_profile)
+                PoseStamped,
+                "/utlidar/robot_pose",
+                self._on_cyclonedds_pose,
+                qos_profile,
+            )
             self.create_subscription(
-                PointCloud2, '/utlidar/cloud',
-                self._on_cyclonedds_lidar, qos_profile)
+                PointCloud2, "/utlidar/cloud", self._on_cyclonedds_lidar, qos_profile
+            )
 
     def _on_set_parameters(self, params) -> SetParametersResult:
         """Callback for parameter changes"""
@@ -237,20 +308,22 @@ class Go2DriverNode(Node):
 
         try:
             for p in params:
-                if p.name == 'obstacle_avoidance':
-                    self.get_logger().info(f'New obstacle_avoidance value: {p.value}')
+                if p.name == "obstacle_avoidance":
+                    self.get_logger().info(f"New obstacle_avoidance value: {p.value}")
                     self.config.obstacle_avoidance = p.value
 
                     try:
                         self.robot_control_service.set_obstacle_avoidance(p.value, "0")
                     except Exception as e:
-                        self.get_logger().error(f"Failed to set obstacle avoidance: {e}")
+                        self.get_logger().error(
+                            f"Failed to set obstacle avoidance: {e}"
+                        )
                         result.successful = False
                         result.reason = str(e)
                         break
 
                     result.successful = True
-                    result.reason = 'Updated obstacle_avoidance'
+                    result.reason = "Updated obstacle_avoidance"
                     break
         except Exception as e:
             self.get_logger().error(f"Error setting parameters: {e}")
@@ -262,8 +335,11 @@ class Go2DriverNode(Node):
     def _on_cmd_vel(self, msg: Twist, robot_id: str) -> None:
         """Callback for movement commands"""
         self.robot_control_service.handle_cmd_vel(
-            msg.linear.x, msg.linear.y, msg.angular.z, 
-            robot_id, self.config.obstacle_avoidance
+            msg.linear.x,
+            msg.linear.y,
+            msg.angular.z,
+            robot_id,
+            self.config.obstacle_avoidance,
         )
 
     def _on_webrtc_req(self, msg: WebRtcReq, robot_id: str) -> None:
@@ -291,7 +367,7 @@ class Go2DriverNode(Node):
         while True:
             try:
                 frame = await track.recv()
-                
+
                 # Convert using OpenCV to avoid swscaler warnings and utilize potential optimizations
                 # Convert to YUV420P (I420) first
                 img_yuv = frame.to_ndarray(format="yuv420p")
@@ -300,16 +376,11 @@ class Go2DriverNode(Node):
 
                 # Create camera data
                 camera_data = CameraData(
-                    image=img,
-                    height=img.shape[0],
-                    width=img.shape[1],
-                    encoding="bgr8"
+                    image=img, height=img.shape[0], width=img.shape[1], encoding="bgr8"
                 )
 
                 robot_data = RobotData(
-                    robot_id=robot_id,
-                    timestamp=0.0,
-                    camera_data=camera_data
+                    robot_id=robot_id, timestamp=0.0, camera_data=camera_data
                 )
 
                 # Publish via ROS2Publisher
@@ -338,7 +409,7 @@ class Go2DriverNode(Node):
 
     async def connect_robots(self) -> None:
         """Connect to robots"""
-        if self.config.conn_type == 'webrtc':
+        if self.config.conn_type == "webrtc":
             for i, robot_ip in enumerate(self.config.robot_ip_list):
                 try:
                     await self.webrtc_adapter.connect(str(i))
@@ -362,5 +433,7 @@ class Go2DriverNode(Node):
                 await asyncio.sleep(0.1)
 
             except Exception as e:
-                self.get_logger().error(f"Error in control loop for robot {robot_id}: {e}")
-                raise 
+                self.get_logger().error(
+                    f"Error in control loop for robot {robot_id}: {e}"
+                )
+                raise
