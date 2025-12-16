@@ -165,9 +165,8 @@ class LidarDecoder:
             raise ValueError(f"invalid type for getValue: {n}")
 
     def add_value_arr(self, start, value):
-        if start + len(value) <= len(self.HEAPU8):
-            for i, byte in enumerate(value):
-                self.HEAPU8[start + i] = byte
+        if start + len(value) <= self.memory_size:
+            ctypes.memmove(self.buffer_ptr + start, value, len(value))
         else:
             raise ValueError("Not enough space to insert bytes at the specified index.")
 
