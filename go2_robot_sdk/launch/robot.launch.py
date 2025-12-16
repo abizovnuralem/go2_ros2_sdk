@@ -8,6 +8,7 @@ from launch import LaunchDescription
 from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
 from launch.launch_description_sources import FrontendLaunchDescriptionSource, PythonLaunchDescriptionSource
 
@@ -86,6 +87,11 @@ class Go2NodeFactory:
             DeclareLaunchArgument('foxglove', default_value='true', description='Launch Foxglove Bridge'),
             DeclareLaunchArgument('joystick', default_value='true', description='Launch joystick'),
             DeclareLaunchArgument('teleop', default_value='true', description='Launch teleoperation'),
+            DeclareLaunchArgument('lidar_publish_rate', default_value='5.0', description='LiDAR publish rate (Hz)'),
+            DeclareLaunchArgument('lidar_downsample_step', default_value='4', description='LiDAR downsample step'),
+            DeclareLaunchArgument('lidar_max_points', default_value='25000', description='LiDAR max points'),
+            DeclareLaunchArgument('lidar_deduplicate', default_value='false', description='Deduplicate LiDAR points'),
+            DeclareLaunchArgument('lidar_intensity_threshold', default_value='0.0', description='LiDAR intensity threshold'),
         ]
     
     def create_robot_state_nodes(self) -> List[Node]:
@@ -178,6 +184,14 @@ class Go2NodeFactory:
     
     def create_core_nodes(self) -> List[Node]:
         """Create core Go2 robot nodes"""
+        lidar_publish_rate = ParameterValue(LaunchConfiguration('lidar_publish_rate'), value_type=float)
+        lidar_downsample_step = ParameterValue(LaunchConfiguration('lidar_downsample_step'), value_type=int)
+        lidar_max_points = ParameterValue(LaunchConfiguration('lidar_max_points'), value_type=int)
+        lidar_deduplicate = ParameterValue(LaunchConfiguration('lidar_deduplicate'), value_type=bool)
+        lidar_intensity_threshold = ParameterValue(
+            LaunchConfiguration('lidar_intensity_threshold'), value_type=float
+        )
+
         return [
             # Main robot driver (clean architecture)
             Node(
@@ -189,12 +203,11 @@ class Go2NodeFactory:
                     'robot_ip': self.config.robot_ip,
                     'token': self.config.robot_token,
                     'conn_type': self.config.conn_type,
-                    'decode_lidar': True,
-                    'lidar_publish_rate': 5.0,
-                    'lidar_downsample_step': 4,
-                    'lidar_max_points': 25000,
-                    'lidar_deduplicate': False,
-                    'lidar_intensity_threshold': 0.0,
+                    'lidar_publish_rate': lidar_publish_rate,
+                    'lidar_downsample_step': lidar_downsample_step,
+                    'lidar_max_points': lidar_max_points,
+                    'lidar_deduplicate': lidar_deduplicate,
+                    'lidar_intensity_threshold': lidar_intensity_threshold,
                 }],
             ),
             # LiDAR processing node (new separate package)
