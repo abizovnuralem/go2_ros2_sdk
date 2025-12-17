@@ -256,24 +256,30 @@ global_costmap:
       global_frame: map
       robot_base_frame: base_link
       use_sim_time: False
-      resolution: 0.2
-      track_unknown_space: False
+      resolution: 0.05
+      
+      # [수정] Unknown Space 추적 (False -> True)
+      # 원본: False (Unknown을 Free로 보거나 닫아버림)
+      # 수정: True (Planner가 Unknown 영역을 인식하고 allow_unknown: true 옵션으로 지나가게 함)
+      track_unknown_space: True
+      
       static_map: True
-      width: 500
-      height: 500
-      origin_x: -250.0 
-      origin_y: -250.0
       footprint: "[ [0.360, 0.200], [0.360, -0.200], [-0.450, -0.200], [-0.450, 0.200] ]"
-      plugins: ["static_layer", "voxel_layer", "inflation_layer"]
+      
+      # [수정] Obstacle Layer 추가
+      # 원본: ["static_layer", "voxel_layer", "inflation_layer"]
+      # 수정: Voxel(3D) 대신 Obstacle(2D) 레이어 사용 권장 (Jetson 부하 감소 및 설정 단순화)
+      #      반드시 센서 데이터(obstacle_layer)가 있어야 맵에 없는 장애물을 피해서 경로를 생성함.
+      plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
 
       static_layer:
         plugin: "nav2_costmap_2d::StaticLayer"
         map_subscribe_transient_local: True
 
-      voxel_layer:
-        plugin: "nav2_costmap_2d::VoxelLayer"
+      # [추가된 블록] 동적 장애물 반영을 위해 추가
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: True
-        publish_voxel_map: True
         observation_sources: scan
         scan:
           topic: scan
@@ -286,10 +292,17 @@ global_costmap:
           obstacle_max_range: 2.5
           obstacle_min_range: 0.0
 
+      # [주석 처리된 원본] Voxel Layer
+      # 3D 센서를 쓴다면 이걸 써야 하지만, 2D Scan만 쓴다면 Obstacle Layer가 훨씬 가볍고 효율적임.
+      # voxel_layer:
+      #   plugin: "nav2_costmap_2d::VoxelLayer"
+      #   enabled: True
+      #   ...
+
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 1.0
-        inflation_radius: 0.25
+        cost_scaling_factor: 3.0 # 원본 1.0 -> 3.0 (좁은 곳 통과 용이)
+        inflation_radius: 0.55   # 원본 0.25 -> 0.55 (벽에서 안전거리 확보)
 
 map_server:
   ros__parameters:
