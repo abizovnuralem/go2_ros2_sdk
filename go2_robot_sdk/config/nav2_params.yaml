@@ -211,21 +211,26 @@ controller_server:
 local_costmap:
   local_costmap:
     ros__parameters:
-      update_frequency: 3.0
-      publish_frequency: 3.0
+      # [수정] 업데이트 빈도 (3.0 -> 5.0 Hz)
+      update_frequency: 5.0
+      publish_frequency: 2.0
       global_frame: odom
       robot_base_frame: base_link
       use_sim_time: False
       rolling_window: true
-      width: 6
-      height: 6
+      width: 5 # 원본 6 -> 5 (연산량 최적화)
+      height: 5
       resolution: 0.05
       footprint: "[ [0.360, 0.200], [0.360, -0.200], [-0.450, -0.200], [-0.450, 0.200] ]"
-      plugins: ["static_layer", "voxel_layer", "inflation_layer"]
+      
+      # [수정] static_layer 제거
+      # 로컬 맵은 센서 데이터(Voxel/Obstacle)만 보는 것이 회색 영역 주행에 유리함
+      plugins: ["voxel_layer", "inflation_layer"]
 
-      static_layer:
-        plugin: "nav2_costmap_2d::StaticLayer"
-        map_subscribe_transient_local: True
+      # [주석 처리된 원본]
+      # static_layer:
+      #   plugin: "nav2_costmap_2d::StaticLayer"
+      #   map_subscribe_transient_local: True
 
       voxel_layer:
         plugin: "nav2_costmap_2d::VoxelLayer"
@@ -245,8 +250,8 @@ local_costmap:
 
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 1.0
-        inflation_radius: 0.25
+        cost_scaling_factor: 3.0
+        inflation_radius: 0.45
 
 global_costmap:
   global_costmap:
