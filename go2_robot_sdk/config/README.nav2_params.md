@@ -10,19 +10,54 @@
 2. “왜”는 가능한 한 관찰된 증상(사용자 발화/로그/영상)으로 적습니다.
 3. “기대결과”는 측정 가능한 형태(RViz에서 pose jump 감소, CPU 사용률, 수렴 속도 등)로 적습니다.
 
-### 변경 로그 테이블
+### 변경 로그
 
-| 날짜 | 컴포넌트 | 파라미터(경로) | Before | After | 변경 이유(관찰/사용자 발화) | 예상 기대결과 | 검증 방법(체크리스트) | 리스크/트레이드오프 | 롤백 |
-|---|---|---|---|---|---|---|---|---|---|
-| 2025-12-17 | AMCL | `amcl.ros__parameters.alpha1~4` | `0.2` | `0.05` | 특징 없는 정사각형 맵에서 corner 대칭으로 라이다 매칭이 헷갈려 **pose가 다른 corner로 점프**하는 현상 | 오도메트리를 더 신뢰해서 **대칭 환경에서 순간이동/튐 감소** | RViz에서 `amcl_pose` / `tf(map->odom)` 점프 여부 확인, 같은 루트로 반복 주행 시 재현성 확인 | 라이다 기반 보정이 약해져 장거리 누적 drift가 커질 수 있음(환경에 따라) | `alpha1~4`를 `0.2`로 복귀 |
-| 2025-12-17 | AMCL | `amcl.ros__parameters.max_particles` | `2000` | `3000` | 대칭 환경에서 후보 위치가 여러 곳으로 분산되므로 particle 다양성 확보 필요 | ambiguity 상황에서 **진짜 위치 particle 생존 확률 증가**, 튐 감소 | CPU 사용률/AMCL 업데이트 주기 확인, pose 튐 빈도 비교 | CPU/메모리 사용 증가(저사양에서는 latency 증가 가능) | `max_particles: 2000`으로 복귀 |
-| 2025-12-17 | AMCL | `amcl.ros__parameters.update_min_d`, `update_min_a` | (기록 필요) | `0.2`, `0.2` | 너무 자주 업데이트하면 노이즈가 누적되어 jitter/맵 회전처럼 보이는 현상 유발 가능 | **정지/미세 움직임에서 jitter 감소**, 안정적인 pose | 제자리/저속 이동에서 pose 흔들림 감소 확인, tracking 안정성 확인 | 반응성이 떨어져 빠른 움직임에서 pose 갱신이 늦어 보일 수 있음 | 이전 값으로 복귀(변경 전 값을 반드시 기록) |
+#### AMCL (Localization)
 
-### 변경 기록 템플릿 (새 변경 추가 시 복붙)
+##### AMCL 튜닝 전(원본) 값 요약
 
-| 날짜 | 컴포넌트 | 파라미터(경로) | Before | After | 변경 이유(관찰/사용자 발화) | 예상 기대결과 | 검증 방법(체크리스트) | 리스크/트레이드오프 | 롤백 |
-|---|---|---|---|---|---|---|---|---|---|
-| YYYY-MM-DD | AMCL/Planner/Controller/Costmap/... | `nav2_params.yaml` 내 경로 |  |  |  |  |  |  |  |
+```yaml
+amcl:
+  ros__parameters:
+    alpha1: 0.2
+    alpha2: 0.2
+    alpha3: 0.2
+    alpha4: 0.2
+    alpha5: 0.2
+    max_particles: 2000
+    update_min_a: 0.2
+    update_min_d: 0.25
+```
+
+##### 변경 로그 테이블 (AMCL)
+
+| 날짜 | 파라미터(경로) | Before | After | 변경 이유(관찰/사용자 발화) | 예상 기대결과 | 검증 방법(체크리스트) | 리스크/트레이드오프 | 롤백 |
+|---|---|---|---|---|---|---|---|---|
+| 2025-12-17 | `amcl.ros__parameters.alpha1~4` | `0.2` | `0.05` | 특징 없는 정사각형 맵에서 corner 대칭으로 라이다 매칭이 헷갈려 **pose가 다른 corner로 점프**하는 현상 | 오도메트리를 더 신뢰해서 **대칭 환경에서 순간이동/튐 감소** | RViz에서 `amcl_pose` / `tf(map->odom)` 점프 여부 확인, 같은 루트로 반복 주행 시 재현성 확인 | 라이다 기반 보정이 약해져 장거리 누적 drift가 커질 수 있음(환경에 따라) | `alpha1~4`를 `0.2`로 복귀 |
+| 2025-12-17 | `amcl.ros__parameters.max_particles` | `2000` | `3000` | 대칭 환경에서 후보 위치가 여러 곳으로 분산되므로 particle 다양성 확보 필요 | ambiguity 상황에서 **진짜 위치 particle 생존 확률 증가**, 튐 감소 | CPU 사용률/AMCL 업데이트 주기 확인, pose 튐 빈도 비교 | CPU/메모리 사용 증가(저사양에서는 latency 증가 가능) | `max_particles: 2000`으로 복귀 |
+| 2025-12-17 | `amcl.ros__parameters.update_min_d`, `update_min_a` | `0.25`, `0.2` | `0.2`, `0.2` | 너무 자주 업데이트하면 노이즈가 누적되어 jitter/맵 회전처럼 보이는 현상 유발 가능 | **정지/미세 움직임에서 jitter 감소**, 안정적인 pose | 제자리/저속 이동에서 pose 흔들림 감소 확인, tracking 안정성 확인 | 반응성이 떨어져 빠른 움직임에서 pose 갱신이 늦어 보일 수 있음 | `update_min_d: 0.25`, `update_min_a: 0.2`로 복귀 |
+
+##### 변경 기록 템플릿 (AMCL)
+
+| 날짜 | 파라미터(경로) | Before | After | 변경 이유(관찰/사용자 발화) | 예상 기대결과 | 검증 방법(체크리스트) | 리스크/트레이드오프 | 롤백 |
+|---|---|---|---|---|---|---|---|---|
+| YYYY-MM-DD | `amcl.ros__parameters.<param>` |  |  |  |  |  |  |  |
+
+#### Planner Server (Global Planner)
+
+##### 변경 로그 테이블 (Planner Server)
+
+| 날짜 | 파라미터(경로) | Before | After | 변경 이유(관찰/사용자 발화) | 예상 기대결과 | 검증 방법(체크리스트) | 리스크/트레이드오프 | 롤백 |
+|---|---|---|---|---|---|---|---|---|
+| 2025-12-17 | `planner_server.ros__parameters.GridBased.plugin` | `nav2_smac_planner/SmacPlannerHybrid` | `nav2_navfn_planner/NavFnPlanner` | Go2(제자리 회전 가능) + Jetson(연산 자원 제한) 환경에서, Ackermann/차량형 전제의 Hybrid planner는 과하고 무거움. 단순/대칭 맵에서도 빠르게 안정적 경로가 필요 | planner CPU 부담 감소, 기본 그리드 기반 최단 경로로 **경로 생성 안정화/응답성 개선** | `ComputePathToPose` 응답 시간 비교, CPU 사용률 확인, 동일 start/goal 반복 시 경로 일관성 확인 | NavFn은 기본 2D 그리드 플래너라 복잡한 모션 제약(차량형, 최소 회전 반경 등) 반영이 약함 | `SmacPlannerHybrid` 설정 블록으로 복귀 |
+| 2025-12-17 | `planner_server.ros__parameters.GridBased.allow_unknown` / `use_astar` / `tolerance` | `false` / (N/A) / `3.0` | `true` / `false(Dijkstra)` / `0.5` | “회색(Unknown) 영역도 지나가고 싶다” 요구 반영 + 단순/대칭 맵에서 경로가 이상해 보이는 문제를 줄이기 위해, Unknown 통과 허용 및 Dijkstra로 최단경로 보장, 목표점 주변 여유로 실패율 감소 | Unknown 영역 경로 생성 가능(조건 충족 시), 대칭 구조에서 경로 일관성↑, goal 근처 플래닝 실패↓ | RViz에서 Unknown(회색) 관통 경로 생성 여부 확인, 실패 로그 빈도 비교, `global_costmap.track_unknown_space` 설정과 함께 점검 | Unknown을 free로 취급하면 실제 장애물/낙차 영역 위험. `tolerance`가 크면 정확한 목표 도착이 흐려질 수 있음 | `allow_unknown: false`로 복귀, `use_astar`/`tolerance` 이전 값으로 복귀 |
+| 2025-12-17 | `planner_server.ros__parameters.use_sim_time` | `True` | `False` | 실제 Go2 + Jetson 운용(실시간)에서 시뮬레이션 시간이 아닌 시스템 시간을 사용하도록 일관성 맞춤 | TF/센서 timestamp 불일치로 인한 nav2 경고/지연 감소 기대 | `/clock` 사용 여부 확인, nav2 로그에서 time 관련 warning 확인 | 시뮬 환경에서는 `/clock` 기반 노드들과 시간 불일치 가능 | 시뮬에서는 `True`로 복귀 |
+
+##### 변경 기록 템플릿 (Planner Server)
+
+| 날짜 | 파라미터(경로) | Before | After | 변경 이유(관찰/사용자 발화) | 예상 기대결과 | 검증 방법(체크리스트) | 리스크/트레이드오프 | 롤백 |
+|---|---|---|---|---|---|---|---|---|
+| YYYY-MM-DD | `planner_server.ros__parameters.<param>` |  |  |  |  |  |  |  |
 
 ---
 
