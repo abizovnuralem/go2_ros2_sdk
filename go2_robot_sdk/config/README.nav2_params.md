@@ -172,6 +172,120 @@ global_costmap:
 |---|---|---|---|---|---|---|---|---|
 | YYYY-MM-DD | `global_costmap.global_costmap.ros__parameters.<param>` |  |  |  |  |  |  |  |
 
+#### BT Navigator (Behavior Tree Manager)
+
+##### BT Navigator 튜닝 전(원본) 값 요약
+
+```yaml
+bt_navigator:
+  ros__parameters:
+    use_sim_time: (기록 필요)
+```
+
+##### 변경 로그 테이블 (BT Navigator)
+
+| 날짜 | 파라미터(경로) | Before | After | 변경 이유(관찰/사용자 발화) | 예상 기대결과 | 검증 방법(체크리스트) | 리스크/트레이드오프 | 롤백 |
+|---|---|---|---|---|---|---|---|---|
+| 2025-12-18 | `bt_navigator.ros__parameters.use_sim_time` | `(기록 필요)` | `False` | 실제 Go2 + Jetson 운용에서는 `/clock`가 없으므로 Sim Time을 켜면 BT가 시간 진행을 기다리거나 TF/time 관련 오류가 발생할 수 있음. 전체 Nav2 노드들과 시간 정책을 **일관되게 System Time(=False)** 로 맞춤. 플러그인 리스트는 Nav2 동작에 필수이므로 유지 | BT tick/Action 전개가 정상 동작, time sync 불일치로 인한 경고/지연 감소 | nav2 로그에서 time 관련 warning 확인, `/clock` 토픽 존재 여부 확인, 네비게이션 시 BT가 멈추지 않는지 확인 | 시뮬 환경에서는 `/clock` 기반 노드와 시간 불일치 가능 | 시뮬에서는 `True`로 복귀 |
+
+##### 변경 기록 템플릿 (BT Navigator)
+
+| 날짜 | 파라미터(경로) | Before | After | 변경 이유(관찰/사용자 발화) | 예상 기대결과 | 검증 방법(체크리스트) | 리스크/트레이드오프 | 롤백 |
+|---|---|---|---|---|---|---|---|---|
+| YYYY-MM-DD | `bt_navigator.ros__parameters.<param>` |  |  |  |  |  |  |  |
+
+#### BT Node Parameters (NavigateToPose / NavigateThroughPoses)
+
+##### BT Node Parameters 튜닝 전(원본) 값 요약
+
+```yaml
+bt_navigator_navigate_through_poses_rclcpp_node:
+  ros__parameters:
+    use_sim_time: (기록 필요)
+bt_navigator_navigate_to_pose_rclcpp_node:
+  ros__parameters:
+    use_sim_time: (기록 필요)
+```
+
+##### 변경 로그 테이블 (BT Node Parameters)
+
+| 날짜 | 파라미터(경로) | Before | After | 변경 이유(관찰/사용자 발화) | 예상 기대결과 | 검증 방법(체크리스트) | 리스크/트레이드오프 | 롤백 |
+|---|---|---|---|---|---|---|---|---|
+| 2025-12-18 | `bt_navigator_navigate_through_poses_rclcpp_node.ros__parameters.use_sim_time` | `(기록 필요)` | `False` | BT 하위 노드도 상위(`bt_navigator`)와 동일하게 System Time으로 맞춰 time sync 문제를 예방 | NavigateThroughPoses 수행 중 시간 불일치 경고/지연 감소 | nav2 로그에서 time 관련 warning 확인, Waypoints(ThroughPoses) 동작 중 멈춤 여부 확인 | 시뮬 환경에서는 `/clock` 기반과 불일치 가능 | 시뮬에서는 `True`로 복귀 |
+| 2025-12-18 | `bt_navigator_navigate_to_pose_rclcpp_node.ros__parameters.use_sim_time` | `(기록 필요)` | `False` | NavigateToPose 수행 시도 시 time mismatch로 액션/TF가 멈추는 상황을 예방 | 단일 목표점 주행 시 액션이 정상 진행 | 네비게이션 액션 응답/진행률 확인, time warning 확인 | 시뮬 환경에서는 `/clock` 기반과 불일치 가능 | 시뮬에서는 `True`로 복귀 |
+
+##### 변경 기록 템플릿 (BT Node Parameters)
+
+| 날짜 | 파라미터(경로) | Before | After | 변경 이유(관찰/사용자 발화) | 예상 기대결과 | 검증 방법(체크리스트) | 리스크/트레이드오프 | 롤백 |
+|---|---|---|---|---|---|---|---|---|
+| YYYY-MM-DD | `bt_navigator_navigate_to_pose_rclcpp_node.ros__parameters.<param>` |  |  |  |  |  |  |  |
+
+#### Behavior Server (Recovery Behaviors)
+
+##### Behavior Server 튜닝 전(원본) 값 요약
+
+```yaml
+behavior_server:
+  ros__parameters:
+    use_sim_time: True
+```
+
+##### 변경 로그 테이블 (Behavior Server)
+
+| 날짜 | 파라미터(경로) | Before | After | 변경 이유(관찰/사용자 발화) | 예상 기대결과 | 검증 방법(체크리스트) | 리스크/트레이드오프 | 롤백 |
+|---|---|---|---|---|---|---|---|---|
+| 2025-12-18 | `behavior_server.ros__parameters.use_sim_time` | `True` | `False` | 원본 파일에서 `behavior_server`만 Sim Time이 켜져 있었고, 다른 노드(AMCL/Controller/TF)는 System Time 기반이라 시간축이 갈라짐. 이 경우 `Spin/BackUp` 등 복구 동작이 시간 진행을 못 받아 **실제 로봇에서 복구 동작이 멈추거나 TF/time 오류**가 날 수 있어 치명적. 실로봇 운용 기준으로 False로 강제 | stuck/oscillation 등 상황에서 recovery behavior가 정상 실행, time mismatch 관련 에러 감소 | 의도적으로 경로 막힘 상황을 만들고 recovery(Spin/BackUp/Wait)가 수행되는지 확인, nav2 로그에서 TF/time 에러 여부 확인 | 시뮬 환경에서는 `/clock` 기반과 불일치 가능 | 시뮬에서는 `True`로 복귀 |
+
+##### 변경 기록 템플릿 (Behavior Server)
+
+| 날짜 | 파라미터(경로) | Before | After | 변경 이유(관찰/사용자 발화) | 예상 기대결과 | 검증 방법(체크리스트) | 리스크/트레이드오프 | 롤백 |
+|---|---|---|---|---|---|---|---|---|
+| YYYY-MM-DD | `behavior_server.ros__parameters.<param>` |  |  |  |  |  |  |  |
+
+#### Robot State Publisher
+
+##### Robot State Publisher 튜닝 전(원본) 값 요약
+
+```yaml
+robot_state_publisher:
+  ros__parameters:
+    use_sim_time: (기록 필요)
+```
+
+##### 변경 로그 테이블 (Robot State Publisher)
+
+| 날짜 | 파라미터(경로) | Before | After | 변경 이유(관찰/사용자 발화) | 예상 기대결과 | 검증 방법(체크리스트) | 리스크/트레이드오프 | 롤백 |
+|---|---|---|---|---|---|---|---|---|
+| 2025-12-18 | `robot_state_publisher.ros__parameters.use_sim_time` | `(기록 필요)` | `False` | TF 발행 노드도 System Time으로 맞춰야 TF timestamp 불일치로 인한 경고/lookup 실패를 줄일 수 있음 | TF 안정성↑, time mismatch 경고 감소 | `tf2_echo`로 TF가 끊기지 않는지 확인, nav2 로그에서 TF extrapolation/time error 확인 | 시뮬 환경에서는 `/clock` 기반과 불일치 가능 | 시뮬에서는 `True`로 복귀 |
+
+##### 변경 기록 템플릿 (Robot State Publisher)
+
+| 날짜 | 파라미터(경로) | Before | After | 변경 이유(관찰/사용자 발화) | 예상 기대결과 | 검증 방법(체크리스트) | 리스크/트레이드오프 | 롤백 |
+|---|---|---|---|---|---|---|---|---|
+| YYYY-MM-DD | `robot_state_publisher.ros__parameters.<param>` |  |  |  |  |  |  |  |
+
+#### Waypoint Follower
+
+##### Waypoint Follower 튜닝 전(원본) 값 요약
+
+```yaml
+waypoint_follower:
+  ros__parameters:
+    use_sim_time: (기록 필요)
+```
+
+##### 변경 로그 테이블 (Waypoint Follower)
+
+| 날짜 | 파라미터(경로) | Before | After | 변경 이유(관찰/사용자 발화) | 예상 기대결과 | 검증 방법(체크리스트) | 리스크/트레이드오프 | 롤백 |
+|---|---|---|---|---|---|---|---|---|
+| 2025-12-18 | `waypoint_follower.ros__parameters.use_sim_time` | `(기록 필요)` | `False` | 경유지 주행 기능도 System Time으로 맞춰 전체 Nav2와 time sync 일관성 유지 | waypoint 수행 중 시간 이슈로 멈추는 상황 예방 | waypoint 수행 시 지연/멈춤 여부 확인, time warning 확인 | 시뮬 환경에서는 `/clock` 기반과 불일치 가능 | 시뮬에서는 `True`로 복귀 |
+
+##### 변경 기록 템플릿 (Waypoint Follower)
+
+| 날짜 | 파라미터(경로) | Before | After | 변경 이유(관찰/사용자 발화) | 예상 기대결과 | 검증 방법(체크리스트) | 리스크/트레이드오프 | 롤백 |
+|---|---|---|---|---|---|---|---|---|
+| YYYY-MM-DD | `waypoint_follower.ros__parameters.<param>` |  |  |  |  |  |  |  |
+
 ---
 
 **AMCL (Adaptive Monte Carlo Localization)**은 로봇이 자신의 위치를 추정하는 확률적 알고리즘입니다. 쉽게 말해, **"지도(Map)와 현재 라이다 센서(Scan) 데이터, 그리고 로봇이 움직인 거리(Odom)를 비교해서 내가 어디에 있는지 찍어 맞추는 역할"**을 합니다.
