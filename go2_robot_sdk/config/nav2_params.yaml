@@ -330,7 +330,7 @@ planner_server:
     GridBased:
       plugin: "nav2_navfn_planner/NavFnPlanner"
       tolerance: 0.5
-      use_astar: false       # Dijkstra 사용 (최단경로 보장)
+      use_astar: true       # A* 사용 (최단경로 보장)
       allow_unknown: true    # [중요] True로 해야 맵의 회색(Unknown) 영역을 경로로 생성함
 
     # [주석 처리된 원본] SmacPlannerHybrid
