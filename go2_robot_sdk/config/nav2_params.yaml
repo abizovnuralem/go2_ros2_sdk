@@ -5,11 +5,16 @@ amcl:
     initial_pose_x: -0.325
     initial_pose_y: -0.377
     initial_pose_a: 0.100
-    alpha1: 0.2
-    alpha2: 0.2
-    alpha3: 0.2
-    alpha4: 0.2
+    
+    # [수정] 오도메트리 노이즈 파라미터 (0.2 -> 0.05)
+    # 원본: alpha1~4: 0.2 (일반적인 바퀴형 로봇)
+    # 수정: 맵이 정사각형이라 라이다 매칭이 부정확하므로, 오도메트리를 더 신뢰하게 값을 낮춤
+    alpha1: 0.05 
+    alpha2: 0.05
+    alpha3: 0.05
+    alpha4: 0.05
     alpha5: 0.2
+    
     base_frame_id: "base_link"
     beam_skip_distance: 0.5
     beam_skip_error_threshold: 0.9
@@ -22,8 +27,13 @@ amcl:
     laser_min_range: -1.0
     laser_model_type: "likelihood_field"
     max_beams: 60
-    max_particles: 2000
+    
+    # [수정] 파티클 수 증가 (2000 -> 3000)
+    # 원본: max_particles: 2000
+    # 수정: 대칭적인 환경에서는 입자를 더 많이 뿌려 위치 확률 분포를 넓혀야 안 튐
+    max_particles: 3000 
     min_particles: 500
+    
     odom_frame_id: "odom"
     pf_err: 0.05
     pf_z: 0.99
@@ -35,8 +45,11 @@ amcl:
     sigma_hit: 0.2
     tf_broadcast: true
     transform_tolerance: 1.0
+    
+    # [수정] 업데이트 민감도 완화
+    # 로봇이 조금만 움직여도 위치를 갱신하면 노이즈가 쌓임. 확실히 움직였을 때만 갱신.
     update_min_a: 0.2
-    update_min_d: 0.25
+    update_min_d: 0.2
     z_hit: 0.5
     z_max: 0.05
     z_rand: 0.1
