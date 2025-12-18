@@ -9,6 +9,10 @@ from setuptools import find_packages
 
 package_name = 'go2_robot_sdk'
 
+
+def _glob_files(pattern: str):
+    return [p for p in glob(pattern, recursive=True) if os.path.isfile(p)]
+
 setup(
     name=package_name,
     version='0.0.0',
@@ -21,7 +25,7 @@ setup(
         (os.path.join('share', package_name, 'urdf'), glob(os.path.join('urdf', '*'))),
         (os.path.join('share', package_name, 'dae'), glob(os.path.join('dae', '*'))),
         (os.path.join('share', package_name, 'meshes'), glob(os.path.join('meshes', '*'))),
-        (os.path.join('share', package_name, 'config'), glob(os.path.join('config', '*'))),
+        (os.path.join('share', package_name, 'config'), _glob_files(os.path.join('config', '**', '*'))),
         (os.path.join('share', package_name, 'calibration'), glob(os.path.join('calibration', '*'))),
         (os.path.join('share', package_name, 'external_lib'), ['external_lib/libvoxel.wasm']),
         (os.path.join('share', package_name, 'external_lib/aioice'), glob(os.path.join('external_lib/aioice/src/aioice', '*'))),

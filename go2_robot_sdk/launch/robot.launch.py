@@ -87,6 +87,7 @@ class Go2NodeFactory:
             DeclareLaunchArgument('foxglove', default_value='true', description='Launch Foxglove Bridge'),
             DeclareLaunchArgument('joystick', default_value='true', description='Launch joystick'),
             DeclareLaunchArgument('teleop', default_value='true', description='Launch teleoperation'),
+            DeclareLaunchArgument('obstacle_avoidance', default_value='false', description='Enable obstacle avoidance'),
             DeclareLaunchArgument('lidar_publish_rate', default_value='5.0', description='LiDAR publish rate (Hz)'),
             DeclareLaunchArgument('lidar_downsample_step', default_value='4', description='LiDAR downsample step'),
             DeclareLaunchArgument('lidar_max_points', default_value='25000', description='LiDAR max points'),
@@ -191,6 +192,7 @@ class Go2NodeFactory:
         lidar_intensity_threshold = ParameterValue(
             LaunchConfiguration('lidar_intensity_threshold'), value_type=float
         )
+        obstacle_avoidance = ParameterValue(LaunchConfiguration('obstacle_avoidance'), value_type=bool)
 
         return [
             # Main robot driver (clean architecture)
@@ -203,6 +205,7 @@ class Go2NodeFactory:
                     'robot_ip': self.config.robot_ip,
                     'token': self.config.robot_token,
                     'conn_type': self.config.conn_type,
+                    'obstacle_avoidance': obstacle_avoidance,
                     'lidar_publish_rate': lidar_publish_rate,
                     'lidar_downsample_step': lidar_downsample_step,
                     'lidar_max_points': lidar_max_points,

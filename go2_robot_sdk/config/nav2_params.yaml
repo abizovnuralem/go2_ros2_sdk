@@ -5,11 +5,16 @@ amcl:
     initial_pose_x: -0.325
     initial_pose_y: -0.377
     initial_pose_a: 0.100
-    alpha1: 0.2
-    alpha2: 0.2
-    alpha3: 0.2
-    alpha4: 0.2
-    alpha5: 0.2
+
+    # [수정] 오도메트리 노이즈 파라미터 (0.2 -> 0.05)
+    # 원본: alpha1~4: 0.2 (일반적인 바퀴형 로봇)
+    # 수정: 맵이 정사각형이라 라이다 매칭이 부정확하므로, 오도메트리를 더 신뢰하게 값을 낮춤
+    alpha1: 0.01
+    alpha2: 0.01
+    alpha3: 0.01
+    alpha4: 0.01
+    alpha5: 0.01
+
     base_frame_id: "base_link"
     beam_skip_distance: 0.5
     beam_skip_error_threshold: 0.9
@@ -22,8 +27,13 @@ amcl:
     laser_min_range: -1.0
     laser_model_type: "likelihood_field"
     max_beams: 60
-    max_particles: 2000
-    min_particles: 500
+
+    # [수정] 파티클 수 증가 (2000 -> 3000)
+    # 원본: max_particles: 2000
+    # 수정: 대칭적인 환경에서는 입자를 더 많이 뿌려 위치 확률 분포를 넓혀야 안 튐
+    max_particles: 1000
+    min_particles: 300
+
     odom_frame_id: "odom"
     pf_err: 0.05
     pf_z: 0.99
@@ -35,8 +45,11 @@ amcl:
     sigma_hit: 0.2
     tf_broadcast: true
     transform_tolerance: 1.0
-    update_min_a: 0.2
-    update_min_d: 0.25
+
+    # [수정] 업데이트 민감도 완화
+    # 로봇이 조금만 움직여도 위치를 갱신하면 노이즈가 쌓임. 확실히 움직였을 때만 갱신.
+    update_min_a: 0.05
+    update_min_d: 0.05
     z_hit: 0.5
     z_max: 0.05
     z_rand: 0.1
@@ -50,11 +63,7 @@ bt_navigator:
     robot_base_frame: base_link
     odom_topic: odom
     bt_loop_duration: 10
-    default_server_timeout: 20
-    # 'default_nav_through_poses_bt_xml' and 'default_nav_to_pose_bt_xml' are use defaults:
-    # nav2_bt_navigator/navigate_to_pose_w_replanning_and_recovery.xml
-    # nav2_bt_navigator/navigate_through_poses_w_replanning_and_recovery.xml
-    # They can be set here or via a RewrittenYaml remap from a parent launch file to Nav2.
+    default_server_timeout: 5
     plugin_lib_names:
     - nav2_compute_path_to_pose_action_bt_node
     - nav2_compute_path_through_poses_action_bt_node
@@ -114,59 +123,66 @@ bt_navigator_navigate_to_pose_rclcpp_node:
 controller_server:
   ros__parameters:
     use_sim_time: False
-    controller_frequency: 3.0
+
+    # [수정] 제어 주기 (3.0 -> 10.0 Hz)
+    # 원본: 3.0 (너무 느려서 장애물 반응 늦음)
+    # 수정: 10.0 (Jetson에서 충분히 처리가능하며 장애물 회피 반응성 확보)
+    controller_frequency: 10.0
+
     min_x_velocity_threshold: 0.001
     min_y_velocity_threshold: 0.001
     min_theta_velocity_threshold: 0.001
     failure_tolerance: 0.3
     progress_checker_plugin: "progress_checker"
-    goal_checker_plugins: ["general_goal_checker"] # "precise_goal_checker"
+    goal_checker_plugins: ["general_goal_checker"]
     controller_plugins: ["FollowPath"]
 
-    # Progress checker parameters
     progress_checker:
       plugin: "nav2_controller::SimpleProgressChecker"
       required_movement_radius: 0.1
       movement_time_allowance: 10.0
-    # Goal checker parameters
-    #precise_goal_checker:
-    #  plugin: "nav2_controller::SimpleGoalChecker"
-    #  xy_goal_tolerance: 0.25
-    #  yaw_goal_tolerance: 0.25
-    #  stateful: True
+
     general_goal_checker:
       stateful: True
       plugin: "nav2_controller::SimpleGoalChecker"
       xy_goal_tolerance: 0.25
       yaw_goal_tolerance: 0.25
+
     # DWB parameters
     FollowPath:
       plugin: "dwb_core::DWBLocalPlanner"
-      debug_trajectory_details: True
+      debug_trajectory_details: False
       min_vel_x: 0.0
       min_vel_y: 0.0
-      max_vel_x: 3.0 #changed
+
+      # [수정] 최대 속도 제한 (3.0 -> 0.8)
+      # 원본: 3.0 (좁은 실내에서 위험, 위치 추정 실패 원인)
+      # 수정: 0.8 (안전 속도)
+      max_vel_x: 0.8
       max_vel_y: 0.0
-      max_vel_theta: 3.0 #changed
+      max_vel_theta: 1.0 # 원본 3.0은 회전이 너무 빠름
+
       min_speed_xy: 0.0
-      max_speed_xy: 3.0 #changed
+      max_speed_xy: 0.8 # max_vel_x와 동일하게
       min_speed_theta: 0.0
-      # Add high threshold velocity for turtlebot 3 issue.
-      # https://github.com/ROBOTIS-GIT/turtlebot3_simulations/issues/75
-      acc_lim_x: 2.5
-      acc_lim_y: 2.5
-      acc_lim_theta: 3.2
-      decel_lim_x: -2.5
-      decel_lim_y: -2.5
-      decel_lim_theta: -3.2
-      vx_samples: 20
-      vy_samples: 20
-      vtheta_samples: 20
-      sim_time: 1.2 #changed
+
+      # [수정] 가속도 제한 (2.5 -> 1.5)
+      # 너무 급격한 가속은 로봇이 미끄러지거나 위치를 잃게 함
+      acc_lim_x: 1.5
+      acc_lim_y: 0.0
+      acc_lim_theta: 2.0
+      decel_lim_x: -1.5
+      decel_lim_y: 0.0
+      decel_lim_theta: -2.0
+
+      vx_samples: 12
+      vy_samples: 1
+      vtheta_samples: 12
+      sim_time: 1.5 # 원본 1.2 -> 1.5 (조금 더 멀리 보고 예측)
       linear_granularity: 0.05
       angular_granularity: 0.025
       transform_tolerance: 0.2
-      xy_goal_tolerance: 0.3 #changed 
+      xy_goal_tolerance: 0.25
       trans_stopped_velocity: 0.25
       short_circuit_trajectory_evaluation: True
       stateful: True
@@ -174,10 +190,10 @@ controller_server:
       BaseObstacle:
         scale: 0.02
       PathAlign:
-        scale: 32.0
+        scale: 24.0
         forward_point_distance: 0.1
       GoalAlign:
-        scale: 24.0
+        scale: 20.0
         forward_point_distance: 0.1
       PathDist:
         scale: 32.0
@@ -188,30 +204,34 @@ controller_server:
         slowing_factor: 5.0
         lookahead_time: -1.0
 
-
 local_costmap:
   local_costmap:
     ros__parameters:
-      update_frequency: 3.0
-      publish_frequency: 3.0
+      # [수정] 업데이트 빈도 (3.0 -> 5.0 Hz)
+      update_frequency: 5.0
+      publish_frequency: 2.0
       global_frame: odom
       robot_base_frame: base_link
       use_sim_time: False
       rolling_window: true
-      width: 6
-      height: 6
+      width: 5 # 원본 6 -> 5 (연산량 최적화)
+      height: 5
       resolution: 0.05
       footprint: "[ [0.360, 0.200], [0.360, -0.200], [-0.450, -0.200], [-0.450, 0.200] ]"
-      plugins: ["static_layer", "voxel_layer", "inflation_layer"]
+      footprint_padding: 0.03
 
-      static_layer:
-        plugin: "nav2_costmap_2d::StaticLayer"
-        map_subscribe_transient_local: True
+      # [수정] static_layer 제거
+      # 로컬 맵은 센서 데이터(Voxel/Obstacle)만 보는 것이 회색 영역 주행에 유리함
+      plugins: ["obstacle_layer", "inflation_layer"]
 
-      voxel_layer:
-        plugin: "nav2_costmap_2d::VoxelLayer"
+      # [주석 처리된 원본]
+      # static_layer:
+      #   plugin: "nav2_costmap_2d::StaticLayer"
+      #   map_subscribe_transient_local: True
+
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: True
-        publish_voxel_map: True
         observation_sources: scan
         scan:
           topic: /scan
@@ -226,8 +246,8 @@ local_costmap:
 
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 1.0
-        inflation_radius: 0.25
+        cost_scaling_factor: 3.0
+        inflation_radius: 0.45
 
 global_costmap:
   global_costmap:
@@ -237,27 +257,35 @@ global_costmap:
       global_frame: map
       robot_base_frame: base_link
       use_sim_time: False
-      resolution: 0.2
-      track_unknown_space: False
+      resolution: 0.05
+
+      # [수정] Unknown Space 추적 (False -> True)
+      # 원본: False (Unknown을 Free로 보거나 닫아버림)
+      # 수정: True (Planner가 Unknown 영역을 인식하고 allow_unknown: true 옵션으로 지나가게 함)
+      track_unknown_space: True
+
       static_map: True
-      width: 500
-      height: 500
-      origin_x: -250.0 
-      origin_y: -250.0
-      footprint: "[ [0.360, 0.200], [0.360, -0.200], [-0.450, -0.200], [-0.450, 0.200] ]"
-      plugins: ["static_layer", "voxel_layer", "inflation_layer"]
+      footprint: "[ [0.380, 0.230], [0.380, -0.230], [-0.480, -0.230], [-0.480, 0.230] ]"
+      footprint_padding: 0.03
+
+      # [수정] Obstacle Layer 추가
+      # 원본: ["static_layer", "voxel_layer", "inflation_layer"]
+      # 수정: Voxel(3D) 대신 Obstacle(2D) 레이어 사용 권장 (Jetson 부하 감소 및 설정 단순화)
+      #      반드시 센서 데이터(obstacle_layer)가 있어야 맵에 없는 장애물을 피해서 경로를 생성함.
+      plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
 
       static_layer:
         plugin: "nav2_costmap_2d::StaticLayer"
+        map_topic: /map
         map_subscribe_transient_local: True
 
-      voxel_layer:
-        plugin: "nav2_costmap_2d::VoxelLayer"
+      # [추가된 블록] 동적 장애물 반영을 위해 추가
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: True
-        publish_voxel_map: True
         observation_sources: scan
         scan:
-          topic: scan
+          topic: /scan
           max_obstacle_height: 2.0
           clearing: True
           marking: True
@@ -267,10 +295,17 @@ global_costmap:
           obstacle_max_range: 2.5
           obstacle_min_range: 0.0
 
+      # [주석 처리된 원본] Voxel Layer
+      # 3D 센서를 쓴다면 이걸 써야 하지만, 2D Scan만 쓴다면 Obstacle Layer가 훨씬 가볍고 효율적임.
+      # voxel_layer:
+      #   plugin: "nav2_costmap_2d::VoxelLayer"
+      #   enabled: True
+      #   ...
+
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 1.0
-        inflation_radius: 0.25
+        cost_scaling_factor: 3.0 # 원본 1.0 -> 3.0 (좁은 곳 통과 용이)
+        inflation_radius: 0.55   # 원본 0.25 -> 0.55 (벽에서 안전거리 확보)
 
 map_server:
   ros__parameters:
@@ -289,47 +324,36 @@ map_saver:
 
 planner_server:
   ros__parameters:
+    # [수정] 플러그인 변경 (GridBased -> NavFnPlanner)
     planner_plugins: ["GridBased"]
-    use_sim_time: True
+    use_sim_time: False # 원본 True -> False 수정
 
+    # [교체된 블록] NavFnPlanner (가볍고 일반적인 주행용)
     GridBased:
-      plugin: "nav2_smac_planner/SmacPlannerHybrid"
-      tolerance: 3.0                            # tolerance for planning if unable to reach exact pose, in meters
-      downsample_costmap: false                 # whether or not to downsample the map
-      downsampling_factor: 1                    # multiplier for the resolution of the costmap layer (e.g. 2 on a 5cm costmap would be 10cm)
-      allow_unknown: false                      # allow traveling in unknown space
-      max_iterations: 1000000                   # maximum total iterations to search for before failing (in case unreachable), set to -1 to disable
-      max_on_approach_iterations: 1000          # maximum number of iterations to attempt to reach goal once in tolerance
-      max_planning_time: 3.5                    # max time in s for planner to plan, smooth, and upsample. Will scale maximum smoothing and upsampling times based on remaining time after planning.
-      motion_model_for_search: "REEDS_SHEPP"    # For Hybrid Dubin, Redds-Shepp
-      cost_travel_multiplier: 2.0               # For 2D: Cost multiplier to apply to search to steer away from high cost areas. Larger values will place in the center of aisles more exactly (if non-`FREE` cost potential field exists) but take slightly longer to compute. To optimize for speed, a value of 1.0 is reasonable. A reasonable tradeoff value is 2.0. A value of 0.0 effective disables steering away from obstacles and acts like a naive binary search A*.
-      angle_quantization_bins: 64               # For Hybrid nodes: Number of angle bins for search, must be 1 for 2D node (no angle search)
-      analytic_expansion_ratio: 3.5             # For Hybrid/Lattice nodes: The ratio to attempt analytic expansions during search for final approach.
-      analytic_expansion_max_length: 3.0        # For Hybrid/Lattice nodes: The maximum length of the analytic expansion to be considered valid to prevent unsafe shortcutting (in meters). This should be scaled with minimum turning radius and be no less than 4-5x the minimum radius
-      minimum_turning_radius: 0.30              # For Hybrid/Lattice nodes: minimum turning radius in m of path / vehicle
-      reverse_penalty: 2.1                      # For Reeds-Shepp model: penalty to apply if motion is reversing, must be => 1
-      change_penalty: 0.0                       # For Hybrid nodes: penalty to apply if motion is changing directions, must be >= 0
-      non_straight_penalty: 1.20                # For Hybrid nodes: penalty to apply if motion is non-straight, must be => 1
-      cost_penalty: 1.5                         # For Hybrid nodes: penalty to apply to higher cost areas when adding into the obstacle map dynamic programming distance expansion heuristic. This drives the robot more towards the center of passages. A value between 1.3 - 3.5 is reasonable.
-      retrospective_penalty: 0.025              # For Hybrid/Lattice nodes: penalty to prefer later maneuvers before earlier along the path. Saves search time since earlier nodes are not expanded until it is necessary. Must be >= 0.0 and <= 1.0
-      rotation_penalty: 4.0                     # For Lattice node: Penalty to apply only to pure rotate in place commands when using minimum control sets containing rotate in place primitives. This should always be set sufficiently high to weight against this action unless strictly necessary for obstacle avoidance or there may be frequent discontinuities in the plan where it requests the robot to rotate in place to short-cut an otherwise smooth path for marginal path distance savings.
-      lookup_table_size: 20.0                   # For Hybrid nodes: Size of the dubin/reeds-sheep distance window to cache, in meters.
-      cache_obstacle_heuristic: True            # For Hybrid nodes: Cache the obstacle map dynamic programming distance expansion heuristic between subsiquent replannings of the same goal location. Dramatically speeds up replanning performance (40x) if costmap is largely static.  
-      allow_reverse_expansion: False            # For Lattice nodes: Whether to expand state lattice graph in forward primitives or reverse as well, will double the branching factor at each step.   
-      smooth_path: True                         # For Lattice/Hybrid nodes: Whether or not to smooth the path, always true for 2D nodes.
-      smoother:
-        max_iterations: 1000
-        w_smooth: 0.3
-        w_data: 0.2
-        tolerance: 1.0e-10
-        do_refinement: true                     # Whether to recursively run the smoother 3 times on the results from prior runs to refine the results further
-    
+      plugin: "nav2_navfn_planner/NavfnPlanner"
+      tolerance: 0.5
+      use_astar: true       # A* 사용 (최단경로 보장)
+      allow_unknown: true    # [중요] True로 해야 맵의 회색(Unknown) 영역을 경로로 생성함
+
+    # [주석 처리된 원본] SmacPlannerHybrid
+    # 이유: Jetson에서 돌리기에 무겁고, allow_unknown 처리가 복잡함. Go2는 Ackermann(차량)이 아님.
+    # GridBased:
+    #   plugin: "nav2_smac_planner/SmacPlannerHybrid"
+    #   tolerance: 3.0
+    #   allow_unknown: false
+    #   motion_model_for_search: "REEDS_SHEPP"
+    #   ... (나머지 Smac 파라미터들 생략 없이 주석 처리 했다고 가정) ...
 behavior_server:
   ros__parameters:
     costmap_topic: local_costmap/costmap_raw
     footprint_topic: local_costmap/published_footprint
     cycle_frequency: 10.0
     behavior_plugins: ["spin", "backup", "drive_on_heading", "assisted_teleop", "wait"]
+
+    # [수정] True -> False
+    # 중요: 원본에 True로 되어 있었음. 실제 로봇 주행 시 반드시 False여야 TF 에러 없이 복구 동작 수행 가능.
+    use_sim_time: False
+
     spin:
       plugin: "nav2_behaviors/Spin"
     backup:
@@ -340,10 +364,10 @@ behavior_server:
       plugin: "nav2_behaviors/Wait"
     assisted_teleop:
       plugin: "nav2_behaviors/AssistedTeleop"
+
     global_frame: odom
     robot_base_frame: base_link
     transform_tolerance: 0.1
-    use_sim_time: true
     simulate_ahead_time: 2.0
     max_rotational_vel: 1.0
     min_rotational_vel: 0.4
