@@ -356,6 +356,15 @@ class Go2DriverNode(Node):
         """Callback after robot validation"""
         self.get_logger().info(f"Robot {robot_id} validated and ready")
 
+        try:
+            self.robot_control_service.set_obstacle_avoidance(
+                self.config.obstacle_avoidance, robot_id
+            )
+        except Exception as e:
+            self.get_logger().error(
+                f"Failed to apply obstacle_avoidance={self.config.obstacle_avoidance}: {e}"
+            )
+
     def _on_robot_data_received(self, msg: Dict[str, Any], robot_id: str) -> None:
         """Callback for receiving data from robot"""
         self.robot_data_service.process_webrtc_message(msg, robot_id)

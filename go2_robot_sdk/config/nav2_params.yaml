@@ -5,16 +5,16 @@ amcl:
     initial_pose_x: -0.325
     initial_pose_y: -0.377
     initial_pose_a: 0.100
-    
+
     # [수정] 오도메트리 노이즈 파라미터 (0.2 -> 0.05)
     # 원본: alpha1~4: 0.2 (일반적인 바퀴형 로봇)
     # 수정: 맵이 정사각형이라 라이다 매칭이 부정확하므로, 오도메트리를 더 신뢰하게 값을 낮춤
-    alpha1: 0.05 
-    alpha2: 0.05
-    alpha3: 0.05
-    alpha4: 0.05
-    alpha5: 0.2
-    
+    alpha1: 0.01
+    alpha2: 0.01
+    alpha3: 0.01
+    alpha4: 0.01
+    alpha5: 0.01
+
     base_frame_id: "base_link"
     beam_skip_distance: 0.5
     beam_skip_error_threshold: 0.9
@@ -27,13 +27,13 @@ amcl:
     laser_min_range: -1.0
     laser_model_type: "likelihood_field"
     max_beams: 60
-    
+
     # [수정] 파티클 수 증가 (2000 -> 3000)
     # 원본: max_particles: 2000
     # 수정: 대칭적인 환경에서는 입자를 더 많이 뿌려 위치 확률 분포를 넓혀야 안 튐
-    max_particles: 3000 
-    min_particles: 500
-    
+    max_particles: 1000
+    min_particles: 300
+
     odom_frame_id: "odom"
     pf_err: 0.05
     pf_z: 0.99
@@ -45,11 +45,11 @@ amcl:
     sigma_hit: 0.2
     tf_broadcast: true
     transform_tolerance: 1.0
-    
+
     # [수정] 업데이트 민감도 완화
     # 로봇이 조금만 움직여도 위치를 갱신하면 노이즈가 쌓임. 확실히 움직였을 때만 갱신.
-    update_min_a: 0.2
-    update_min_d: 0.2
+    update_min_a: 0.05
+    update_min_d: 0.05
     z_hit: 0.5
     z_max: 0.05
     z_rand: 0.1
@@ -63,7 +63,7 @@ bt_navigator:
     robot_base_frame: base_link
     odom_topic: odom
     bt_loop_duration: 10
-    default_server_timeout: 20
+    default_server_timeout: 5
     plugin_lib_names:
     - nav2_compute_path_to_pose_action_bt_node
     - nav2_compute_path_through_poses_action_bt_node
@@ -123,49 +123,49 @@ bt_navigator_navigate_to_pose_rclcpp_node:
 controller_server:
   ros__parameters:
     use_sim_time: False
-    
+
     # [수정] 제어 주기 (3.0 -> 10.0 Hz)
     # 원본: 3.0 (너무 느려서 장애물 반응 늦음)
     # 수정: 10.0 (Jetson에서 충분히 처리가능하며 장애물 회피 반응성 확보)
     controller_frequency: 10.0
-    
+
     min_x_velocity_threshold: 0.001
     min_y_velocity_threshold: 0.001
     min_theta_velocity_threshold: 0.001
     failure_tolerance: 0.3
     progress_checker_plugin: "progress_checker"
-    goal_checker_plugins: ["general_goal_checker"] 
+    goal_checker_plugins: ["general_goal_checker"]
     controller_plugins: ["FollowPath"]
 
     progress_checker:
       plugin: "nav2_controller::SimpleProgressChecker"
       required_movement_radius: 0.1
       movement_time_allowance: 10.0
-    
+
     general_goal_checker:
       stateful: True
       plugin: "nav2_controller::SimpleGoalChecker"
       xy_goal_tolerance: 0.25
       yaw_goal_tolerance: 0.25
-    
+
     # DWB parameters
     FollowPath:
       plugin: "dwb_core::DWBLocalPlanner"
-      debug_trajectory_details: True
+      debug_trajectory_details: False
       min_vel_x: 0.0
       min_vel_y: 0.0
-      
+
       # [수정] 최대 속도 제한 (3.0 -> 0.8)
       # 원본: 3.0 (좁은 실내에서 위험, 위치 추정 실패 원인)
       # 수정: 0.8 (안전 속도)
-      max_vel_x: 0.8 
-      max_vel_y: 0.0 
+      max_vel_x: 0.8
+      max_vel_y: 0.0
       max_vel_theta: 1.0 # 원본 3.0은 회전이 너무 빠름
-      
+
       min_speed_xy: 0.0
       max_speed_xy: 0.8 # max_vel_x와 동일하게
       min_speed_theta: 0.0
-      
+
       # [수정] 가속도 제한 (2.5 -> 1.5)
       # 너무 급격한 가속은 로봇이 미끄러지거나 위치를 잃게 함
       acc_lim_x: 1.5
@@ -174,10 +174,10 @@ controller_server:
       decel_lim_x: -1.5
       decel_lim_y: 0.0
       decel_lim_theta: -2.0
-      
-      vx_samples: 20
-      vy_samples: 20
-      vtheta_samples: 20
+
+      vx_samples: 12
+      vy_samples: 1
+      vtheta_samples: 12
       sim_time: 1.5 # 원본 1.2 -> 1.5 (조금 더 멀리 보고 예측)
       linear_granularity: 0.05
       angular_granularity: 0.025
@@ -190,10 +190,10 @@ controller_server:
       BaseObstacle:
         scale: 0.02
       PathAlign:
-        scale: 32.0
+        scale: 24.0
         forward_point_distance: 0.1
       GoalAlign:
-        scale: 24.0
+        scale: 20.0
         forward_point_distance: 0.1
       PathDist:
         scale: 32.0
@@ -218,20 +218,20 @@ local_costmap:
       height: 5
       resolution: 0.05
       footprint: "[ [0.360, 0.200], [0.360, -0.200], [-0.450, -0.200], [-0.450, 0.200] ]"
-      
+      footprint_padding: 0.03
+
       # [수정] static_layer 제거
       # 로컬 맵은 센서 데이터(Voxel/Obstacle)만 보는 것이 회색 영역 주행에 유리함
-      plugins: ["voxel_layer", "inflation_layer"]
+      plugins: ["obstacle_layer", "inflation_layer"]
 
       # [주석 처리된 원본]
       # static_layer:
       #   plugin: "nav2_costmap_2d::StaticLayer"
       #   map_subscribe_transient_local: True
 
-      voxel_layer:
-        plugin: "nav2_costmap_2d::VoxelLayer"
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: True
-        publish_voxel_map: True
         observation_sources: scan
         scan:
           topic: /scan
@@ -258,15 +258,16 @@ global_costmap:
       robot_base_frame: base_link
       use_sim_time: False
       resolution: 0.05
-      
+
       # [수정] Unknown Space 추적 (False -> True)
       # 원본: False (Unknown을 Free로 보거나 닫아버림)
       # 수정: True (Planner가 Unknown 영역을 인식하고 allow_unknown: true 옵션으로 지나가게 함)
       track_unknown_space: True
-      
+
       static_map: True
-      footprint: "[ [0.360, 0.200], [0.360, -0.200], [-0.450, -0.200], [-0.450, 0.200] ]"
-      
+      footprint: "[ [0.380, 0.230], [0.380, -0.230], [-0.480, -0.230], [-0.480, 0.230] ]"
+      footprint_padding: 0.03
+
       # [수정] Obstacle Layer 추가
       # 원본: ["static_layer", "voxel_layer", "inflation_layer"]
       # 수정: Voxel(3D) 대신 Obstacle(2D) 레이어 사용 권장 (Jetson 부하 감소 및 설정 단순화)
@@ -275,6 +276,7 @@ global_costmap:
 
       static_layer:
         plugin: "nav2_costmap_2d::StaticLayer"
+        map_topic: /map
         map_subscribe_transient_local: True
 
       # [추가된 블록] 동적 장애물 반영을 위해 추가
@@ -283,7 +285,7 @@ global_costmap:
         enabled: True
         observation_sources: scan
         scan:
-          topic: scan
+          topic: /scan
           max_obstacle_height: 2.0
           clearing: True
           marking: True
@@ -328,7 +330,7 @@ planner_server:
 
     # [교체된 블록] NavFnPlanner (가볍고 일반적인 주행용)
     GridBased:
-      plugin: "nav2_navfn_planner/NavFnPlanner"
+      plugin: "nav2_navfn_planner/NavfnPlanner"
       tolerance: 0.5
       use_astar: true       # A* 사용 (최단경로 보장)
       allow_unknown: true    # [중요] True로 해야 맵의 회색(Unknown) 영역을 경로로 생성함
@@ -347,11 +349,11 @@ behavior_server:
     footprint_topic: local_costmap/published_footprint
     cycle_frequency: 10.0
     behavior_plugins: ["spin", "backup", "drive_on_heading", "assisted_teleop", "wait"]
-    
+
     # [수정] True -> False
     # 중요: 원본에 True로 되어 있었음. 실제 로봇 주행 시 반드시 False여야 TF 에러 없이 복구 동작 수행 가능.
-    use_sim_time: False 
-    
+    use_sim_time: False
+
     spin:
       plugin: "nav2_behaviors/Spin"
     backup:
@@ -362,7 +364,7 @@ behavior_server:
       plugin: "nav2_behaviors/Wait"
     assisted_teleop:
       plugin: "nav2_behaviors/AssistedTeleop"
-      
+
     global_frame: odom
     robot_base_frame: base_link
     transform_tolerance: 0.1
