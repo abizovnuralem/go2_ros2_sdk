@@ -328,7 +328,7 @@ planner_server:
 
     # [교체된 블록] NavFnPlanner (가볍고 일반적인 주행용)
     GridBased:
-      plugin: "nav2_navfn_planner/NavFnPlanner"
+      plugin: "nav2_navfn_planner/NavfnPlanner"
       tolerance: 0.5
       use_astar: true       # A* 사용 (최단경로 보장)
       allow_unknown: true    # [중요] True로 해야 맵의 회색(Unknown) 영역을 경로로 생성함
