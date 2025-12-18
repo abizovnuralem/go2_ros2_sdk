@@ -36,7 +36,7 @@ def update_meshes_for_cloud2(
     deduplicate: bool = True,
     downsample_step: int = 1,
     max_points: int = 0,
-    use_cpp_accel: bool = False,
+    use_cpp_accel: bool = True,
 ) -> np.ndarray:
     """
     Process LiDAR point cloud data for ROS2 PointCloud2 message.
@@ -53,7 +53,7 @@ def update_meshes_for_cloud2(
     """
     if use_cpp_accel:
         try:
-            mod = importlib.import_module("lidar_accelator")
+            mod = importlib.import_module("lidar_accelerator")
             fn = getattr(mod, "process_u8_to_xyzi_f32")
             out = fn(
                 positions,
@@ -66,13 +66,13 @@ def update_meshes_for_cloud2(
                 max_points,
             )
             if not _CPP_ACCEL_LOGGED["used"]:
-                logger.info("LiDAR accel: using lidar_accelator.process_u8_to_xyzi_f32")
+                logger.info("LiDAR accel: using lidar_accelerator.process_u8_to_xyzi_f32")
                 _CPP_ACCEL_LOGGED["used"] = True
             return out
         except Exception as e:
             if not _CPP_ACCEL_LOGGED["failed"]:
                 logger.warning(
-                    "LiDAR accel: lidar_accelator not available, falling back to Python (%s)",
+                    "LiDAR accel: lidar_accelerator not available, falling back to Python (%s)",
                     e,
                 )
                 _CPP_ACCEL_LOGGED["failed"] = True

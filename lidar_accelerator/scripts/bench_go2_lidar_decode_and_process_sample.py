@@ -47,7 +47,7 @@ def main() -> int:
     p.add_argument("--csv", action="store_true")
     args = p.parse_args()
 
-    import lidar_accelator
+    import lidar_accelerator
     from go2_robot_sdk.infrastructure.sensors.lidar_decoder import (
         get_voxel_decoder,
         update_meshes_for_cloud2,
@@ -76,7 +76,7 @@ def main() -> int:
         )
 
     def cpp_end_to_end():
-        return lidar_accelator.decode_and_process(
+        return lidar_accelerator.decode_and_process(
             compressed,
             resolution,
             origin,

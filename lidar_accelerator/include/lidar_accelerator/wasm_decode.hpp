@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace lidar_accelator {
+namespace lidar_accelerator {
 
 // (Phase B) WASM decode 대체/래퍼 구현 시 추가 예정
 
@@ -19,4 +19,4 @@ std::vector<float> decode_and_process(
     int max_points,
     std::size_t* out_points);
 
-}  // namespace lidar_accelator
+}  // namespace lidar_accelerator

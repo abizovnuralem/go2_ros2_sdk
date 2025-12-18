@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>lidar_accelator</name>
+  <name>lidar_accelerator</name>
   <version>0.0.0</version>
   <description>pybind11 기반 Go2 LiDAR CPU 가속 모듈</description>
 

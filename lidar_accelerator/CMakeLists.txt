@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(lidar_accelator)
+project(lidar_accelerator)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -30,32 +30,32 @@ find_library(WASMTIME_LIBRARY
 
 include_directories(include)
 
-pybind11_add_module(lidar_accelator
+pybind11_add_module(lidar_accelerator
   src/pybind_module.cpp
   src/processing.cpp
   src/packing.cpp
   src/wasm_decode.cpp
 )
 
-target_include_directories(lidar_accelator PRIVATE ${Python3_INCLUDE_DIRS})
-target_link_libraries(lidar_accelator PRIVATE Python3::Python)
-target_link_libraries(lidar_accelator PRIVATE ament_index_cpp::ament_index_cpp)
+target_include_directories(lidar_accelerator PRIVATE ${Python3_INCLUDE_DIRS})
+target_link_libraries(lidar_accelerator PRIVATE Python3::Python)
+target_link_libraries(lidar_accelerator PRIVATE ament_index_cpp::ament_index_cpp)
 
 if(WASMTIME_INCLUDE_DIR AND WASMTIME_LIBRARY)
-  target_include_directories(lidar_accelator PRIVATE ${WASMTIME_INCLUDE_DIR})
-  target_link_libraries(lidar_accelator PRIVATE ${WASMTIME_LIBRARY})
-  target_compile_definitions(lidar_accelator PRIVATE GO2_WASMTIME_C_API=1)
+  target_include_directories(lidar_accelerator SYSTEM PRIVATE ${WASMTIME_INCLUDE_DIR})
+  target_link_libraries(lidar_accelerator PRIVATE ${WASMTIME_LIBRARY})
+  target_compile_definitions(lidar_accelerator PRIVATE GO2_WASMTIME_C_API=1)
 else()
   message(WARNING "Wasmtime C API not found; decode_and_process will not be available")
 endif()
 
-target_compile_definitions(lidar_accelator PRIVATE PYBIND11_DETAILED_ERROR_MESSAGES=1)
+target_compile_definitions(lidar_accelerator PRIVATE PYBIND11_DETAILED_ERROR_MESSAGES=1)
 
 set(PYTHON_INSTALL_DIR
   "lib/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages"
 )
 
-install(TARGETS lidar_accelator
+install(TARGETS lidar_accelerator
   LIBRARY DESTINATION "${PYTHON_INSTALL_DIR}"
 )
 

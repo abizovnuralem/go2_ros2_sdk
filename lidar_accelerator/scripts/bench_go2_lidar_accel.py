@@ -76,11 +76,11 @@ def _run_one_case(
     uvs = rng.integers(0, 255, size=(n * 2,), dtype=np.uint8)
 
     try:
-        import lidar_accelator
+        import lidar_accelerator
 
         has_cpp = True
     except Exception:
-        lidar_accelator = None
+        lidar_accelerator = None
         has_cpp = False
 
     def py_path():
@@ -97,7 +97,7 @@ def _run_one_case(
         )
 
     def cpp_direct():
-        return lidar_accelator.process_u8_to_xyzi_f32(
+        return lidar_accelerator.process_u8_to_xyzi_f32(
             positions,
             uvs,
             res,

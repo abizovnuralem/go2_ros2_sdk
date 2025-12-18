@@ -1,5 +1,5 @@
-#include "lidar_accelator/wasm_decode.hpp"
-#include "lidar_accelator/processing.hpp"
+#include "lidar_accelerator/wasm_decode.hpp"
+#include "lidar_accelerator/processing.hpp"
 
 #include <stdexcept>
 #include <string>
@@ -17,7 +17,7 @@
 #include <vector>
 #endif
 
-namespace lidar_accelator {
+namespace lidar_accelerator {
 
 std::vector<float> decode_and_process(
     const uint8_t* compressed,
@@ -289,7 +289,7 @@ std::vector<float> decode_and_process(
   }
 
   std::size_t out_n = 0;
-  std::vector<float> out = lidar_accelator::process_u8_to_xyzi_f32(
+  std::vector<float> out = lidar_accelerator::process_u8_to_xyzi_f32(
       mem + static_cast<std::size_t>(positions_ptr),
       pos_len,
       mem + static_cast<std::size_t>(uvs_ptr),
@@ -333,4 +333,4 @@ std::vector<float> decode_and_process(
 #endif
 }
 
-}  // namespace lidar_accelator
+}  // namespace lidar_accelerator

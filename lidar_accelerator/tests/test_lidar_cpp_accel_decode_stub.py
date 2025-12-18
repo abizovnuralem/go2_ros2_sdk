@@ -3,12 +3,12 @@ import pytest
 
 def test_decode_and_process_not_implemented():
     try:
-        import lidar_accelator
+        import lidar_accelerator
     except Exception:
-        pytest.skip("lidar_accelator(pybind11) module is not available")
+        pytest.skip("lidar_accelerator(pybind11) module is not available")
 
     with pytest.raises(Exception):
-        _ = lidar_accelator.decode_and_process(
+        _ = lidar_accelerator.decode_and_process(
             b"",
             0.01,
             [0.0, 0.0, 0.0],

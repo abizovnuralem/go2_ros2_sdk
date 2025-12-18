@@ -32,18 +32,18 @@ def main() -> int:
     expected = points.tobytes()
 
     try:
-        import lidar_accelator
+        import lidar_accelerator
 
         has_cpp = True
     except Exception:
-        lidar_accelator = None
+        lidar_accelerator = None
         has_cpp = False
 
     def py_tobytes():
         return points.tobytes()
 
     def cpp_bytes():
-        return lidar_accelator.pack_xyzi_f32_to_bytes(points)
+        return lidar_accelerator.pack_xyzi_f32_to_bytes(points)
 
     for _ in range(int(args.warmup)):
         _ = py_tobytes()

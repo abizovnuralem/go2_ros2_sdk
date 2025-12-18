@@ -1,4 +1,4 @@
-#include "lidar_accelator/processing.hpp"
+#include "lidar_accelerator/processing.hpp"
 
 #include <cstddef>
 #include <cstring>
@@ -9,12 +9,12 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "lidar_accelator/packing.hpp"
-#include "lidar_accelator/wasm_decode.hpp"
+#include "lidar_accelerator/packing.hpp"
+#include "lidar_accelerator/wasm_decode.hpp"
 
 namespace py = pybind11;
 
-PYBIND11_MODULE(lidar_accelator, m) {
+PYBIND11_MODULE(lidar_accelerator, m) {
   m.def(
       "process_u8_to_xyzi_f32",
       [](py::object positions,
@@ -58,7 +58,7 @@ PYBIND11_MODULE(lidar_accelator, m) {
         };
 
         std::size_t out_points = 0;
-        std::vector<float> out = lidar_accelator::process_u8_to_xyzi_f32(
+        std::vector<float> out = lidar_accelerator::process_u8_to_xyzi_f32(
             pos_u8.data(),
             static_cast<size_t>(pos_u8.size()),
             uv_u8.data(),
@@ -101,7 +101,7 @@ PYBIND11_MODULE(lidar_accelator, m) {
 
         auto f32 = py::array_t<float, py::array::c_style | py::array::forcecast>(arr);
         const std::size_t n = static_cast<std::size_t>(f32.shape(0));
-        std::string bytes = lidar_accelator::pack_xyzi_f32_to_bytes(f32.data(), n);
+        std::string bytes = lidar_accelerator::pack_xyzi_f32_to_bytes(f32.data(), n);
         return py::bytes(bytes);
       },
       py::arg("points_f32"));
@@ -127,7 +127,7 @@ PYBIND11_MODULE(lidar_accelator, m) {
         };
 
         std::size_t out_points = 0;
-        std::vector<float> out = lidar_accelator::decode_and_process(
+        std::vector<float> out = lidar_accelerator::decode_and_process(
             reinterpret_cast<const uint8_t*>(c.data()),
             static_cast<std::size_t>(c.size()),
             res,

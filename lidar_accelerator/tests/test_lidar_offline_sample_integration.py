@@ -40,9 +40,9 @@ def _parse_ulidar_array_buffer(buf: bytes):
 
 def test_offline_sample_cpp_matches_python_end_to_end():
     try:
-        import lidar_accelator
+        import lidar_accelerator
     except Exception:
-        pytest.skip("lidar_accelator(pybind11) module is not available")
+        pytest.skip("lidar_accelerator(pybind11) module is not available")
 
     # Python reference path: wasmtime decode -> positions/uvs -> update_meshes_for_cloud2
     from go2_robot_sdk.infrastructure.sensors.lidar_decoder import (
@@ -83,7 +83,7 @@ def test_offline_sample_cpp_matches_python_end_to_end():
         use_cpp_accel=False,
     )
 
-    cpp_points = lidar_accelator.decode_and_process(
+    cpp_points = lidar_accelerator.decode_and_process(
         compressed,
         resolution,
         origin,

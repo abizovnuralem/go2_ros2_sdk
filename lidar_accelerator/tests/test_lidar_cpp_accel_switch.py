@@ -7,7 +7,7 @@ from go2_robot_sdk.infrastructure.sensors.lidar_decoder import update_meshes_for
 
 
 def _make_dummy_cpp_module(return_value: np.ndarray):
-    mod = types.ModuleType("lidar_accelator")
+    mod = types.ModuleType("lidar_accelerator")
 
     def process_u8_to_xyzi_f32(
         positions,
@@ -27,7 +27,7 @@ def _make_dummy_cpp_module(return_value: np.ndarray):
 
 def test_update_meshes_uses_cpp_when_enabled(monkeypatch):
     sentinel = np.array([[9.0, 9.0, 9.0, 0.9]], dtype=np.float32)
-    monkeypatch.setitem(sys.modules, "lidar_accelator", _make_dummy_cpp_module(sentinel))
+    monkeypatch.setitem(sys.modules, "lidar_accelerator", _make_dummy_cpp_module(sentinel))
 
     positions = np.zeros((1, 3), dtype=np.uint8)
     uvs = np.zeros((1, 2), dtype=np.uint8)

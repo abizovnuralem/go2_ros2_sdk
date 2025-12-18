@@ -1,4 +1,4 @@
-#include "lidar_accelator/processing.hpp"
+#include "lidar_accelerator/processing.hpp"
 
 #include <array>
 #include <cmath>
@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <vector>
 
-namespace lidar_accelator {
+namespace lidar_accelerator {
 
 namespace {
 
@@ -137,4 +137,4 @@ std::vector<float> process_u8_to_xyzi_f32(
   return out;
 }
 
-}  // namespace lidar_accelator
+}  // namespace lidar_accelerator

@@ -6,18 +6,18 @@ from go2_robot_sdk.infrastructure.sensors.lidar_decoder import update_meshes_for
 
 def test_cpp_accel_real_pybind_matches_python(caplog):
     try:
-        import lidar_accelator
+        import lidar_accelerator
     except Exception:
-        pytest.skip("lidar_accelator(pybind11) module is not available")
+        pytest.skip("lidar_accelerator(pybind11) module is not available")
 
-    assert hasattr(lidar_accelator, "__file__")
-    assert str(lidar_accelator.__file__).endswith((".so", ".pyd"))
+    assert hasattr(lidar_accelerator, "__file__")
+    assert str(lidar_accelerator.__file__).endswith((".so", ".pyd"))
 
     positions = np.array([10, 20, 30, 40, 50, 60], dtype=np.uint8)
     uvs = np.array([10, 20, 30, 40], dtype=np.uint8)
 
     # 1) C++ 구현을 직접 호출(모듈이 실제로 동작함을 확인)
-    out_cpp_direct = lidar_accelator.process_u8_to_xyzi_f32(
+    out_cpp_direct = lidar_accelerator.process_u8_to_xyzi_f32(
         positions,
         uvs,
         0.01,
@@ -47,9 +47,9 @@ def test_cpp_accel_real_pybind_matches_python(caplog):
 
     # 3) update_meshes_for_cloud2가 use_cpp_accel=True일 때 실제로 모듈 함수 attr를 호출하는지 확인
     sentinel = np.array([[9.0, 9.0, 9.0, 0.9]], dtype=np.float32)
-    orig = lidar_accelator.process_u8_to_xyzi_f32
+    orig = lidar_accelerator.process_u8_to_xyzi_f32
     try:
-        lidar_accelator.process_u8_to_xyzi_f32 = lambda *args, **kwargs: sentinel
+        lidar_accelerator.process_u8_to_xyzi_f32 = lambda *args, **kwargs: sentinel
         out_switch = update_meshes_for_cloud2(
             positions,
             uvs,
@@ -63,4 +63,4 @@ def test_cpp_accel_real_pybind_matches_python(caplog):
         )
         assert out_switch is sentinel
     finally:
-        lidar_accelator.process_u8_to_xyzi_f32 = orig
+        lidar_accelerator.process_u8_to_xyzi_f32 = orig

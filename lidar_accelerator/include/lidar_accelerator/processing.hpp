@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace lidar_accelator {
+namespace lidar_accelerator {
 
 std::vector<float> process_u8_to_xyzi_f32(
     const uint8_t* positions_u8,
@@ -19,4 +19,4 @@ std::vector<float> process_u8_to_xyzi_f32(
     int max_points,
     std::size_t* out_points);
 
-}  // namespace lidar_accelator
+}  // namespace lidar_accelerator

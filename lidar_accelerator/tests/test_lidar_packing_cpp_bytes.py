@@ -4,9 +4,9 @@ import pytest
 
 def test_pack_xyzi_f32_to_bytes_matches_numpy():
     try:
-        import lidar_accelator
+        import lidar_accelerator
     except Exception:
-        pytest.skip("lidar_accelator(pybind11) module is not available")
+        pytest.skip("lidar_accelerator(pybind11) module is not available")
 
     points = np.array(
         [
@@ -17,7 +17,7 @@ def test_pack_xyzi_f32_to_bytes_matches_numpy():
     )
 
     expected = points.tobytes()
-    got = lidar_accelator.pack_xyzi_f32_to_bytes(points)
+    got = lidar_accelerator.pack_xyzi_f32_to_bytes(points)
 
     assert isinstance(got, (bytes, bytearray))
     assert got == expected

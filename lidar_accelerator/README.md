@@ -1,11 +1,11 @@
-# lidar_accelator
+# lidar_accelerator
 
-`lidar_accelator`는 **Go2 LiDAR 처리 파이프라인의 CPU 병목을 줄이기 위한 pybind11 기반 C++ 가속 모듈**입니다.
+`lidar_accelerator`는 **Go2 LiDAR 처리 파이프라인의 CPU 병목을 줄이기 위한 pybind11 기반 C++ 가속 모듈**입니다.
 
 - **Phase A (완료)**: (positions/uvs → XYZI float32) 전처리 및 필터링을 C++로 가속
 - **Phase B (준비 완료 / 실데이터 샘플 필요)**: `libvoxel.wasm` 기반 디코드 자체를 Python(wasmtime)에서 C++(wasmtime C API)로 이동하여 end-to-end 디코드+전처리 경로 제공
 
-이 패키지는 ROS2 워크스페이스에서 `ament_cmake`로 빌드되며, 결과물은 Python 모듈로 설치되어 **`import lidar_accelator`**로 사용됩니다.
+이 패키지는 ROS2 워크스페이스에서 `ament_cmake`로 빌드되며, 결과물은 Python 모듈로 설치되어 **`import lidar_accelerator`**로 사용됩니다.
 
 ---
 
@@ -32,11 +32,11 @@ Go2의 WebRTC LiDAR 메시지는 압축된 voxel 데이터를 포함하며, 전�
 ## 구성(디렉토리 구조)
 
 - `CMakeLists.txt`
-  - `pybind11_add_module(lidar_accelator ...)`
+  - `pybind11_add_module(lidar_accelerator ...)`
   - wasmtime C API 탐지 시 `GO2_WASMTIME_C_API=1` 정의
 - `package.xml`
   - ROS2 패키지 메타데이터
-- `include/lidar_accelator/`
+- `include/lidar_accelerator/`
   - `processing.hpp`: Phase A 전처리
   - `packing.hpp`: (선택) bytes 패킹
   - `wasm_decode.hpp`: Phase B 디코드+전처리
@@ -63,14 +63,14 @@ Go2의 WebRTC LiDAR 메시지는 압축된 voxel 데이터를 포함하며, 전�
 
 1. WebRTC로부터 받은 데이터에서 `positions`, `uvs`, `resolution`, `origin`을 확보
 2. `update_meshes_for_cloud2(... use_cpp_accel=True)`
-3. 내부에서 `import lidar_accelator` 후 `process_u8_to_xyzi_f32` 호출
+3. 내부에서 `import lidar_accelerator` 후 `process_u8_to_xyzi_f32` 호출
 4. 결과 `(N,4) float32`를 `PointCloud2.data = points.tobytes()`로 패킹하여 퍼블리시
 
 ### B) Phase B: compressed_data 기반 디코드+전처리(준비 완료)
 실데이터(`ulidar array-buffer .bin`)가 있으면 다음 경로를 통해 **디코드 자체 병목**까지 C++로 이동 가능합니다.
 
 1. WebRTC에서 `compressed_data`를 그대로 전달
-2. `ROS2Publisher._lidar_worker()`가 `lidar_accelator.decode_and_process(...)`를 우선 시도
+2. `ROS2Publisher._lidar_worker()`가 `lidar_accelerator.decode_and_process(...)`를 우선 시도
 3. 실패 시 Python(wasmtime) 디코더 경로로 자동 fallback
 
 ---
@@ -82,7 +82,7 @@ Go2의 WebRTC LiDAR 메시지는 압축된 voxel 데이터를 포함하며, 전�
 ```bash
 source /opt/ros/humble/setup.bash
 cd /ros2_ws
-colcon build --packages-select lidar_accelator --cmake-args -DCMAKE_BUILD_TYPE=Release
+colcon build --packages-select lidar_accelerator --cmake-args -DCMAKE_BUILD_TYPE=Release
 source /ros2_ws/install/setup.bash
 ```
 
@@ -92,12 +92,12 @@ source /ros2_ws/install/setup.bash
 
 ## 테스트
 
-`lidar_accelator/tests` 기준:
+`lidar_accelerator/tests` 기준:
 
 ```bash
 source /opt/ros/humble/setup.bash
 source /ros2_ws/install/setup.bash
-python3 -m pytest -q -o addopts= /ros2_ws/src/third_party/go2_ros2_sdk/lidar_accelator/tests
+python3 -m pytest -q -o addopts= /ros2_ws/src/third_party/go2_ros2_sdk/lidar_accelerator/tests
 ```
 
 - recorded sample이 없으면 `test_lidar_offline_sample_integration.py`는 skip될 수 있습니다.
@@ -109,7 +109,7 @@ python3 -m pytest -q -o addopts= /ros2_ws/src/third_party/go2_ros2_sdk/lidar_acc
 ### 1) Phase A 전처리 벤치
 
 ```bash
-python3 /ros2_ws/src/third_party/go2_ros2_sdk/lidar_accelator/scripts/bench_go2_lidar_accel.py \
+python3 /ros2_ws/src/third_party/go2_ros2_sdk/lidar_accelerator/scripts/bench_go2_lidar_accel.py \
   --points 30000 --warmup 2 --iters 20 \
   --downsample 32 --max-points 3000 --deduplicate false --intensity 0.0
 ```
@@ -117,7 +117,7 @@ python3 /ros2_ws/src/third_party/go2_ros2_sdk/lidar_accelator/scripts/bench_go2_
 ### 2) Phase A Sweep + CSV(보고용)
 
 ```bash
-python3 /ros2_ws/src/third_party/go2_ros2_sdk/lidar_accelator/scripts/bench_go2_lidar_accel.py \
+python3 /ros2_ws/src/third_party/go2_ros2_sdk/lidar_accelerator/scripts/bench_go2_lidar_accel.py \
   --sweep --warmup 2 --iters 20 \
   --points-list 3000,30000 \
   --downsample-list 1,32 \
@@ -152,7 +152,7 @@ CSV 컬럼:
 ### 3) Phase B end-to-end 벤치(실데이터 필요)
 
 ```bash
-python3 /ros2_ws/src/third_party/go2_ros2_sdk/lidar_accelator/scripts/bench_go2_lidar_decode_and_process_sample.py \
+python3 /ros2_ws/src/third_party/go2_ros2_sdk/lidar_accelerator/scripts/bench_go2_lidar_decode_and_process_sample.py \
   /ros2_ws/lidar_samples/ulidar_array_buffer_XXXX.bin \
   --warmup 3 --iters 20 --intensity 0.0 --downsample 32 --max-points 3000
 ```
@@ -172,16 +172,16 @@ python3 /ros2_ws/src/third_party/go2_ros2_sdk/lidar_accelator/scripts/bench_go2_
 ```bash
 export LIDAR_SAMPLE_PATH=/ros2_ws/lidar_samples/ulidar_array_buffer_XXXX.bin
 python3 -m pytest -q -o addopts= \
-  /ros2_ws/src/third_party/go2_ros2_sdk/lidar_accelator/tests/test_lidar_offline_sample_integration.py
+  /ros2_ws/src/third_party/go2_ros2_sdk/lidar_accelerator/tests/test_lidar_offline_sample_integration.py
 ```
 
 ---
 
 ## API
 
-### `lidar_accelator.process_u8_to_xyzi_f32(positions, uvs, res, origin, intense_limiter, deduplicate=True, downsample_step=1, max_points=0) -> np.ndarray`
+### `lidar_accelerator.process_u8_to_xyzi_f32(positions, uvs, res, origin, intense_limiter, deduplicate=True, downsample_step=1, max_points=0) -> np.ndarray`
 - 반환: `(N,4)` `float32`
 
-### `lidar_accelator.decode_and_process(compressed, res, origin, intense_limiter, deduplicate=True, downsample_step=1, max_points=0) -> np.ndarray`
+### `lidar_accelerator.decode_and_process(compressed, res, origin, intense_limiter, deduplicate=True, downsample_step=1, max_points=0) -> np.ndarray`
 - 반환: `(N,4)` `float32`
 - 주의: 올바른 Go2 LiDAR compressed bytes가 아니면 실패할 수 있습니다.
