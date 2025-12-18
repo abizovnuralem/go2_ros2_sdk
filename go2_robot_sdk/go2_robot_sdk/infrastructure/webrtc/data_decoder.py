@@ -7,8 +7,12 @@ Handles decoding of compressed LiDAR data and other binary messages from WebRTC.
 """
 
 import json
+import os
 import struct
 import logging
+import pathlib
+import threading
+import time
 from typing import Optional, Dict, Any, Union
 try:
     # Use the working LidarDecoder from infrastructure
@@ -18,6 +22,36 @@ except ImportError:
 
 
 logger = logging.getLogger(__name__)
+
+_LIDAR_DUMP_LOCK = threading.Lock()
+_LIDAR_DUMP_COUNT = 0
+
+
+def _maybe_dump_lidar_sample(buffer: bytes) -> None:
+    global _LIDAR_DUMP_COUNT
+
+    dump_dir = os.getenv("LIDAR_DUMP_DIR", "").strip()
+    if not dump_dir:
+        return
+
+    try:
+        max_files = int(os.getenv("LIDAR_DUMP_MAX", "1").strip() or "1")
+    except Exception:
+        max_files = 1
+
+    if max_files <= 0:
+        return
+
+    with _LIDAR_DUMP_LOCK:
+        if _LIDAR_DUMP_COUNT >= max_files:
+            return
+
+        p = pathlib.Path(dump_dir)
+        p.mkdir(parents=True, exist_ok=True)
+        ts_ns = time.time_ns()
+        out_path = p / f"ulidar_array_buffer_{ts_ns}.bin"
+        out_path.write_bytes(buffer)
+        _LIDAR_DUMP_COUNT += 1
 
 
 class DataDecodingError(Exception):
@@ -216,10 +250,18 @@ def deal_array_buffer(buffer: bytes, perform_decode: bool = True) -> Optional[Di
     """
     if not isinstance(buffer, bytes):
         return None
+
+    _maybe_dump_lidar_sample(buffer)
     
     try:
         # Use original implementation for full compatibility
         if _global_lidar_decoder and perform_decode:
+            use_cpp = os.getenv("LIDAR_USE_CPP_ACCEL", "false").strip().lower() in (
+                "1",
+                "true",
+                "yes",
+                "on",
+            )
             import struct
             import json
             
@@ -230,8 +272,11 @@ def deal_array_buffer(buffer: bytes, perform_decode: bool = True) -> Optional[Di
             obj = json.loads(json_str)
             
             if compressed_data:
-                decoded_data = _global_lidar_decoder.decode(compressed_data, obj['data'])
-                obj["decoded_data"] = decoded_data
+                if use_cpp:
+                    obj["compressed_data"] = compressed_data
+                else:
+                    decoded_data = _global_lidar_decoder.decode(compressed_data, obj['data'])
+                    obj["decoded_data"] = decoded_data
             else:
                 obj["compressed_data"] = compressed_data
             return obj

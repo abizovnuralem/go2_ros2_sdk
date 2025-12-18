@@ -12,7 +12,6 @@ from geometry_msgs.msg import TransformStamped
 from go2_interfaces.msg import Go2State, IMU
 from go2_interfaces.msg import VoxelMapCompressed
 from sensor_msgs.msg import PointCloud2, PointField, JointState
-from sensor_msgs_py import point_cloud2
 from std_msgs.msg import Header
 from nav_msgs.msg import Odometry
 from cv_bridge import CvBridge
@@ -21,6 +20,7 @@ from ...domain.interfaces import IRobotDataPublisher
 from ...domain.entities import RobotData, RobotConfig
 from ..sensors.lidar_decoder import update_meshes_for_cloud2
 from ..sensors.camera_config import load_camera_info
+from .pointcloud2_packing import pack_xyzi_float32
 
 logger = logging.getLogger(__name__)
 
@@ -256,19 +256,51 @@ class ROS2Publisher(IRobotDataPublisher):
 
                     lidar = robot_data.lidar_data
 
-                    points = update_meshes_for_cloud2(
-                        lidar.positions,
-                        lidar.uvs,
-                        lidar.resolution,
-                        lidar.origin,
-                        float(
-                            getattr(self.config, "lidar_intensity_threshold", 0.0)
-                            or 0.0
-                        ),
-                        bool(getattr(self.config, "lidar_deduplicate", True)),
-                        int(getattr(self.config, "lidar_downsample_step", 1) or 1),
-                        int(getattr(self.config, "lidar_max_points", 0) or 0),
-                    )
+                    points = getattr(lidar, "points", None)
+                    if points is None:
+                        use_cpp = bool(getattr(self.config, "use_cpp_lidar_accel", True))
+                        if use_cpp and getattr(lidar, "compressed_data", None):
+                            try:
+                                import lidar_accelator
+
+                                points = lidar_accelator.decode_and_process(
+                                    lidar.compressed_data,
+                                    float(lidar.resolution),
+                                    list(lidar.origin),
+                                    float(
+                                        getattr(self.config, "lidar_intensity_threshold", 0.0)
+                                        or 0.0
+                                    ),
+                                    bool(getattr(self.config, "lidar_deduplicate", True)),
+                                    int(getattr(self.config, "lidar_downsample_step", 1) or 1),
+                                    int(getattr(self.config, "lidar_max_points", 0) or 0),
+                                )
+                            except Exception as e:
+                                logger.warning(
+                                    "LiDAR accel: decode_and_process failed, falling back to Python (%s)",
+                                    e,
+                                )
+
+                        if points is None:
+                            if lidar.positions is None or lidar.uvs is None:
+                                raise ValueError(
+                                    "LiDAR data missing positions/uvs (and no points/compressed_data path succeeded)"
+                                )
+
+                            points = update_meshes_for_cloud2(
+                                lidar.positions,
+                                lidar.uvs,
+                                lidar.resolution,
+                                lidar.origin,
+                                float(
+                                    getattr(self.config, "lidar_intensity_threshold", 0.0)
+                                    or 0.0
+                                ),
+                                bool(getattr(self.config, "lidar_deduplicate", True)),
+                                int(getattr(self.config, "lidar_downsample_step", 1) or 1),
+                                int(getattr(self.config, "lidar_max_points", 0) or 0),
+                                use_cpp_accel=use_cpp,
+                            )
 
                     point_cloud = PointCloud2()
                     point_cloud.header = Header(frame_id="odom")
@@ -286,9 +318,17 @@ class ROS2Publisher(IRobotDataPublisher):
                         ),
                     ]
 
-                    point_cloud = point_cloud2.create_cloud(
-                        point_cloud.header, fields, points
-                    )
+                    packed = pack_xyzi_float32(points)
+
+                    point_cloud.height = packed["height"]
+                    point_cloud.width = packed["width"]
+                    point_cloud.is_bigendian = packed["is_bigendian"]
+                    point_cloud.fields = fields
+                    point_cloud.point_step = packed["point_step"]
+                    point_cloud.row_step = packed["row_step"]
+                    point_cloud.is_dense = packed["is_dense"]
+                    point_cloud.data = packed["data"]
+
                     self.publishers["lidar"][robot_idx].publish(point_cloud)
 
                 finally:

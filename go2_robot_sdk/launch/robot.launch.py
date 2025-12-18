@@ -92,6 +92,7 @@ class Go2NodeFactory:
             DeclareLaunchArgument('lidar_downsample_step', default_value='4', description='LiDAR downsample step'),
             DeclareLaunchArgument('lidar_max_points', default_value='25000', description='LiDAR max points'),
             DeclareLaunchArgument('lidar_deduplicate', default_value='false', description='Deduplicate LiDAR points'),
+            DeclareLaunchArgument('use_cpp_lidar_accel', default_value='false', description='Enable C++ LiDAR acceleration (pybind11)'),
             DeclareLaunchArgument('lidar_intensity_threshold', default_value='0.0', description='LiDAR intensity threshold'),
         ]
     
@@ -189,6 +190,7 @@ class Go2NodeFactory:
         lidar_downsample_step = ParameterValue(LaunchConfiguration('lidar_downsample_step'), value_type=int)
         lidar_max_points = ParameterValue(LaunchConfiguration('lidar_max_points'), value_type=int)
         lidar_deduplicate = ParameterValue(LaunchConfiguration('lidar_deduplicate'), value_type=bool)
+        use_cpp_lidar_accel = ParameterValue(LaunchConfiguration('use_cpp_lidar_accel'), value_type=bool)
         lidar_intensity_threshold = ParameterValue(
             LaunchConfiguration('lidar_intensity_threshold'), value_type=float
         )
@@ -210,6 +212,7 @@ class Go2NodeFactory:
                     'lidar_downsample_step': lidar_downsample_step,
                     'lidar_max_points': lidar_max_points,
                     'lidar_deduplicate': lidar_deduplicate,
+                    'use_cpp_lidar_accel': use_cpp_lidar_accel,
                     'lidar_intensity_threshold': lidar_intensity_threshold,
                 }],
             ),

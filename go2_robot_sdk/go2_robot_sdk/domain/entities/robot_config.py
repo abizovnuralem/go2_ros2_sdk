@@ -14,6 +14,7 @@ class RobotConfig:
     conn_type: str
     enable_video: bool
     decode_lidar: bool
+    use_cpp_lidar_accel: bool
     publish_raw_voxel: bool
     obstacle_avoidance: bool
     lidar_publish_rate: float
@@ -33,6 +34,7 @@ class RobotConfig:
         decode_lidar: bool,
         publish_raw_voxel: bool,
         obstacle_avoidance: bool,
+        use_cpp_lidar_accel: bool = False,
         lidar_publish_rate: float = 5.0,
         lidar_downsample_step: int = 4,
         lidar_max_points: int = 25000,
@@ -53,6 +55,7 @@ class RobotConfig:
             conn_type=conn_type,
             enable_video=enable_video,
             decode_lidar=decode_lidar,
+            use_cpp_lidar_accel=use_cpp_lidar_accel,
             publish_raw_voxel=publish_raw_voxel,
             obstacle_avoidance=obstacle_avoidance,
             lidar_publish_rate=lidar_publish_rate,
