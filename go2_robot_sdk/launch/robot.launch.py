@@ -88,11 +88,12 @@ class Go2NodeFactory:
             DeclareLaunchArgument('joystick', default_value='true', description='Launch joystick'),
             DeclareLaunchArgument('teleop', default_value='true', description='Launch teleoperation'),
             DeclareLaunchArgument('obstacle_avoidance', default_value='false', description='Enable obstacle avoidance'),
+            DeclareLaunchArgument('log_level', default_value='warn', description='ROS 2 log level (debug|info|warn|error|fatal)'),
             DeclareLaunchArgument('lidar_publish_rate', default_value='5.0', description='LiDAR publish rate (Hz)'),
             DeclareLaunchArgument('lidar_downsample_step', default_value='4', description='LiDAR downsample step'),
             DeclareLaunchArgument('lidar_max_points', default_value='25000', description='LiDAR max points'),
             DeclareLaunchArgument('lidar_deduplicate', default_value='false', description='Deduplicate LiDAR points'),
-            DeclareLaunchArgument('use_cpp_lidar_accel', default_value='false', description='Enable C++ LiDAR acceleration (pybind11)'),
+            DeclareLaunchArgument('use_cpp_lidar_accel', default_value='true', description='Enable C++ LiDAR acceleration (pybind11)'),
             DeclareLaunchArgument('lidar_intensity_threshold', default_value='0.0', description='LiDAR intensity threshold'),
         ]
     
@@ -100,6 +101,7 @@ class Go2NodeFactory:
         """Create robot state publisher nodes"""
         nodes = []
         use_sim_time = LaunchConfiguration('use_sim_time', default='false')
+        log_level = LaunchConfiguration('log_level')
         
         if self.config.conn_mode == 'single':
             # Single robot configuration
@@ -115,7 +117,12 @@ class Go2NodeFactory:
                         'use_sim_time': use_sim_time,
                         'robot_description': robot_desc
                     }],
-                    arguments=[self.config.config_paths['urdf']]
+                    arguments=[
+                        self.config.config_paths['urdf'],
+                        '--ros-args',
+                        '--log-level',
+                        log_level,
+                    ]
                 ),
                 self._create_pointcloud_to_laserscan_node()
             ])
@@ -137,7 +144,12 @@ class Go2NodeFactory:
                             'use_sim_time': use_sim_time,
                             'robot_description': robot_desc
                         }],
-                        arguments=[self.config.config_paths['urdf']]
+                        arguments=[
+                            self.config.config_paths['urdf'],
+                            '--ros-args',
+                            '--log-level',
+                            log_level,
+                        ]
                     ),
                     self._create_pointcloud_to_laserscan_node(f"robot{i}")
                 ])
@@ -151,12 +163,14 @@ class Go2NodeFactory:
     
     def _create_pointcloud_to_laserscan_node(self, namespace: str = None) -> Node:
         """Create pointcloud to laserscan conversion node"""
+        log_level = LaunchConfiguration('log_level')
         if namespace:
             # Multi-robot setup
             return Node(
                 package='pointcloud_to_laserscan',
                 executable='pointcloud_to_laserscan_node',
                 name=f'{namespace}_pointcloud_to_laserscan',
+                arguments=['--ros-args', '--log-level', log_level],
                 remappings=[
                     ('cloud_in', f'{namespace}/point_cloud2'),
                     ('scan', f'{namespace}/scan'),
@@ -173,6 +187,7 @@ class Go2NodeFactory:
                 package='pointcloud_to_laserscan',
                 executable='pointcloud_to_laserscan_node',
                 name='go2_pointcloud_to_laserscan',
+                arguments=['--ros-args', '--log-level', log_level],
                 remappings=[
                     ('cloud_in', 'point_cloud2'),
                     ('scan', 'scan'),
@@ -186,6 +201,7 @@ class Go2NodeFactory:
     
     def create_core_nodes(self) -> List[Node]:
         """Create core Go2 robot nodes"""
+        log_level = LaunchConfiguration('log_level')
         lidar_publish_rate = ParameterValue(LaunchConfiguration('lidar_publish_rate'), value_type=float)
         lidar_downsample_step = ParameterValue(LaunchConfiguration('lidar_downsample_step'), value_type=int)
         lidar_max_points = ParameterValue(LaunchConfiguration('lidar_max_points'), value_type=int)
@@ -203,6 +219,7 @@ class Go2NodeFactory:
                 executable='go2_driver_node',
                 name='go2_driver_node',
                 output='screen',
+                arguments=['--ros-args', '--log-level', log_level],
                 parameters=[{
                     'robot_ip': self.config.robot_ip,
                     'token': self.config.robot_token,
@@ -221,6 +238,7 @@ class Go2NodeFactory:
                 package='lidar_processor',
                 executable='lidar_to_pointcloud',
                 name='lidar_to_pointcloud',
+                arguments=['--ros-args', '--log-level', log_level],
                 parameters=[{
                     'robot_ip_lst': self.config.robot_ip_list,
                     'map_name': self.config.map_name,
@@ -232,6 +250,7 @@ class Go2NodeFactory:
                 package='lidar_processor',
                 executable='pointcloud_aggregator',
                 name='pointcloud_aggregator',
+                arguments=['--ros-args', '--log-level', log_level],
                 parameters=[{
                     'max_range': 20.0,
                     'min_range': 0.1,
@@ -246,6 +265,7 @@ class Go2NodeFactory:
                 package='speech_processor',
                 executable='tts_node',
                 name='tts_node',
+                arguments=['--ros-args', '--log-level', log_level],
                 parameters=[{
                     'api_key': os.getenv('ELEVENLABS_API_KEY', ''),
                     'provider': 'elevenlabs',
@@ -262,6 +282,7 @@ class Go2NodeFactory:
         use_sim_time = LaunchConfiguration('use_sim_time', default='false')
         with_joystick = LaunchConfiguration('joystick', default='true')
         with_teleop = LaunchConfiguration('teleop', default='true')
+        log_level = LaunchConfiguration('log_level')
         
         return [
             # Joystick node
@@ -269,6 +290,7 @@ class Go2NodeFactory:
                 package='joy',
                 executable='joy_node',
                 condition=IfCondition(with_joystick),
+                arguments=['--ros-args', '--log-level', log_level],
                 parameters=[self.config.config_paths['joystick']]
             ),
             # Teleop twist joy node
@@ -277,6 +299,7 @@ class Go2NodeFactory:
                 executable='teleop_node',
                 name='go2_teleop_node',
                 condition=IfCondition(with_joystick),
+                arguments=['--ros-args', '--log-level', log_level],
                 parameters=[self.config.config_paths['twist_mux']],
             ),
             # Twist multiplexer
@@ -285,6 +308,7 @@ class Go2NodeFactory:
                 executable='twist_mux',
                 output='screen',
                 condition=IfCondition(with_teleop),
+                arguments=['--ros-args', '--log-level', log_level],
                 parameters=[
                     {'use_sim_time': use_sim_time},
                     self.config.config_paths['twist_mux']
@@ -295,6 +319,7 @@ class Go2NodeFactory:
     def create_visualization_nodes(self) -> List[Node]:
         """Create visualization nodes (RViz, Foxglove)"""
         with_rviz2 = LaunchConfiguration('rviz2', default='true')
+        log_level = LaunchConfiguration('log_level')
         
         return [
             # RViz2
@@ -304,7 +329,13 @@ class Go2NodeFactory:
                 condition=IfCondition(with_rviz2),
                 name='go2_rviz2',
                 output='screen',
-                arguments=['-d', self.config.config_paths['rviz']],
+                arguments=[
+                    '-d',
+                    self.config.config_paths['rviz'],
+                    '--ros-args',
+                    '--log-level',
+                    log_level,
+                ],
                 parameters=[{'use_sim_time': False}]
             ),
         ]

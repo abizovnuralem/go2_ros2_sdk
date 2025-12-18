@@ -14,6 +14,11 @@ import os
 import math
 
 try:
+    from rclpy.logging import get_logger as _ros_get_logger
+except Exception:  # pragma: no cover
+    _ros_get_logger = None
+
+try:
     from wasmtime import Config, Engine, Store, Module, Instance, Func, FuncType, ValType
 except Exception:  # pragma: no cover
     Config = Engine = Store = Module = Instance = Func = FuncType = ValType = None
@@ -23,7 +28,7 @@ try:
 except Exception:  # pragma: no cover
     get_package_share_directory = None
 
-logger = logging.getLogger(__name__)
+logger = _ros_get_logger(__name__) if _ros_get_logger else logging.getLogger(__name__)
 _CPP_ACCEL_LOGGED = {"used": False, "failed": False}
 
 
@@ -66,7 +71,9 @@ def update_meshes_for_cloud2(
                 max_points,
             )
             if not _CPP_ACCEL_LOGGED["used"]:
-                logger.info("LiDAR accel: using lidar_accelerator.process_u8_to_xyzi_f32")
+                logger.info(
+                    "LiDAR accel ACTIVE: using lidar_accelerator.process_u8_to_xyzi_f32 (pybind11)"
+                )
                 _CPP_ACCEL_LOGGED["used"] = True
             return out
         except Exception as e:

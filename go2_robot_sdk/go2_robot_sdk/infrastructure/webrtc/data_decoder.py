@@ -14,6 +14,11 @@ import pathlib
 import threading
 import time
 from typing import Optional, Dict, Any, Union
+
+try:
+    from rclpy.logging import get_logger as _ros_get_logger
+except Exception:  # pragma: no cover
+    _ros_get_logger = None
 try:
     # Use the working LidarDecoder from infrastructure
     from ..sensors.lidar_decoder import LidarDecoder as OriginalLidarDecoder
@@ -21,10 +26,12 @@ except ImportError:
     OriginalLidarDecoder = None
 
 
-logger = logging.getLogger(__name__)
+logger = _ros_get_logger(__name__) if _ros_get_logger else logging.getLogger(__name__)
 
 _LIDAR_DUMP_LOCK = threading.Lock()
 _LIDAR_DUMP_COUNT = 0
+
+_LIDAR_MODE_LOGGED = {"cpp_mode": False, "python_decode": False}
 
 
 def _maybe_dump_lidar_sample(buffer: bytes) -> None:
@@ -256,12 +263,26 @@ def deal_array_buffer(buffer: bytes, perform_decode: bool = True) -> Optional[Di
     try:
         # Use original implementation for full compatibility
         if _global_lidar_decoder and perform_decode:
-            use_cpp = os.getenv("LIDAR_USE_CPP_ACCEL", "false").strip().lower() in (
+            use_cpp = os.getenv("LIDAR_USE_CPP_ACCEL", "true").strip().lower() in (
                 "1",
                 "true",
                 "yes",
                 "on",
             )
+
+            if use_cpp:
+                if not _LIDAR_MODE_LOGGED["cpp_mode"]:
+                    logger.info(
+                        "LiDAR decode MODE=C++: skipping Python WASM decode; emitting compressed_data for pybind decode_and_process"
+                    )
+                    _LIDAR_MODE_LOGGED["cpp_mode"] = True
+            else:
+                if not _LIDAR_MODE_LOGGED["python_decode"]:
+                    logger.info(
+                        "LiDAR decode MODE=PYTHON: using Python WASM decoder (may add latency); emitting decoded_data (positions/uvs)"
+                    )
+                    _LIDAR_MODE_LOGGED["python_decode"] = True
+
             import struct
             import json
             

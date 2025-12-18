@@ -48,6 +48,10 @@ class ROS2Publisher(IRobotDataPublisher):
 
         self._lidar_last_publish_ts = {}
 
+        self._lidar_accel_decode_used_logged = False
+        self._lidar_accel_decode_failed_logged = False
+        self._lidar_accel_decode_disabled_logged = False
+
     def publish_odometry(self, robot_data: RobotData) -> None:
         """Publish odometry data"""
         if not robot_data.odometry_data:
@@ -275,11 +279,24 @@ class ROS2Publisher(IRobotDataPublisher):
                                     int(getattr(self.config, "lidar_downsample_step", 1) or 1),
                                     int(getattr(self.config, "lidar_max_points", 0) or 0),
                                 )
+                                if not self._lidar_accel_decode_used_logged:
+                                    self.node.get_logger().info(
+                                        "LiDAR accel ACTIVE: using lidar_accelerator.decode_and_process (pybind11)"
+                                    )
+                                    self._lidar_accel_decode_used_logged = True
                             except Exception as e:
-                                logger.warning(
-                                    "LiDAR accel: decode_and_process failed, falling back to Python (%s)",
-                                    e,
-                                )
+                                if not self._lidar_accel_decode_failed_logged:
+                                    self.node.get_logger().warning(
+                                        "LiDAR accel: decode_and_process failed, falling back to Python (%s)",
+                                        e,
+                                    )
+                                    self._lidar_accel_decode_failed_logged = True
+
+                        if not use_cpp and not self._lidar_accel_decode_disabled_logged:
+                            self.node.get_logger().info(
+                                "LiDAR accel DISABLED: use_cpp_lidar_accel is false; using Python paths"
+                            )
+                            self._lidar_accel_decode_disabled_logged = True
 
                         if points is None:
                             if lidar.positions is None or lidar.uvs is None:
