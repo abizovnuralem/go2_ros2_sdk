@@ -178,7 +178,9 @@ controller_server:
       vx_samples: 12
       vy_samples: 1
       vtheta_samples: 12
-      sim_time: 1.5 # 원본 1.2 -> 1.5 (조금 더 멀리 보고 예측)
+      # [변경] 원본 1.5 -> 2.0
+      # 이유: 더 먼 미래 궤적까지 평가해서 장애물을 더 일찍 인지/우회(단, 너무 보수적이면 1.5~2.0에서 재조정)
+      sim_time: 2.0 # 원본 1.2 -> 1.5 (조금 더 멀리 보고 예측)
       linear_granularity: 0.05
       angular_granularity: 0.025
       transform_tolerance: 0.2
@@ -188,17 +190,27 @@ controller_server:
       stateful: True
       critics: ["RotateToGoal", "Oscillation", "BaseObstacle", "GoalAlign", "PathAlign", "PathDist", "GoalDist"]
       BaseObstacle:
-        scale: 0.02
+        # [변경] 원본 0.02 -> 0.14
+        # 이유: 장애물(costmap) 근접 페널티를 키워 벽/장애물에 너무 바짝 붙는 현상 완화
+        scale: 0.14
       PathAlign:
-        scale: 24.0
+        # [변경] 원본 24.0 -> 18.0
+        # 이유: 경로를 과도하게 고집하면 회피 시에도 벽 쪽으로 붙는 경우가 있어, 회피에 여유를 주기 위해 완화
+        scale: 18.0
         forward_point_distance: 0.1
       GoalAlign:
-        scale: 20.0
+        # [변경] 원본 20.0 -> 16.0
+        # 이유: 목표 정렬을 과도하게 고집하면 좁은 공간에서 불필요한 근접 주행/진동이 생길 수 있어 완화
+        scale: 16.0
         forward_point_distance: 0.1
       PathDist:
-        scale: 32.0
+        # [변경] 원본 32.0 -> 22.0
+        # 이유: 경로 거리 비용을 낮춰 장애물 우회 시 경로에서 약간 벗어나는 선택을 허용(큰 우회/부드러운 회피)
+        scale: 22.0
       GoalDist:
-        scale: 24.0
+        # [변경] 원본 24.0 -> 20.0
+        # 이유: 목표로의 직진 성향을 약간 낮춰, 장애물 앞에서 더 큰 우회 궤적을 허용
+        scale: 20.0
       RotateToGoal:
         scale: 32.0
         slowing_factor: 5.0
@@ -214,11 +226,15 @@ local_costmap:
       robot_base_frame: base_link
       use_sim_time: False
       rolling_window: true
-      width: 5 # 원본 6 -> 5 (연산량 최적화)
-      height: 5
+      # [변경] 원본 5x5 -> 8x8
+      # 이유: 로컬 costmap 창이 너무 작으면 장애물을 "가까워서야" 반영하게 되어 회피 시작이 늦어짐(회피 여유 거리 확보)
+      width: 8 # 원본 6 -> 5 (연산량 최적화)
+      height: 8
       resolution: 0.05
       footprint: "[ [0.360, 0.200], [0.360, -0.200], [-0.450, -0.200], [-0.450, 0.200] ]"
-      footprint_padding: 0.03
+      # [변경] 원본 0.03 -> 0.05
+      # 이유: footprint를 조금 더 크게 잡아 벽/장애물 최소 이격을 확보(단, 좁은 문틀 통과가 막히면 0.03~0.05에서 조정)
+      footprint_padding: 0.05
 
       # [수정] static_layer 제거
       # 로컬 맵은 센서 데이터(Voxel/Obstacle)만 보는 것이 회색 영역 주행에 유리함
@@ -240,15 +256,23 @@ local_costmap:
           clearing: True
           marking: True
           data_type: "LaserScan"
-          raytrace_max_range: 3.0
+          # [변경] 원본 3.0 -> 8.0
+          # 이유: 더 먼 거리의 free-space 클리어링을 반영하여 costmap 잔상/오탐으로 좁은 길이 막히는 현상 완화
+          raytrace_max_range: 8.0
           raytrace_min_range: 0.0
-          obstacle_max_range: 2.5
+          # [변경] 원본 2.5 -> 7.0
+          # 이유: 더 멀리서 장애물을 costmap에 올려 회피를 일찍 시작(회피 범위 확대)
+          obstacle_max_range: 7.0
           obstacle_min_range: 0.2
 
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 3.0
-        inflation_radius: 0.45
+        # [변경] 원본 cost_scaling_factor 3.0 -> 2.5
+        # 이유: 비용이 너무 급격히 떨어지면 회피가 늦어질 수 있어 완만하게(단, 좁은 공간 통과가 어려우면 2.5~3.0에서 조정)
+        cost_scaling_factor: 2.5
+        # [변경] 원본 inflation_radius 0.45 -> 0.75
+        # 이유: 벽/장애물 주변 안전거리(회피 여유)를 키워 "바짝 붙는" 주행을 줄임(좁은 곳 통과 고려해 0.65~0.85 권장)
+        inflation_radius: 0.75
 
 global_costmap:
   global_costmap:
@@ -267,7 +291,9 @@ global_costmap:
 
       static_map: True
       footprint: "[ [0.380, 0.230], [0.380, -0.230], [-0.480, -0.230], [-0.480, 0.230] ]"
-      footprint_padding: 0.03
+      # [변경] 원본 0.03 -> 0.05
+      # 이유: 글로벌 플래너도 로봇 외곽을 조금 더 보수적으로 잡아 벽 근접 경로 생성을 줄임
+      footprint_padding: 0.05
 
       # [수정] Obstacle Layer 추가
       # 원본: ["static_layer", "voxel_layer", "inflation_layer"]
@@ -291,9 +317,13 @@ global_costmap:
           clearing: True
           marking: True
           data_type: "LaserScan"
-          raytrace_max_range: 3.0
+          # [변경] 원본 3.0 -> 8.0
+          # 이유: 글로벌 costmap에서도 더 먼 거리의 free-space 클리어링 반영(동적 장애물 변화 반영성 개선)
+          raytrace_max_range: 8.0
           raytrace_min_range: 0.0
-          obstacle_max_range: 2.5
+          # [변경] 원본 2.5 -> 7.0
+          # 이유: 맵에 없는 동적 장애물을 더 멀리서 반영하여 경로 자체가 장애물을 크게 우회하도록 유도
+          obstacle_max_range: 7.0
           obstacle_min_range: 0.0
 
       # [주석 처리된 원본] Voxel Layer
@@ -306,7 +336,9 @@ global_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0 # 원본 1.0 -> 3.0 (좁은 곳 통과 용이)
-        inflation_radius: 0.55   # 원본 0.25 -> 0.55 (벽에서 안전거리 확보)
+        # [변경] 원본 0.55 -> 0.85
+        # 이유: 글로벌 경로가 벽/장애물에서 더 떨어지도록 안전거리 확장(단, 좁은 통로가 막히면 0.65~0.85에서 조정)
+        inflation_radius: 0.85   # 원본 0.25 -> 0.55 (벽에서 안전거리 확보)
 
 map_server:
   ros__parameters:
