@@ -31,8 +31,8 @@ amcl:
     # [수정] 파티클 수 증가 (2000 -> 3000)
     # 원본: max_particles: 2000
     # 수정: 대칭적인 환경에서는 입자를 더 많이 뿌려 위치 확률 분포를 넓혀야 안 튐
-    max_particles: 1000
-    min_particles: 300
+    max_particles: 10000
+    min_particles: 1000
 
     odom_frame_id: "odom"
     pf_err: 0.05
@@ -62,7 +62,7 @@ bt_navigator:
     global_frame: odom
     robot_base_frame: base_link
     odom_topic: odom
-    bt_loop_duration: 10
+    bt_loop_duration: 50
     default_server_timeout: 5
     plugin_lib_names:
     - nav2_compute_path_to_pose_action_bt_node
@@ -127,7 +127,7 @@ controller_server:
     # [수정] 제어 주기 (3.0 -> 10.0 Hz)
     # 원본: 3.0 (너무 느려서 장애물 반응 늦음)
     # 수정: 10.0 (Jetson에서 충분히 처리가능하며 장애물 회피 반응성 확보)
-    controller_frequency: 10.0
+    controller_frequency: 5.0
 
     min_x_velocity_threshold: 0.001
     min_y_velocity_threshold: 0.001
@@ -158,12 +158,12 @@ controller_server:
       # [수정] 최대 속도 제한 (3.0 -> 0.8)
       # 원본: 3.0 (좁은 실내에서 위험, 위치 추정 실패 원인)
       # 수정: 0.8 (안전 속도)
-      max_vel_x: 0.8
-      max_vel_y: 0.0
-      max_vel_theta: 1.0 # 원본 3.0은 회전이 너무 빠름
+      max_vel_x: 2.0
+      max_vel_y: 2.0
+      max_vel_theta: 2.0 # 원본 3.0은 회전이 너무 빠름
 
       min_speed_xy: 0.0
-      max_speed_xy: 0.8 # max_vel_x와 동일하게
+      max_speed_xy: 2.8 # max_vel_x와 동일하게
       min_speed_theta: 0.0
 
       # [수정] 가속도 제한 (2.5 -> 1.5)
@@ -236,13 +236,14 @@ local_costmap:
         scan:
           topic: /scan
           max_obstacle_height: 2.0
+          min_obstacle_height: 0.2
           clearing: True
           marking: True
           data_type: "LaserScan"
           raytrace_max_range: 3.0
           raytrace_min_range: 0.0
           obstacle_max_range: 2.5
-          obstacle_min_range: 0.0
+          obstacle_min_range: 0.2
 
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
