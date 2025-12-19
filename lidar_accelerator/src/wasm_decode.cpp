@@ -153,9 +153,8 @@ std::vector<float> decode_and_process(
     return results[0].of.i32;
   };
 
-  {
-    std::lock_guard<std::mutex> lk(g_mu);
-    if (!g.engine) {
+  std::unique_lock<std::mutex> lk(g_mu);
+  if (!g.engine) {
       std::string wasm_path = ament_index_cpp::get_package_share_directory("go2_robot_sdk") +
                               "/external_lib/libvoxel.wasm";
 
@@ -179,9 +178,9 @@ std::vector<float> decode_and_process(
       }
     }
 
-    ctx = wasmtime_store_context(g.store);
+  ctx = wasmtime_store_context(g.store);
 
-    if (!g.instantiated) {
+  if (!g.instantiated) {
       wasm_valtype_t* params_a[1] = {wasm_valtype_new_i32()};
       wasm_valtype_t* results_a[1] = {wasm_valtype_new_i32()};
 
@@ -222,10 +221,10 @@ std::vector<float> decode_and_process(
         throw std::runtime_error(trap_to_string(trap));
       }
 
-      g.instantiated = true;
-    }
+    g.instantiated = true;
+  }
 
-    if (!g.exports_cached) {
+  if (!g.exports_cached) {
       g.gen_ex = get_export(ctx, &g.instance, "e");
       g.malloc_ex = get_export(ctx, &g.instance, "f");
       g.free_ex = get_export(ctx, &g.instance, "g");
@@ -236,10 +235,10 @@ std::vector<float> decode_and_process(
         throw std::runtime_error("unexpected export kinds");
       }
 
-      g.exports_cached = true;
-    }
+    g.exports_cached = true;
+  }
 
-    if (!g.buffers_allocated) {
+  if (!g.buffers_allocated) {
       g.input = call_i32(&g.malloc_ex.of.func, 61440);
       g.decompressBuffer = call_i32(&g.malloc_ex.of.func, 80000);
       g.positions_ptr = call_i32(&g.malloc_ex.of.func, 2880000);
@@ -249,8 +248,7 @@ std::vector<float> decode_and_process(
       g.faceCount_ptr = call_i32(&g.malloc_ex.of.func, 4);
       g.pointCount_ptr = call_i32(&g.malloc_ex.of.func, 4);
 
-      g.buffers_allocated = true;
-    }
+    g.buffers_allocated = true;
   }
 
   const wasmtime_extern_t gen_ex = g.gen_ex;
