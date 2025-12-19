@@ -7,12 +7,29 @@ Handles decoding of compressed voxel map data from WebRTC stream.
 """
 
 import ctypes
+import importlib
+import logging
 import numpy as np
 import os
 import math
 
-from wasmtime import Config, Engine, Store, Module, Instance, Func, FuncType, ValType
-from ament_index_python import get_package_share_directory
+try:
+    from rclpy.logging import get_logger as _ros_get_logger
+except Exception:  # pragma: no cover
+    _ros_get_logger = None
+
+try:
+    from wasmtime import Config, Engine, Store, Module, Instance, Func, FuncType, ValType
+except Exception:  # pragma: no cover
+    Config = Engine = Store = Module = Instance = Func = FuncType = ValType = None
+
+try:
+    from ament_index_python import get_package_share_directory
+except Exception:  # pragma: no cover
+    get_package_share_directory = None
+
+logger = _ros_get_logger(__name__) if _ros_get_logger else logging.getLogger(__name__)
+_CPP_ACCEL_LOGGED = {"used": False, "failed": False}
 
 
 def update_meshes_for_cloud2(
@@ -24,6 +41,7 @@ def update_meshes_for_cloud2(
     deduplicate: bool = True,
     downsample_step: int = 1,
     max_points: int = 0,
+    use_cpp_accel: bool = True,
 ) -> np.ndarray:
     """
     Process LiDAR point cloud data for ROS2 PointCloud2 message.
@@ -38,6 +56,34 @@ def update_meshes_for_cloud2(
     Returns:
         Processed point cloud array with x,y,z,intensity
     """
+    if use_cpp_accel:
+        try:
+            mod = importlib.import_module("lidar_accelerator")
+            fn = getattr(mod, "process_u8_to_xyzi_f32")
+            out = fn(
+                positions,
+                uvs,
+                res,
+                origin,
+                intense_limiter,
+                deduplicate,
+                downsample_step,
+                max_points,
+            )
+            if not _CPP_ACCEL_LOGGED["used"]:
+                logger.info(
+                    "LiDAR accel ACTIVE: using lidar_accelerator.process_u8_to_xyzi_f32 (pybind11)"
+                )
+                _CPP_ACCEL_LOGGED["used"] = True
+            return out
+        except Exception as e:
+            if not _CPP_ACCEL_LOGGED["failed"]:
+                logger.warning(
+                    "LiDAR accel: lidar_accelerator not available, falling back to Python (%s)",
+                    e,
+                )
+                _CPP_ACCEL_LOGGED["failed"] = True
+
     position_array = np.array(positions).reshape(-1, 3).astype(np.float32)
     position_array *= res
     position_array += origin
@@ -70,6 +116,21 @@ class LidarDecoder:
     """Original WASM-based LiDAR decoder - the working implementation"""
 
     def __init__(self) -> None:
+        if (
+            Config is None
+            or Engine is None
+            or Store is None
+            or Module is None
+            or Instance is None
+            or Func is None
+            or FuncType is None
+            or ValType is None
+            or get_package_share_directory is None
+        ):
+            raise ImportError(
+                "WASM LiDAR decoder dependencies are not available (wasmtime / ament_index_python)"
+            )
+
         config = Config()
         config.wasm_multi_value = True
         config.debug_info = True

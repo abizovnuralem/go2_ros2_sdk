@@ -83,6 +83,13 @@ class Go2DriverNode(Node):
         token = os.getenv("ROBOT_TOKEN", os.getenv("GO2_TOKEN", ""))
         conn_type = os.getenv("CONN_TYPE", "")
 
+        use_cpp_default = os.getenv("LIDAR_USE_CPP_ACCEL", "true").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+            "on",
+        )
+
         # Declare parameters
         self.declare_parameters(
             namespace="",
@@ -92,6 +99,7 @@ class Go2DriverNode(Node):
                 ("conn_type", conn_type),
                 ("enable_video", True),
                 ("decode_lidar", True),
+                ("use_cpp_lidar_accel", use_cpp_default),
                 ("lidar_publish_rate", 5.0),
                 ("lidar_downsample_step", 4),
                 ("lidar_max_points", 25000),
@@ -138,6 +146,9 @@ class Go2DriverNode(Node):
             obstacle_avoidance=self.get_parameter("obstacle_avoidance")
             .get_parameter_value()
             .bool_value,
+            use_cpp_lidar_accel=self.get_parameter("use_cpp_lidar_accel")
+            .get_parameter_value()
+            .bool_value,
         )
 
         # Log configuration
@@ -146,6 +157,7 @@ class Go2DriverNode(Node):
         self.get_logger().info(f"Connection mode: {config.conn_mode}")
         self.get_logger().info(f"Enable video: {config.enable_video}")
         self.get_logger().info(f"Decode lidar: {config.decode_lidar}")
+        self.get_logger().info(f"Use cpp lidar accel: {config.use_cpp_lidar_accel}")
         self.get_logger().info(f"Lidar publish rate: {config.lidar_publish_rate}")
         self.get_logger().info(f"Lidar downsample step: {config.lidar_downsample_step}")
         self.get_logger().info(f"Lidar max points: {config.lidar_max_points}")

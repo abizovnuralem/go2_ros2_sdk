@@ -12,7 +12,6 @@ from geometry_msgs.msg import TransformStamped
 from go2_interfaces.msg import Go2State, IMU
 from go2_interfaces.msg import VoxelMapCompressed
 from sensor_msgs.msg import PointCloud2, PointField, JointState
-from sensor_msgs_py import point_cloud2
 from std_msgs.msg import Header
 from nav_msgs.msg import Odometry
 from cv_bridge import CvBridge
@@ -21,6 +20,7 @@ from ...domain.interfaces import IRobotDataPublisher
 from ...domain.entities import RobotData, RobotConfig
 from ..sensors.lidar_decoder import update_meshes_for_cloud2
 from ..sensors.camera_config import load_camera_info
+from .pointcloud2_packing import pack_xyzi_float32
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +47,12 @@ class ROS2Publisher(IRobotDataPublisher):
         self._lidar_thread.start()
 
         self._lidar_last_publish_ts = {}
+
+        self._lidar_accel_decode_used_logged = False
+        self._lidar_accel_decode_failed_logged = False
+        self._lidar_accel_decode_disabled_logged = False
+        self._lidar_python_decode_fallback_logged = False
+        self._lidar_missing_decode_inputs_logged = False
 
     def publish_odometry(self, robot_data: RobotData) -> None:
         """Publish odometry data"""
@@ -256,19 +262,90 @@ class ROS2Publisher(IRobotDataPublisher):
 
                     lidar = robot_data.lidar_data
 
-                    points = update_meshes_for_cloud2(
-                        lidar.positions,
-                        lidar.uvs,
-                        lidar.resolution,
-                        lidar.origin,
-                        float(
-                            getattr(self.config, "lidar_intensity_threshold", 0.0)
-                            or 0.0
-                        ),
-                        bool(getattr(self.config, "lidar_deduplicate", True)),
-                        int(getattr(self.config, "lidar_downsample_step", 1) or 1),
-                        int(getattr(self.config, "lidar_max_points", 0) or 0),
-                    )
+                    points = getattr(lidar, "points", None)
+                    if points is None:
+                        use_cpp = bool(getattr(self.config, "use_cpp_lidar_accel", True))
+                        if use_cpp and getattr(lidar, "compressed_data", None):
+                            try:
+                                import lidar_accelerator
+
+                                points = lidar_accelerator.decode_and_process(
+                                    lidar.compressed_data,
+                                    float(lidar.resolution),
+                                    list(lidar.origin),
+                                    float(
+                                        getattr(self.config, "lidar_intensity_threshold", 0.0)
+                                        or 0.0
+                                    ),
+                                    bool(getattr(self.config, "lidar_deduplicate", True)),
+                                    int(getattr(self.config, "lidar_downsample_step", 1) or 1),
+                                    int(getattr(self.config, "lidar_max_points", 0) or 0),
+                                )
+                                if not self._lidar_accel_decode_used_logged:
+                                    self.node.get_logger().info(
+                                        "LiDAR accel ACTIVE: using lidar_accelerator.decode_and_process (pybind11)"
+                                    )
+                                    self._lidar_accel_decode_used_logged = True
+                            except Exception as e:
+                                if not self._lidar_accel_decode_failed_logged:
+                                    self.node.get_logger().warning(
+                                        f"LiDAR accel: decode_and_process failed, falling back to Python ({e})"
+                                    )
+                                    self._lidar_accel_decode_failed_logged = True
+
+                                try:
+                                    
+                                    from ..sensors.lidar_decoder import decode_lidar_data
+
+                                    points = decode_lidar_data(
+                                        lidar.compressed_data,
+                                        resolution=float(lidar.resolution),
+                                        origin=list(lidar.origin),
+                                        intensity_threshold=float(
+                                            getattr(self.config, "lidar_intensity_threshold", 0.0)
+                                            or 0.0
+                                        ),
+                                    )
+                                    if (
+                                        points is not None
+                                        and not self._lidar_python_decode_fallback_logged
+                                    ):
+                                        self.node.get_logger().info(
+                                            "LiDAR decode fallback ACTIVE: using Python WASM decoder after C++ failure"
+                                        )
+                                        self._lidar_python_decode_fallback_logged = True
+                                except Exception:
+                                    pass
+
+                        if not use_cpp and not self._lidar_accel_decode_disabled_logged:
+                            self.node.get_logger().info(
+                                "LiDAR accel DISABLED: use_cpp_lidar_accel is false; using Python paths"
+                            )
+                            self._lidar_accel_decode_disabled_logged = True
+
+                        if points is None:
+                            if lidar.positions is None or lidar.uvs is None:
+                                if not self._lidar_missing_decode_inputs_logged:
+                                    self.node.get_logger().warning(
+                                        "LiDAR data missing positions/uvs (and no points/compressed_data path succeeded)"
+                                    )
+                                    self._lidar_missing_decode_inputs_logged = True
+                                continue
+
+                            points = update_meshes_for_cloud2(
+                                lidar.positions,
+                                lidar.uvs,
+                                lidar.resolution,
+                                lidar.origin,
+                                float(
+                                    getattr(self.config, "lidar_intensity_threshold", 0.0)
+                                    or 0.0
+                                ),
+                                bool(getattr(self.config, "lidar_deduplicate", True)),
+                                int(getattr(self.config, "lidar_downsample_step", 1) or 1),
+                                int(getattr(self.config, "lidar_max_points", 0) or 0),
+                                use_cpp_accel=use_cpp,
+                            )
 
                     point_cloud = PointCloud2()
                     point_cloud.header = Header(frame_id="odom")
@@ -286,9 +363,17 @@ class ROS2Publisher(IRobotDataPublisher):
                         ),
                     ]
 
-                    point_cloud = point_cloud2.create_cloud(
-                        point_cloud.header, fields, points
-                    )
+                    packed = pack_xyzi_float32(points)
+
+                    point_cloud.height = packed["height"]
+                    point_cloud.width = packed["width"]
+                    point_cloud.is_bigendian = packed["is_bigendian"]
+                    point_cloud.fields = fields
+                    point_cloud.point_step = packed["point_step"]
+                    point_cloud.row_step = packed["row_step"]
+                    point_cloud.is_dense = packed["is_dense"]
+                    point_cloud.data = packed["data"]
+
                     self.publishers["lidar"][robot_idx].publish(point_cloud)
 
                 finally:

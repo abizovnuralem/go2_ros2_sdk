@@ -47,11 +47,12 @@ class JointData:
 @dataclass
 class LidarData:
     """LiDAR sensor data"""
-    positions: np.ndarray
-    uvs: np.ndarray
     resolution: float
     origin: List[float]
     stamp: float
+    positions: Optional[np.ndarray] = None
+    uvs: Optional[np.ndarray] = None
+    points: Optional[np.ndarray] = None
     width: Optional[List[int]] = None
     src_size: Optional[int] = None
     compressed_data: Optional[bytes] = None
