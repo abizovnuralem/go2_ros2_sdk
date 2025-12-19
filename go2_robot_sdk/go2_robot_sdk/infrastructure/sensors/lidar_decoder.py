@@ -12,6 +12,7 @@ import logging
 import numpy as np
 import os
 import math
+import threading
 
 try:
     from rclpy.logging import get_logger as _ros_get_logger
@@ -30,6 +31,9 @@ except Exception:  # pragma: no cover
 
 logger = _ros_get_logger(__name__) if _ros_get_logger else logging.getLogger(__name__)
 _CPP_ACCEL_LOGGED = {"used": False, "failed": False}
+
+_VOXEL_DECODER = None
+_VOXEL_DECODER_LOCK = threading.Lock()
 
 
 def update_meshes_for_cloud2(
@@ -284,7 +288,14 @@ def get_voxel_decoder() -> LidarDecoder:
     Returns:
         Initialized LidarDecoder (the working implementation)
     """
-    return LidarDecoder()
+    global _VOXEL_DECODER
+
+    if _VOXEL_DECODER is None:
+        with _VOXEL_DECODER_LOCK:
+            if _VOXEL_DECODER is None:
+                _VOXEL_DECODER = LidarDecoder()
+
+    return _VOXEL_DECODER
 
 
 def decode_lidar_data(

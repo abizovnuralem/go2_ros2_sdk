@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include <pybind11/gil.h>
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -58,18 +59,22 @@ PYBIND11_MODULE(lidar_accelerator, m) {
         };
 
         std::size_t out_points = 0;
-        std::vector<float> out = lidar_accelerator::process_u8_to_xyzi_f32(
-            pos_u8.data(),
-            static_cast<size_t>(pos_u8.size()),
-            uv_u8.data(),
-            static_cast<size_t>(uv_u8.size()),
-            res,
-            origin_f,
-            intense_limiter,
-            deduplicate,
-            downsample_step,
-            max_points,
-            &out_points);
+        std::vector<float> out;
+        {
+          py::gil_scoped_release release;
+          out = lidar_accelerator::process_u8_to_xyzi_f32(
+              pos_u8.data(),
+              static_cast<size_t>(pos_u8.size()),
+              uv_u8.data(),
+              static_cast<size_t>(uv_u8.size()),
+              res,
+              origin_f,
+              intense_limiter,
+              deduplicate,
+              downsample_step,
+              max_points,
+              &out_points);
+        }
 
         std::vector<py::ssize_t> shape;
         shape.reserve(2);
@@ -101,7 +106,11 @@ PYBIND11_MODULE(lidar_accelerator, m) {
 
         auto f32 = py::array_t<float, py::array::c_style | py::array::forcecast>(arr);
         const std::size_t n = static_cast<std::size_t>(f32.shape(0));
-        std::string bytes = lidar_accelerator::pack_xyzi_f32_to_bytes(f32.data(), n);
+        std::string bytes;
+        {
+          py::gil_scoped_release release;
+          bytes = lidar_accelerator::pack_xyzi_f32_to_bytes(f32.data(), n);
+        }
         return py::bytes(bytes);
       },
       py::arg("points_f32"));
@@ -127,16 +136,20 @@ PYBIND11_MODULE(lidar_accelerator, m) {
         };
 
         std::size_t out_points = 0;
-        std::vector<float> out = lidar_accelerator::decode_and_process(
-            reinterpret_cast<const uint8_t*>(c.data()),
-            static_cast<std::size_t>(c.size()),
-            res,
-            origin_f,
-            intense_limiter,
-            deduplicate,
-            downsample_step,
-            max_points,
-            &out_points);
+        std::vector<float> out;
+        {
+          py::gil_scoped_release release;
+          out = lidar_accelerator::decode_and_process(
+              reinterpret_cast<const uint8_t*>(c.data()),
+              static_cast<std::size_t>(c.size()),
+              res,
+              origin_f,
+              intense_limiter,
+              deduplicate,
+              downsample_step,
+              max_points,
+              &out_points);
+        }
 
         std::vector<py::ssize_t> shape;
         shape.reserve(2);
