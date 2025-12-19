@@ -42,6 +42,22 @@ std::vector<float> decode_and_process(
     wasmtime_module_t* module = nullptr;
     wasmtime_instance_t instance{};
     bool instantiated = false;
+
+    bool exports_cached = false;
+    wasmtime_extern_t gen_ex{};
+    wasmtime_extern_t malloc_ex{};
+    wasmtime_extern_t free_ex{};
+    wasmtime_extern_t mem_ex{};
+
+    bool buffers_allocated = false;
+    int32_t input = 0;
+    int32_t decompressBuffer = 0;
+    int32_t positions_ptr = 0;
+    int32_t uvs_ptr = 0;
+    int32_t indices_ptr = 0;
+    int32_t decompressedSize_ptr = 0;
+    int32_t faceCount_ptr = 0;
+    int32_t pointCount_ptr = 0;
   };
 
   static std::mutex g_mu;
@@ -119,6 +135,24 @@ std::vector<float> decode_and_process(
   };
 
   wasmtime_context_t* ctx = nullptr;
+
+  auto call_i32 = [&](const wasmtime_func_t* fn, int32_t arg0) -> int32_t {
+    wasmtime_val_t args[1];
+    args[0].kind = WASMTIME_I32;
+    args[0].of.i32 = arg0;
+    wasmtime_val_t results[1];
+    results[0].kind = WASMTIME_I32;
+    wasm_trap_t* trap = nullptr;
+    wasmtime_error_t* err = wasmtime_func_call(ctx, fn, args, 1, results, 1, &trap);
+    if (err) {
+      throw std::runtime_error(error_to_string(err));
+    }
+    if (trap) {
+      throw std::runtime_error(trap_to_string(trap));
+    }
+    return results[0].of.i32;
+  };
+
   {
     std::lock_guard<std::mutex> lk(g_mu);
     if (!g.engine) {
@@ -190,43 +224,50 @@ std::vector<float> decode_and_process(
 
       g.instantiated = true;
     }
+
+    if (!g.exports_cached) {
+      g.gen_ex = get_export(ctx, &g.instance, "e");
+      g.malloc_ex = get_export(ctx, &g.instance, "f");
+      g.free_ex = get_export(ctx, &g.instance, "g");
+      g.mem_ex = get_export(ctx, &g.instance, "c");
+
+      if (g.gen_ex.kind != WASMTIME_EXTERN_FUNC || g.malloc_ex.kind != WASMTIME_EXTERN_FUNC ||
+          g.free_ex.kind != WASMTIME_EXTERN_FUNC || g.mem_ex.kind != WASMTIME_EXTERN_MEMORY) {
+        throw std::runtime_error("unexpected export kinds");
+      }
+
+      g.exports_cached = true;
+    }
+
+    if (!g.buffers_allocated) {
+      g.input = call_i32(&g.malloc_ex.of.func, 61440);
+      g.decompressBuffer = call_i32(&g.malloc_ex.of.func, 80000);
+      g.positions_ptr = call_i32(&g.malloc_ex.of.func, 2880000);
+      g.uvs_ptr = call_i32(&g.malloc_ex.of.func, 1920000);
+      g.indices_ptr = call_i32(&g.malloc_ex.of.func, 5760000);
+      g.decompressedSize_ptr = call_i32(&g.malloc_ex.of.func, 4);
+      g.faceCount_ptr = call_i32(&g.malloc_ex.of.func, 4);
+      g.pointCount_ptr = call_i32(&g.malloc_ex.of.func, 4);
+
+      g.buffers_allocated = true;
+    }
   }
 
-  wasmtime_extern_t gen_ex = get_export(ctx, &g.instance, "e");
-  wasmtime_extern_t malloc_ex = get_export(ctx, &g.instance, "f");
-  wasmtime_extern_t free_ex = get_export(ctx, &g.instance, "g");
-  wasmtime_extern_t mem_ex = get_export(ctx, &g.instance, "c");
+  const wasmtime_extern_t gen_ex = g.gen_ex;
+  const wasmtime_extern_t mem_ex = g.mem_ex;
 
-  if (gen_ex.kind != WASMTIME_EXTERN_FUNC || malloc_ex.kind != WASMTIME_EXTERN_FUNC ||
-      free_ex.kind != WASMTIME_EXTERN_FUNC || mem_ex.kind != WASMTIME_EXTERN_MEMORY) {
-    throw std::runtime_error("unexpected export kinds");
+  const int32_t input = g.input;
+  const int32_t decompressBuffer = g.decompressBuffer;
+  const int32_t positions_ptr = g.positions_ptr;
+  const int32_t uvs_ptr = g.uvs_ptr;
+  const int32_t indices_ptr = g.indices_ptr;
+  const int32_t decompressedSize_ptr = g.decompressedSize_ptr;
+  const int32_t faceCount_ptr = g.faceCount_ptr;
+  const int32_t pointCount_ptr = g.pointCount_ptr;
+
+  if (compressed_len > 61440) {
+    throw std::runtime_error("compressed input too large");
   }
-
-  auto call_i32 = [&](const wasmtime_func_t* fn, int32_t arg0) -> int32_t {
-    wasmtime_val_t args[1];
-    args[0].kind = WASMTIME_I32;
-    args[0].of.i32 = arg0;
-    wasmtime_val_t results[1];
-    results[0].kind = WASMTIME_I32;
-    wasm_trap_t* trap = nullptr;
-    wasmtime_error_t* err = wasmtime_func_call(ctx, fn, args, 1, results, 1, &trap);
-    if (err) {
-      throw std::runtime_error(error_to_string(err));
-    }
-    if (trap) {
-      throw std::runtime_error(trap_to_string(trap));
-    }
-    return results[0].of.i32;
-  };
-
-  const int32_t input = call_i32(&malloc_ex.of.func, 61440);
-  const int32_t decompressBuffer = call_i32(&malloc_ex.of.func, 80000);
-  const int32_t positions_ptr = call_i32(&malloc_ex.of.func, 2880000);
-  const int32_t uvs_ptr = call_i32(&malloc_ex.of.func, 1920000);
-  const int32_t indices_ptr = call_i32(&malloc_ex.of.func, 5760000);
-  const int32_t decompressedSize_ptr = call_i32(&malloc_ex.of.func, 4);
-  const int32_t faceCount_ptr = call_i32(&malloc_ex.of.func, 4);
-  const int32_t pointCount_ptr = call_i32(&malloc_ex.of.func, 4);
 
   uint8_t* mem = wasmtime_memory_data(ctx, &mem_ex.of.memory);
   std::size_t mem_sz = wasmtime_memory_data_size(ctx, &mem_ex.of.memory);
@@ -307,29 +348,6 @@ std::vector<float> decode_and_process(
   if (out_points) {
     *out_points = out_n;
   }
-
-  auto call_free = [&](int32_t ptr) {
-    wasmtime_val_t fargs[1];
-    fargs[0].kind = WASMTIME_I32;
-    fargs[0].of.i32 = ptr;
-    wasm_trap_t* ftrap = nullptr;
-    wasmtime_error_t* ferr = wasmtime_func_call(ctx, &free_ex.of.func, fargs, 1, nullptr, 0, &ftrap);
-    if (ferr) {
-      wasmtime_error_delete(ferr);
-    }
-    if (ftrap) {
-      wasm_trap_delete(ftrap);
-    }
-  };
-
-  call_free(input);
-  call_free(decompressBuffer);
-  call_free(positions_ptr);
-  call_free(uvs_ptr);
-  call_free(indices_ptr);
-  call_free(decompressedSize_ptr);
-  call_free(faceCount_ptr);
-  call_free(pointCount_ptr);
 
   return out;
 #endif
