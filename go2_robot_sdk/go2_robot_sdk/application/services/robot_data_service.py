@@ -47,18 +47,36 @@ class RobotDataService:
     def _process_lidar_data(self, msg: Dict[str, Any], robot_data: RobotData) -> None:
         """Process lidar data"""
         try:
-            decoded_data = msg.get("decoded_data", {})
-            data = msg.get("data", {})
-            
+            decoded_data = msg.get("decoded_data") or {}
+            if not isinstance(decoded_data, dict):
+                decoded_data = {}
+
+            data = msg.get("data")
+            if not isinstance(data, dict):
+                data = {}
+
+            compressed_data = msg.get("compressed_data")
+
+            has_positions_uvs = (
+                decoded_data.get("positions") is not None
+                and decoded_data.get("uvs") is not None
+            )
+            has_compressed = compressed_data is not None and len(compressed_data) > 0
+
+            if not has_positions_uvs and not has_compressed:
+                return
+
+            meta = data or msg
+
             robot_data.lidar_data = LidarData(
                 positions=decoded_data.get("positions"),
                 uvs=decoded_data.get("uvs"),
-                resolution=data.get("resolution", 0.0),
-                origin=data.get("origin", [0.0, 0.0, 0.0]),
-                stamp=data.get("stamp", 0.0),
-                width=data.get("width"),
-                src_size=data.get("src_size"),
-                compressed_data=msg.get("compressed_data")
+                resolution=meta.get("resolution", 0.0),
+                origin=meta.get("origin", [0.0, 0.0, 0.0]),
+                stamp=meta.get("stamp", 0.0),
+                width=meta.get("width"),
+                src_size=meta.get("src_size"),
+                compressed_data=compressed_data,
             )
         except Exception as e:
             logger.error(f"Error processing lidar data: {e}")

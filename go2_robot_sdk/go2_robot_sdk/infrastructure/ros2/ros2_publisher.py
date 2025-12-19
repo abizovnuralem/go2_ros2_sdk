@@ -51,6 +51,8 @@ class ROS2Publisher(IRobotDataPublisher):
         self._lidar_accel_decode_used_logged = False
         self._lidar_accel_decode_failed_logged = False
         self._lidar_accel_decode_disabled_logged = False
+        self._lidar_python_decode_fallback_logged = False
+        self._lidar_missing_decode_inputs_logged = False
 
     def publish_odometry(self, robot_data: RobotData) -> None:
         """Publish odometry data"""
@@ -287,10 +289,33 @@ class ROS2Publisher(IRobotDataPublisher):
                             except Exception as e:
                                 if not self._lidar_accel_decode_failed_logged:
                                     self.node.get_logger().warning(
-                                        "LiDAR accel: decode_and_process failed, falling back to Python (%s)",
-                                        e,
+                                        f"LiDAR accel: decode_and_process failed, falling back to Python ({e})"
                                     )
                                     self._lidar_accel_decode_failed_logged = True
+
+                                try:
+                                    
+                                    from ..sensors.lidar_decoder import decode_lidar_data
+
+                                    points = decode_lidar_data(
+                                        lidar.compressed_data,
+                                        resolution=float(lidar.resolution),
+                                        origin=list(lidar.origin),
+                                        intensity_threshold=float(
+                                            getattr(self.config, "lidar_intensity_threshold", 0.0)
+                                            or 0.0
+                                        ),
+                                    )
+                                    if (
+                                        points is not None
+                                        and not self._lidar_python_decode_fallback_logged
+                                    ):
+                                        self.node.get_logger().info(
+                                            "LiDAR decode fallback ACTIVE: using Python WASM decoder after C++ failure"
+                                        )
+                                        self._lidar_python_decode_fallback_logged = True
+                                except Exception:
+                                    pass
 
                         if not use_cpp and not self._lidar_accel_decode_disabled_logged:
                             self.node.get_logger().info(
@@ -300,9 +325,12 @@ class ROS2Publisher(IRobotDataPublisher):
 
                         if points is None:
                             if lidar.positions is None or lidar.uvs is None:
-                                raise ValueError(
-                                    "LiDAR data missing positions/uvs (and no points/compressed_data path succeeded)"
-                                )
+                                if not self._lidar_missing_decode_inputs_logged:
+                                    self.node.get_logger().warning(
+                                        "LiDAR data missing positions/uvs (and no points/compressed_data path succeeded)"
+                                    )
+                                    self._lidar_missing_decode_inputs_logged = True
+                                continue
 
                             points = update_meshes_for_cloud2(
                                 lidar.positions,

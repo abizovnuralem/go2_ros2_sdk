@@ -255,8 +255,10 @@ std::vector<float> decode_and_process(
   set_i32(9, pointCount_ptr);
   set_i32(10, some_v);
 
+  wasmtime_val_t gen_results[1];
+  gen_results[0].kind = WASMTIME_I32;
   wasm_trap_t* trap = nullptr;
-  wasmtime_error_t* err = wasmtime_func_call(ctx, &gen_ex.of.func, args, 11, nullptr, 0, &trap);
+  wasmtime_error_t* err = wasmtime_func_call(ctx, &gen_ex.of.func, args, 11, gen_results, 1, &trap);
   if (err) {
     throw std::runtime_error(error_to_string(err));
   }
