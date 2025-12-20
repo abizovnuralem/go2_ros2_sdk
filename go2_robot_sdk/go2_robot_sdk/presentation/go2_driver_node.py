@@ -239,7 +239,7 @@ class Go2DriverNode(Node):
                     self.create_publisher(
                         Image,
                         camera_topic,
-                        best_effort_qos,
+                        qos_profile,
                         qos_overriding_options=QoSOverridingOptions.with_default_policies(),
                     )
                 )
@@ -247,7 +247,7 @@ class Go2DriverNode(Node):
                     self.create_publisher(
                         CameraInfo,
                         camera_info_topic,
-                        best_effort_qos,
+                        qos_profile,
                         qos_overriding_options=QoSOverridingOptions.with_default_policies(),
                     )
                 )
