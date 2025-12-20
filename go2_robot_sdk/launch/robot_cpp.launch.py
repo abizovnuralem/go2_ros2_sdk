@@ -84,6 +84,7 @@ class Go2NodeFactory:
             DeclareLaunchArgument('nav2', default_value='true', description='Launch Nav2'),
             DeclareLaunchArgument('map', default_value='', description='Full path to map file to load (for localization)'),
             DeclareLaunchArgument('foxglove', default_value='true', description='Launch Foxglove Bridge'),
+            DeclareLaunchArgument('enable_image_compression', default_value='true', description='Republish camera/image_raw as camera/image_raw/compressed using image_transport'),
             DeclareLaunchArgument('joystick', default_value='true', description='Launch joystick'),
             DeclareLaunchArgument('teleop', default_value='true', description='Launch teleoperation'),
             DeclareLaunchArgument('obstacle_avoidance', default_value='false', description='Enable obstacle avoidance'),
@@ -95,6 +96,69 @@ class Go2NodeFactory:
             DeclareLaunchArgument('use_cpp_lidar_accel', default_value='true', description='Enable C++ LiDAR acceleration (pybind11)'),
             DeclareLaunchArgument('lidar_intensity_threshold', default_value='0.0', description='LiDAR intensity threshold'),
         ]
+
+    def create_image_transport_nodes(self) -> List[Node]:
+        nodes: List[Node] = []
+        log_level = LaunchConfiguration('log_level')
+        enable_image_compression = LaunchConfiguration('enable_image_compression', default='true')
+
+        qos_overrides = {
+            'qos_overrides./camera/image_raw.subscription.reliability': 'best_effort',
+            'qos_overrides./camera/image_raw.subscription.history': 'keep_last',
+            'qos_overrides./camera/image_raw.subscription.depth': 1,
+            'qos_overrides./camera/image_raw/compressed.publisher.reliability': 'best_effort',
+            'qos_overrides./camera/image_raw/compressed.publisher.history': 'keep_last',
+            'qos_overrides./camera/image_raw/compressed.publisher.depth': 1,
+        }
+
+        if self.config.conn_mode == 'single':
+            nodes.append(
+                Node(
+                    package='image_transport',
+                    executable='republish',
+                    name='camera_image_republish_compressed',
+                    condition=IfCondition(enable_image_compression),
+                    arguments=[
+                        'raw',
+                        'compressed',
+                        '--ros-args',
+                        '--log-level',
+                        log_level,
+                    ],
+                    parameters=[qos_overrides],
+                    remappings=[
+                        ('in', 'camera/image_raw'),
+                        ('out/compressed', 'camera/image_raw/compressed'),
+                    ],
+                    output='screen',
+                )
+            )
+        else:
+            for i, _ in enumerate(self.config.robot_ip_list):
+                nodes.append(
+                    Node(
+                        package='image_transport',
+                        executable='republish',
+                        namespace=f"robot{i}",
+                        name='camera_image_republish_compressed',
+                        condition=IfCondition(enable_image_compression),
+                        arguments=[
+                            'raw',
+                            'compressed',
+                            '--ros-args',
+                            '--log-level',
+                            log_level,
+                        ],
+                        parameters=[qos_overrides],
+                        remappings=[
+                            ('in', 'camera/image_raw'),
+                            ('out/compressed', 'camera/image_raw/compressed'),
+                        ],
+                        output='screen',
+                    )
+                )
+
+        return nodes
     
     def create_robot_state_nodes(self) -> List[Node]:
         """Create robot state publisher nodes"""
@@ -359,6 +423,9 @@ class Go2NodeFactory:
             IncludeLaunchDescription(
                 FrontendLaunchDescriptionSource(foxglove_launch),
                 condition=IfCondition(with_foxglove),
+                launch_arguments={
+                    'use_compression': 'true',
+                }.items(),
             ),
             # SLAM Toolbox (Run if NO map is provided)
             IncludeLaunchDescription(
@@ -411,6 +478,7 @@ def generate_launch_description():
     # Create all components
     launch_args = factory.create_launch_arguments()
     robot_state_nodes = factory.create_robot_state_nodes()
+    image_transport_nodes = factory.create_image_transport_nodes()
     core_nodes = factory.create_core_nodes()
     teleop_nodes = factory.create_teleop_nodes()
     visualization_nodes = factory.create_visualization_nodes()
@@ -420,6 +488,7 @@ def generate_launch_description():
     launch_entities = (
         launch_args +
         robot_state_nodes +
+        image_transport_nodes +
         core_nodes +
         teleop_nodes +
         visualization_nodes +

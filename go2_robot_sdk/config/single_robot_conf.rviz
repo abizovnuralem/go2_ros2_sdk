@@ -317,6 +317,7 @@ Visualization Manager:
       Min Value: 0
       Name: Image
       Normalize Range: true
+      Transport Hint: compressed
       Topic:
         Depth: 5
         Durability Policy: Volatile
