@@ -1,5 +1,4 @@
-# .gemini/config.yaml (Third Party)
-have_fun: false
+have_fun: true
 
 code_review:
   disable: false
