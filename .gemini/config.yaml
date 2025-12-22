@@ -1,0 +1,16 @@
+# .gemini/config.yaml (Third Party)
+have_fun: false
+
+code_review:
+  disable: false
+  comment_severity_threshold: MEDIUM
+  max_review_comments: 10 # 외부 코드이므로 코멘트 수를 줄여서 핵심만 리뷰
+  pull_request_opened:
+    help: false
+    summary: true
+    code_review: true
+    include_drafts: false
+
+ignore_patterns:
+  - "**/*.lock"
+  - "**/__pycache__/**"
