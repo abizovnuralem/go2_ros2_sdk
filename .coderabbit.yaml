@@ -1,0 +1,36 @@
+# .coderabbit.yaml for src/third_party/go2_ros2_sdk
+language: "ko-KR"
+tone_instructions: "이것은 외부 Third-Party SDK입니다. 기존 코드의 스타일과 'Clean Architecture' 구조를 존중하며, 버그나 성능 이슈 위주로 리뷰해주세요."
+
+reviews:
+  profile: "chill"
+  request_changes_workflow: false
+  high_level_summary: true
+  auto_title_placeholder: "@coderabbitai (SDK)"
+  
+  # 워크스루 최소화
+  collapse_walkthrough: true
+  sequence_diagrams: true
+
+  path_filters:
+    - "!**/*.lock"
+    - "!**/*.pyc"
+    - "!**/*.png"
+    - "!**/*.pgm"
+
+  path_instructions:
+    - path: "**/*.py"
+      instructions: |
+        이 코드는 BattleBang 메인 프로젝트가 아닌 외부 의존성(SDK)입니다.
+        1. **Clean Architecture 존중**: `presentation` -> `domain` -> `infrastructure` 의존성 흐름이 깨지지 않는지 확인하세요.
+        2. **Concurrency**: `asyncio`와 `threading`이 혼용되고 있습니다. Deadlock이나 Race Condition 가능성을 중점적으로 봐주세요.
+        3. **호환성**: 기존 BattleBang 코드(`agent`, `hal.py`)와의 인터페이스(`go2_interfaces`)가 변경되면 경고하세요.
+        4. **엄격함 완화**: BattleBang 자체의 스타일 가이드(HAL 격리 등)를 이 코드에 강요하지 마세요.
+
+    - path: "go2_robot_sdk/go2_robot_sdk/domain/**"
+      instructions: |
+        도메인 로직은 순수해야 하며, ROS 2나 하드웨어 의존성이 최소화되어야 합니다.
+
+    - path: "go2_robot_sdk/go2_robot_sdk/infrastructure/**"
+      instructions: |
+        실제 하드웨어 통신(WebRTC, CycloneDDS)이 일어나는 곳입니다. 예외 처리가 꼼꼼한지 확인하세요.
