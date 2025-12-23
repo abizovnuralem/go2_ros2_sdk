@@ -7,3 +7,23 @@ __pycache__
 .DS_Store
 go2_robot_sdk/.coverage
 go2_robot_sdk/coverage.xml
+
+
+runs/
+
+*.pt
+*.onnx
+*.pth
+*.pkl
+
+# tensorRT
+*.plan
+*.engine
+*.trt
+*.engine.plan
+*.engine.plan.txt
+*.engine.plan.txt.gz
+*.engine.plan.txt.gz.part
+*.engine.plan.txt.gz.part.1
+*.engine.plan.txt.gz.part.2
+*.engine.plan.txt.gz.part.3
