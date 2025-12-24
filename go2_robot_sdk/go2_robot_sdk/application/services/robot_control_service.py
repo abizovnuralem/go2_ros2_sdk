@@ -22,14 +22,13 @@ class RobotControlService:
     def handle_cmd_vel(self, x: float, y: float, z: float, robot_id: str, obstacle_avoidance: bool = False) -> None:
         """Process movement command"""
         try:
-            if x != 0.0 or y != 0.0 or z != 0.0:
-                _ = gen_mov_command(
-                    round(x, 2), 
-                    round(y, 2), 
-                    round(z, 2), 
-                    obstacle_avoidance
-                )
-                self.controller.send_movement_command(robot_id, x, y, z)
+            _ = gen_mov_command(
+                round(x, 2),
+                round(y, 2),
+                round(z, 2),
+                obstacle_avoidance,
+            )
+            self.controller.send_movement_command(robot_id, x, y, z)
         except Exception as e:
             logger.error(f"Error handling cmd_vel: {e}")
 
