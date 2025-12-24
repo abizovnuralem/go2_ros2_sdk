@@ -32,12 +32,13 @@ class CocoDetectorNode(Node):
     """
 
     # pylint: disable=R0902 disable too many instance variables warning for this class
-    def __init__(self):
+    def __init__(self, model_path: str = "yolov8n.pt"):
         super().__init__("coco_detector_node")
         # device parameter: try to use GPU (cuda) by default, fall back to cpu if unavailable
         self.declare_parameter('device', 'cuda')
         self.declare_parameter('detection_threshold', 0.9)
         self.declare_parameter('publish_annotated_image', True)
+        self.declare_parameter('model_path', model_path)
         self.device = self.get_parameter('device').get_parameter_value().string_value
         if self.device == 'cuda' and not torch.cuda.is_available():
             self.get_logger().warning("CUDA requested but not available, falling back to CPU")
@@ -64,14 +65,18 @@ class CocoDetectorNode(Node):
             self.annotated_image_publisher = None
         self.bridge = CvBridge()
         # Load YOLO model and move to target device, with safety fallback from CUDA to CPU
-        self.model = YOLO("yolov8n.pt")
-        try:
-            self.model.to(self.device)
-        except RuntimeError as exc:  # e.g. CUDA allocator / NVML errors
-            self.get_logger().warning(
-                f"Failed to move YOLO model to device '{self.device}' ({exc}); falling back to CPU")
-            self.device = 'cpu'
-            self.model.to(self.device)
+        model_path = self.get_parameter('model_path').get_parameter_value().string_value
+        lower_model_path = model_path.lower()
+        self._yolo_predict_only = lower_model_path.endswith((".engine", ".onnx", ".tflite", ".xml", ".trt"))
+        self.model = YOLO(model_path, task="detect")
+        if not self._yolo_predict_only:
+            try:
+                self.model.to(self.device)
+            except RuntimeError as exc:  # e.g. CUDA allocator / NVML errors
+                self.get_logger().warning(
+                    f"Failed to move YOLO model to device '{self.device}' ({exc}); falling back to CPU")
+                self.device = 'cpu'
+                self.model.to(self.device)
 
         # Get class labels from YOLO model (COCO dataset)
         names = self.model.names
