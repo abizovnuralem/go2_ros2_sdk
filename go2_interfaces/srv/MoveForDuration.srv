@@ -1,0 +1,8 @@
+float64 linear_x   
+float64 linear_y
+float64 angular_z  
+float64 duration
+---
+bool success
+string message
+float64 actual_duration

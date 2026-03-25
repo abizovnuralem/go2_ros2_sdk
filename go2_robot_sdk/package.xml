@@ -9,7 +9,7 @@
 
   <depend>rclpy</depend>
   <depend>go2_interfaces</depend>
-  <!-- unitree_go merged into go2_interfaces -->
+  <depend>std_srvs</depend>
   <depend>sensor_msgs</depend>
 
   <exec_depend>twist_mux</exec_depend>
