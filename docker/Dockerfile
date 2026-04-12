@@ -52,5 +52,3 @@ RUN rm -rf /var/lib/apt/lists/*
 RUN sed --in-place --expression \
       '$isource "/ros2_ws/install/setup.bash"' \
       /ros_entrypoint.sh
-
-CMD ["ros2", "launch", "go2_robot_sdk", "robot.launch.py"]
