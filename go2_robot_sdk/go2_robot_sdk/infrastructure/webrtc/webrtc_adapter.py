@@ -18,13 +18,19 @@ logger = logging.getLogger(__name__)
 class WebRTCAdapter(IRobotDataReceiver, IRobotController):
     """WebRTC adapter for robot communication"""
 
-    def __init__(self, config: RobotConfig, on_validated_callback: Callable, on_video_frame_callback: Callable = None, event_loop=None):
+    MAX_RECONNECT_DELAY = 30  # seconds
+
+    def __init__(self, config: RobotConfig, on_validated_callback: Callable, on_video_frame_callback: Callable = None, on_audio_frame_callback: Callable = None, enable_reconnect: bool = True, event_loop=None):
         self.config = config
+        self.enable_reconnect = enable_reconnect
         self.connections: Dict[str, Go2Connection] = {}
         self.data_callback: Callable[[RobotData], None] = None
         self.webrtc_msgs = asyncio.Queue()
         self.on_validated_callback = on_validated_callback
         self.on_video_frame_callback = on_video_frame_callback
+        self.on_audio_frame_callback = on_audio_frame_callback
+        self._reconnect_attempts: Dict[str, int] = {}
+        self._reconnecting: Dict[str, bool] = {}
         # Store the event loop (passed from main thread or detect current)
         if event_loop:
             self.main_loop = event_loop
@@ -47,6 +53,8 @@ class WebRTCAdapter(IRobotDataReceiver, IRobotController):
                 on_validated=self._on_validated,
                 on_message=self._on_data_channel_message,
                 on_video_frame=self.on_video_frame_callback if self.config.enable_video else None,
+                on_audio_frame=self.on_audio_frame_callback if self.config.enable_audio else None,
+                on_disconnected=self._on_connection_lost,
                 decode_lidar=self.config.decode_lidar,
             )
             
@@ -171,6 +179,49 @@ class WebRTCAdapter(IRobotDataReceiver, IRobotController):
                     self.webrtc_msgs.task_done()
             except asyncio.QueueEmpty:
                 break
+
+    def _on_connection_lost(self, robot_id: str) -> None:
+        """Called by Go2Connection when the peer connection drops"""
+        if not self.enable_reconnect:
+            logger.info(f"Connection to robot {robot_id} lost (reconnect disabled)")
+            return
+
+        if self._reconnecting.get(robot_id):
+            return  # already scheduled
+
+        logger.warning(f"Connection to robot {robot_id} lost - scheduling reconnect")
+        self._reconnecting[robot_id] = True
+        self._reconnect_attempts[robot_id] = self._reconnect_attempts.get(robot_id, 0)
+
+        loop = self._get_or_create_event_loop()
+        if loop and loop.is_running():
+            asyncio.run_coroutine_threadsafe(self._reconnect(robot_id), loop)
+        else:
+            logger.error(f"No running event loop — cannot reconnect robot {robot_id}")
+
+    async def _reconnect(self, robot_id: str) -> None:
+        attempt = self._reconnect_attempts.get(robot_id, 0)
+        delay = min(2 ** attempt, self.MAX_RECONNECT_DELAY)
+        logger.info(f"Reconnect attempt {attempt + 1} for robot {robot_id} in {delay}s")
+        await asyncio.sleep(delay)
+
+        # Clean up old connection object
+        old_conn = self.connections.pop(robot_id, None)
+        if old_conn:
+            try:
+                await old_conn.pc.close()
+            except Exception:
+                pass
+
+        try:
+            await self.connect(robot_id)
+            logger.info(f"Reconnected to robot {robot_id} after {attempt + 1} attempt(s)")
+            self._reconnect_attempts[robot_id] = 0
+        except Exception as e:
+            logger.error(f"Reconnect attempt {attempt + 1} failed for robot {robot_id}: {e}")
+            self._reconnect_attempts[robot_id] = attempt + 1
+        finally:
+            self._reconnecting[robot_id] = False
 
     def _on_validated(self, robot_id: str) -> None:
         """Callback after connection validation"""

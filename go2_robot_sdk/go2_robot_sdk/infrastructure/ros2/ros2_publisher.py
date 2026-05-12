@@ -1,13 +1,16 @@
-
 # Copyright (c) 2024, RoboVerse community
 # SPDX-License-Identifier: BSD-3-Clause
 
 import logging
+from math import gcd
+
+import numpy as np
+import scipy.signal
 
 from rclpy.node import Node
 from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import TransformStamped
-from go2_interfaces.msg import Go2State, IMU
+from go2_interfaces.msg import Go2State, IMU, AudioData
 from go2_interfaces.msg import VoxelMapCompressed
 from sensor_msgs.msg import PointCloud2, PointField, JointState
 from sensor_msgs_py import point_cloud2
@@ -22,6 +25,9 @@ from ..sensors.camera_config import load_camera_info
 
 logger = logging.getLogger(__name__)
 
+TARGET_SAMPLE_RATE = 16000
+VAD_CHUNK_SAMPLES = 512   # 32ms at 16kHz - required by Silero VAD
+
 
 class ROS2Publisher(IRobotDataPublisher):
     """ROS2 adapter for publishing robot data"""
@@ -33,6 +39,8 @@ class ROS2Publisher(IRobotDataPublisher):
         self.broadcaster = broadcaster
         self.bridge = CvBridge()
         self.camera_info = load_camera_info()
+        # Accumulates resampled samples until we have VAD_CHUNK_SAMPLES
+        self._audio_buffer = np.empty(0, dtype=np.int16)
 
     def publish_odometry(self, robot_data: RobotData) -> None:
         """Publish odometry data"""
@@ -243,6 +251,43 @@ class ROS2Publisher(IRobotDataPublisher):
 
         except Exception as e:
             logger.error(f"Error publishing camera data: {e}")
+
+    def publish_audio(self, robot_data: RobotData) -> None:
+        """Resample audio to 16kHz, buffer into 512-sample chunks, publish as AudioData"""
+        if not robot_data.microphone_data:
+            return
+
+        try:
+            mic = robot_data.microphone_data
+            samples = mic.samples  # int16, mono
+            src_rate = mic.sample_rate
+
+            # Resample to 16kHz if needed
+            if src_rate != TARGET_SAMPLE_RATE:
+                g = gcd(src_rate, TARGET_SAMPLE_RATE)
+                up = TARGET_SAMPLE_RATE // g
+                down = src_rate // g
+                resampled = scipy.signal.resample_poly(
+                    samples.astype(np.float32), up=up, down=down
+                )
+                samples_16k = np.clip(resampled, -32768, 32767).astype(np.int16)
+            else:
+                samples_16k = samples
+
+            self._audio_buffer = np.concatenate([self._audio_buffer, samples_16k])
+
+            # Publish complete VAD_CHUNK_SAMPLES-sized chunks
+            while len(self._audio_buffer) >= VAD_CHUNK_SAMPLES:
+                chunk = self._audio_buffer[:VAD_CHUNK_SAMPLES]
+                self._audio_buffer = self._audio_buffer[VAD_CHUNK_SAMPLES:]
+
+                msg = AudioData()
+                msg.time_frame = int(mic.timestamp * 1e6)
+                msg.data = chunk.tobytes()
+                self.publishers['audio'][0].publish(msg)
+
+        except Exception as e:
+            logger.error(f"Error publishing audio: {e}")
 
     def publish_voxel_data(self, robot_data: RobotData) -> None:
         """Publish voxel data"""

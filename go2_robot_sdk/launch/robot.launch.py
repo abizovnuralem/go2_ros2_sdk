@@ -16,7 +16,12 @@ def generate_launch_description():
             parameters=[{
                 'robot_ip': os.getenv('ROBOT_IP', ''),
                 'token': os.getenv('ROBOT_TOKEN', ''),
-                'conn_type': os.getenv('CONN_TYPE', 'webrtc')
+                'conn_type': os.getenv('CONN_TYPE', 'webrtc'),
+                'decode_lidar': False,
+                'publish_raw_voxel': False,
+                'enable_video': True,
+                'enable_audio': True,
+                'enable_reconnect': True,
             }],
         ),
     ])
