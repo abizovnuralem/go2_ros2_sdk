@@ -1,0 +1,12 @@
+# Move robot to a pose relative to its current pose (frame: base_link at call time).
+# Uses /odom for closed-loop control until target is reached or timeout expires.
+float64 dx        # forward offset, meters (positive = forward)
+float64 dy        # lateral offset, meters (positive = left)
+float64 dyaw      # rotation offset, radians (positive = counter-clockwise)
+float64 timeout   # max seconds to attempt; 0 means use server default
+---
+bool success
+string message
+float64 final_dx    # actually achieved offset along robot's initial x-axis
+float64 final_dy    # actually achieved offset along robot's initial y-axis
+float64 final_dyaw  # actually achieved rotation
