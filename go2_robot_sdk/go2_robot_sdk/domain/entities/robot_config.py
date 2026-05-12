@@ -15,12 +15,15 @@ class RobotConfig:
     decode_lidar: bool
     publish_raw_voxel: bool
     obstacle_avoidance: bool
+    enable_audio: bool
+    enable_reconnect: bool
     conn_mode: str  # 'single' or 'multi'
 
     @classmethod
-    def from_params(cls, robot_ip: str, token: str, conn_type: str, 
-                   enable_video: bool, decode_lidar: bool, 
-                   publish_raw_voxel: bool, obstacle_avoidance: bool):
+    def from_params(cls, robot_ip: str, token: str, conn_type: str,
+                   enable_video: bool, decode_lidar: bool,
+                   publish_raw_voxel: bool, obstacle_avoidance: bool,
+                   enable_audio: bool = False, enable_reconnect: bool = True):
         """Создание конфигурации из параметров"""
         robot_ip_list = robot_ip.replace(" ", "").split(",")
         conn_mode = "single" if (
@@ -34,5 +37,7 @@ class RobotConfig:
             decode_lidar=decode_lidar,
             publish_raw_voxel=publish_raw_voxel,
             obstacle_avoidance=obstacle_avoidance,
+            enable_audio=enable_audio,
+            enable_reconnect=enable_reconnect,
             conn_mode=conn_mode
         ) 

@@ -41,6 +41,8 @@ class Go2Connection:
         on_message: Optional[Callable] = None,
         on_open: Optional[Callable] = None,
         on_video_frame: Optional[Callable] = None,
+        on_audio_frame: Optional[Callable] = None,
+        on_disconnected: Optional[Callable] = None,
         decode_lidar: bool = True,
     ):
         self.pc = RTCPeerConnection()
@@ -55,6 +57,8 @@ class Go2Connection:
         self.on_message = on_message
         self.on_open = on_open
         self.on_video_frame = on_video_frame
+        self.on_audio_frame = on_audio_frame
+        self.on_disconnected = on_disconnected
         self.decode_lidar = decode_lidar
         
         # Initialize components
@@ -73,13 +77,22 @@ class Go2Connection:
         # Add video transceiver if video callback provided
         if self.on_video_frame:
             self.pc.addTransceiver("video", direction="recvonly")
+
+        # Add audio transceiver if audio callback provided
+        if self.on_audio_frame:
+            self.pc.addTransceiver("audio", direction="recvonly")
     
     def on_connection_state_change(self) -> None:
         """Handle peer connection state changes"""
-        logger.info(f"Connection state is {self.pc.connectionState}")
-        
-        # Note: Validation is handled after successful WebRTC connection
-        # in the original implementation, not here
+        state = self.pc.connectionState
+        logger.info(f"Connection state is {state}")
+
+        if state in ("failed", "disconnected", "closed"):
+            if self.on_disconnected:
+                try:
+                    self.on_disconnected(self.robot_num)
+                except Exception as e:
+                    logger.error(f"Error in on_disconnected callback: {e}")
     
     def on_data_channel_open(self) -> None:
         """Handle data channel open event"""
@@ -124,14 +137,38 @@ class Go2Connection:
             logger.error(f"Error processing data channel message: {e}")
     
     async def on_track(self, track: MediaStreamTrack) -> None:
-        """Handle incoming media tracks (video)"""
-        logger.info("Receiving video")
-        
+        """Handle incoming media tracks"""
+        logger.info(f"Received track: {track.kind}")
+
         if track.kind == "video" and self.on_video_frame:
             try:
                 await self.on_video_frame(track, self.robot_num)
             except Exception as e:
                 logger.error(f"Error in video frame callback: {e}")
+
+        elif track.kind == "audio" and self.on_audio_frame:
+            asyncio.ensure_future(self._handle_audio_track(track))
+
+    async def _handle_audio_track(self, track: MediaStreamTrack) -> None:
+        """Continuously read audio frames and forward to callback"""
+        logger.info(
+            f"Audio track started: sample_rate will be logged on first frame"
+        )
+        first_frame = True
+        while True:
+            try:
+                frame = await track.recv()
+                if first_frame:
+                    logger.info(
+                        f"Audio frame format: sample_rate={frame.sample_rate}, "
+                        f"samples={frame.samples}, format={frame.format.name}, "
+                        f"layout={frame.layout.name}"
+                    )
+                    first_frame = False
+                self.on_audio_frame(frame, self.robot_num)
+            except Exception as e:
+                logger.error(f"Audio track error: {e}")
+                break
     
     def validate_robot_conn(self, message: Dict[str, Any]) -> None:
         """Handle robot validation response"""
@@ -139,6 +176,9 @@ class Go2Connection:
             if message.get("data") == "Validation Ok.":
                 # Turn on video
                 self.publish("", "on", "vid")
+
+                if self.on_audio_frame:
+                    self.publish("", "on", "aud")
                 
                 self.validation_result = "SUCCESS"
                 self.robot_validation = "OK"

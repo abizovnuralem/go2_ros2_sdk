@@ -67,6 +67,14 @@ class CameraData:
 
 
 @dataclass
+class MicrophoneData:
+    """Raw audio from the robot's built-in microphone"""
+    samples: np.ndarray   # int16, mono
+    sample_rate: int      # original sample rate from WebRTC frame
+    timestamp: float
+
+
+@dataclass
 class RobotData:
     """Aggregated robot data container"""
     robot_id: str
@@ -76,4 +84,5 @@ class RobotData:
     odometry_data: Optional[OdometryData] = None
     joint_data: Optional[JointData] = None
     lidar_data: Optional[LidarData] = None
-    camera_data: Optional[CameraData] = None 
+    camera_data: Optional[CameraData] = None
+    microphone_data: Optional[MicrophoneData] = None 
