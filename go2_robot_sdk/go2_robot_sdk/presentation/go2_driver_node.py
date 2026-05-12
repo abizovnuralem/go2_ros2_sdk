@@ -15,18 +15,20 @@ from rclpy.qos_overriding_options import QoSOverridingOptions
 from rcl_interfaces.msg import SetParametersResult
 from tf2_ros import TransformBroadcaster
 
+import numpy as np
+
 from geometry_msgs.msg import Twist, PoseStamped
-from go2_interfaces.msg import Go2State, IMU
+from go2_interfaces.msg import Go2State, IMU, AudioData
 from go2_interfaces.msg import LowState, VoxelMapCompressed, WebRtcReq
 from sensor_msgs.msg import PointCloud2, JointState, Joy, Image, CameraInfo
 from nav_msgs.msg import Odometry
 
-from ..domain.entities import RobotConfig, RobotData, CameraData
+from ..domain.entities import RobotConfig, RobotData, CameraData, MicrophoneData
 from ..application.services import RobotDataService, RobotControlService
 from ..infrastructure.ros2 import ROS2Publisher
 from ..infrastructure.webrtc import WebRTCAdapter
 
-logging.basicConfig(level=logging.WARN)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -60,6 +62,8 @@ class Go2DriverNode(Node):
             config=self.config,
             on_validated_callback=self._on_robot_validated,
             on_video_frame_callback=self._on_video_frame if self.config.enable_video else None,
+            on_audio_frame_callback=self._on_audio_frame if self.config.enable_audio else None,
+            enable_reconnect=self.config.enable_reconnect,
             event_loop=self.event_loop
         )
         
@@ -91,6 +95,8 @@ class Go2DriverNode(Node):
                 ('decode_lidar', True),
                 ('publish_raw_voxel', False),
                 ('obstacle_avoidance', False),
+                ('enable_audio', False),
+                ('enable_reconnect', True),
             ]
         )
 
@@ -104,7 +110,9 @@ class Go2DriverNode(Node):
             enable_video=self.get_parameter('enable_video').get_parameter_value().bool_value,
             decode_lidar=self.get_parameter('decode_lidar').get_parameter_value().bool_value,
             publish_raw_voxel=self.get_parameter('publish_raw_voxel').get_parameter_value().bool_value,
-            obstacle_avoidance=self.get_parameter('obstacle_avoidance').get_parameter_value().bool_value
+            obstacle_avoidance=self.get_parameter('obstacle_avoidance').get_parameter_value().bool_value,
+            enable_audio=self.get_parameter('enable_audio').get_parameter_value().bool_value,
+            enable_reconnect=self.get_parameter('enable_reconnect').get_parameter_value().bool_value,
         )
 
         # Log configuration
@@ -135,7 +143,8 @@ class Go2DriverNode(Node):
             'imu': [],
             'camera': [],
             'camera_info': [],
-            'voxel': []
+            'voxel': [],
+            'audio': [],
         }
 
         num_robots = len(self.config.robot_ip_list)
@@ -151,6 +160,7 @@ class Go2DriverNode(Node):
                 camera_topic = 'camera/image_raw'
                 camera_info_topic = 'camera/camera_info'
                 voxel_topic = '/utlidar/voxel_map_compressed'
+                audio_topic = 'audio_raw'
             else:
                 prefix = f'robot{i}'
                 joint_topic = f'{prefix}/joint_states'
@@ -160,6 +170,7 @@ class Go2DriverNode(Node):
                 imu_topic = f'{prefix}/imu'
                 camera_topic = f'{prefix}/camera/image_raw'
                 camera_info_topic = f'{prefix}/camera/camera_info'
+                audio_topic = f'{prefix}/audio_raw'
                 voxel_topic = f'{prefix}/utlidar/voxel_map_compressed'
 
             # Create publishers
@@ -189,6 +200,10 @@ class Go2DriverNode(Node):
             if self.config.publish_raw_voxel:
                 publishers['voxel'].append(
                     self.create_publisher(VoxelMapCompressed, voxel_topic, best_effort_qos))
+
+            if self.config.enable_audio:
+                publishers['audio'].append(
+                    self.create_publisher(AudioData, audio_topic, best_effort_qos))
 
         return publishers
 
@@ -282,6 +297,42 @@ class Go2DriverNode(Node):
     def _on_robot_data_received(self, msg: Dict[str, Any], robot_id: str) -> None:
         """Callback for receiving data from robot"""
         self.robot_data_service.process_webrtc_message(msg, robot_id)
+
+    def _on_audio_frame(self, frame, robot_id: str) -> None:
+        """Callback for processing audio frames from the robot's microphone.
+
+        Called from the asyncio audio track loop in Go2Connection.
+        Converts aiortc AudioFrame to MicrophoneData and publishes via ROS2.
+        """
+        try:
+            raw = frame.to_ndarray()   # shape: (channels, samples) or (samples,)
+            if raw.ndim == 2:
+                mono = raw[0]          # take first channel
+            else:
+                mono = raw
+
+            # Normalise to int16 regardless of source format
+            if frame.format.name in ('fltp', 'flt'):
+                mono = np.clip(mono * 32767, -32768, 32767).astype(np.int16)
+            else:
+                mono = mono.astype(np.int16)
+
+            mic_data = MicrophoneData(
+                samples=mono,
+                sample_rate=frame.sample_rate,
+                timestamp=frame.time if frame.time is not None else 0.0,
+            )
+
+            robot_data = RobotData(
+                robot_id=robot_id,
+                timestamp=mic_data.timestamp,
+                microphone_data=mic_data,
+            )
+
+            self.ros2_publisher.publish_audio(robot_data)
+
+        except Exception as e:
+            logger.error(f"Error processing audio frame: {e}")
 
     async def _on_video_frame(self, track: MediaStreamTrack, robot_id: str) -> None:
         """Callback for processing video frames"""

@@ -21,6 +21,7 @@ find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   # Services
   "srv/MoveForDuration.srv"
+  "srv/MoveToRelativePose.srv"
 
   # Original go2_interfaces messages
   "msg/Go2Cmd.msg"
