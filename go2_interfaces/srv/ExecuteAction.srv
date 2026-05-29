@@ -1,0 +1,7 @@
+# Execute a single robot action and block until it completes.
+# Used by the VLM agent loop to await action completion before re-prompting.
+string command   # name from MOVEMENT_OFFSET or WEBRTC_CMD (see go2_controller_node)
+float64 value    # distance in meters, angle in degrees, or 0 for parameterless commands
+---
+bool success
+string message

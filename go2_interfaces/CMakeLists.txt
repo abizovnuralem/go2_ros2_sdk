@@ -22,6 +22,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   # Services
   "srv/MoveForDuration.srv"
   "srv/MoveToRelativePose.srv"
+  "srv/ExecuteAction.srv"
 
   # Original go2_interfaces messages
   "msg/Go2Cmd.msg"
