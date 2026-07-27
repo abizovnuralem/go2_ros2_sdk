@@ -5,7 +5,7 @@ import logging
 import math
 from typing import Dict, Any
 
-from ...domain.entities import RobotData, RobotState, IMUData, OdometryData, JointData, LidarData
+from ...domain.entities import RobotData, RobotState, IMUData, OdometryData, JointData, LidarData, BatteryData
 from ...domain.interfaces import IRobotDataPublisher
 from ...domain.constants import RTC_TOPIC
 
@@ -40,6 +40,7 @@ class RobotDataService:
             elif topic == RTC_TOPIC["LOW_STATE"]:
                 self._process_low_state(msg, robot_data)
                 self.publisher.publish_joint_state(robot_data)
+                self.publisher.publish_battery_state(robot_data)
 
         except Exception as e:
             logger.error(f"Error processing WebRTC message: {e}")
@@ -140,6 +141,19 @@ class RobotDataService:
             robot_data.joint_data = JointData(
                 motor_state=low_state_data['motor_state']
             )
+
+            # The same lowstate packet carries the BMS. Guarded because it is
+            # the only consumer of this sub-struct: a firmware that omits it
+            # must not take joint states down with it.
+            bms = low_state_data.get('bms_state')
+            if bms and bms.get('soc') is not None:
+                robot_data.battery_data = BatteryData(
+                    soc=bms['soc'],
+                    current=bms.get('current'),
+                    cycle=bms.get('cycle'),
+                    temperatures=(list(bms.get('bq_ntc') or [])
+                                  + list(bms.get('mcu_ntc') or [])) or None,
+                )
         except Exception as e:
             logger.error(f"Error processing low state: {e}")
 

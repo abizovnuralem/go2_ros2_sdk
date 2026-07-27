@@ -45,6 +45,15 @@ class JointData:
 
 
 @dataclass
+class BatteryData:
+    """Battery / BMS state, as reported by the robot"""
+    soc: int  # state of charge, percent (0-100)
+    current: Optional[int] = None  # mA, negative while discharging
+    cycle: Optional[int] = None  # charge cycles
+    temperatures: Optional[List[int]] = None  # BQ/MCU NTC probes, degC
+
+
+@dataclass
 class LidarData:
     """LiDAR sensor data"""
     positions: np.ndarray
@@ -75,5 +84,6 @@ class RobotData:
     imu_data: Optional[IMUData] = None
     odometry_data: Optional[OdometryData] = None
     joint_data: Optional[JointData] = None
+    battery_data: Optional[BatteryData] = None
     lidar_data: Optional[LidarData] = None
     camera_data: Optional[CameraData] = None 

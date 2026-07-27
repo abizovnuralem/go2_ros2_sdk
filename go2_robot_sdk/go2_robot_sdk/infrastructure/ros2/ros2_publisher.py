@@ -9,7 +9,7 @@ from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import TransformStamped
 from go2_interfaces.msg import Go2State, IMU
 from go2_interfaces.msg import VoxelMapCompressed
-from sensor_msgs.msg import PointCloud2, PointField, JointState
+from sensor_msgs.msg import BatteryState, PointCloud2, PointField, JointState
 from sensor_msgs_py import point_cloud2
 from std_msgs.msg import Header
 from nav_msgs.msg import Odometry
@@ -100,6 +100,33 @@ class ROS2Publisher(IRobotDataPublisher):
         odom_msg.pose.pose.orientation.w = float(orientation['w'])
 
         self.publishers['odometry'][robot_idx].publish(odom_msg)
+
+    def publish_battery_state(self, robot_data: RobotData) -> None:
+        """Publish battery state"""
+        if not robot_data.battery_data:
+            return
+
+        try:
+            robot_idx = int(robot_data.robot_id)
+            battery = robot_data.battery_data
+
+            msg = BatteryState()
+            msg.header.stamp = self.node.get_clock().now().to_msg()
+            # BatteryState.percentage is 0.0-1.0; the BMS reports 0-100.
+            msg.percentage = float(battery.soc) / 100.0
+            msg.power_supply_status = BatteryState.POWER_SUPPLY_STATUS_UNKNOWN
+            msg.power_supply_health = BatteryState.POWER_SUPPLY_HEALTH_UNKNOWN
+            msg.power_supply_technology = BatteryState.POWER_SUPPLY_TECHNOLOGY_LION
+            msg.present = True
+            if battery.current is not None:
+                # BMS reports mA (negative while discharging); ROS wants A.
+                msg.current = float(battery.current) / 1000.0
+            if battery.temperatures:
+                msg.temperature = float(max(battery.temperatures))
+
+            self.publishers['battery'][robot_idx].publish(msg)
+        except Exception as e:
+            logger.error(f"Error publishing battery state: {e}")
 
     def publish_joint_state(self, robot_data: RobotData) -> None:
         """Publish joint state data"""

@@ -18,7 +18,7 @@ from tf2_ros import TransformBroadcaster
 from geometry_msgs.msg import Twist, PoseStamped
 from go2_interfaces.msg import Go2State, IMU
 from go2_interfaces.msg import LowState, VoxelMapCompressed, WebRtcReq
-from sensor_msgs.msg import PointCloud2, JointState, Joy, Image, CameraInfo
+from sensor_msgs.msg import BatteryState, PointCloud2, JointState, Joy, Image, CameraInfo
 from nav_msgs.msg import Odometry
 
 from ..domain.entities import RobotConfig, RobotData, CameraData
@@ -133,6 +133,7 @@ class Go2DriverNode(Node):
         publishers = {
             'joint_state': [],
             'robot_state': [],
+            'battery': [],
             'lidar': [],
             'odometry': [],
             'imu': [],
@@ -153,6 +154,7 @@ class Go2DriverNode(Node):
                 imu_topic = 'imu'
                 camera_topic = 'camera/image_raw'
                 camera_info_topic = 'camera/camera_info'
+                battery_topic = 'battery'
                 voxel_topic = '/utlidar/voxel_map_compressed'
             else:
                 prefix = f'robot{i}'
@@ -163,6 +165,7 @@ class Go2DriverNode(Node):
                 imu_topic = f'{prefix}/imu'
                 camera_topic = f'{prefix}/camera/image_raw'
                 camera_info_topic = f'{prefix}/camera/camera_info'
+                battery_topic = f'{prefix}/battery'
                 voxel_topic = f'{prefix}/utlidar/voxel_map_compressed'
 
             # Create publishers
@@ -170,6 +173,8 @@ class Go2DriverNode(Node):
                 self.create_publisher(JointState, joint_topic, qos_profile))
             publishers['robot_state'].append(
                 self.create_publisher(Go2State, robot_state_topic, qos_profile))
+            publishers['battery'].append(
+                self.create_publisher(BatteryState, battery_topic, qos_profile))
             publishers['lidar'].append(
                 self.create_publisher(
                     PointCloud2, lidar_topic, best_effort_qos,
