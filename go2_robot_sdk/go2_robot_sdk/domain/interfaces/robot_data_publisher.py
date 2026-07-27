@@ -19,6 +19,11 @@ class IRobotDataPublisher(ABC):
         pass
 
     @abstractmethod
+    def publish_battery_state(self, robot_data: RobotData) -> None:
+        """Publish battery state"""
+        pass
+
+    @abstractmethod
     def publish_robot_state(self, robot_data: RobotData) -> None:
         """Publish robot state and IMU data"""
         pass
